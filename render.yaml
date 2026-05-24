@@ -1,0 +1,17 @@
+# Деплой на https://render.com без SSH (см. RAZVERNYVANIE-PROSTO.md)
+services:
+  - type: web
+    name: sber-pomoshnik
+    runtime: node
+    plan: free
+    buildCommand: echo "ok"
+    startCommand: npm start
+    envVars:
+      - key: GIGACHAT_SCOPE
+        value: GIGACHAT_API_PERS
+      - key: GIGACHAT_MODEL
+        value: GigaChat
+      - key: NODE_VERSION
+        value: "20"
+      - key: GIGACHAT_CREDENTIALS
+        sync: false

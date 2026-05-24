@@ -1,0 +1,9 @@
+{
+  "name": "sberbiznes-pomoshnik",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node gigachat-proxy.mjs",
+    "dev": "node gigachat-proxy.mjs"
+  }
+}
