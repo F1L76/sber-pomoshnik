@@ -664,6 +664,39 @@
         }
     };
 
+    /** Демо-риски и пересказ для заключений без импорта PDF */
+    const DEMO_CONCLUSION_PATCHES = {
+        "ASZ1000000000456": {
+            clientName: 'ООО "Тест"',
+            inn: "1234567890",
+            summary: "По заключению оценены квартира и коммерческое помещение. Выявлены расхождения по площади и формулировкам обременений; рекомендована доработка материалов и пересчёт залоговой стоимости.",
+            risks: [
+                { identifier: "З-01", risk: "Несоответствие площади по данным БТИ", minimization: "Запросить актуальный техпаспорт и пересчёт" },
+                { identifier: "З-02", risk: "Обременение не отражено в тексте заключения", minimization: "Сверка с выпиской ЕГРН и корректировка формулировок" }
+            ]
+        }
+    };
+
+    function patchDemoConclusions(clientData) {
+        if (!clientData?.conclusions?.length) return;
+        clientData.conclusions.forEach((c) => {
+            const patch = DEMO_CONCLUSION_PATCHES[c.id];
+            if (!patch) return;
+            if (patch.clientName) c.clientName = patch.clientName;
+            if (patch.inn) c.inn = patch.inn;
+            if (patch.summary) c.summary = patch.summary;
+            if (patch.risks?.length) {
+                c.risks = patch.risks.map((r) => ({
+                    identifier: r.identifier,
+                    risk: r.risk,
+                    minimization: r.minimization
+                }));
+            }
+        });
+    }
+
+    Object.values(mockData).forEach(patchDemoConclusions);
+
     let currentClientData = null;
     let currentClientInn = null;
     /** Предзаполнение модуля «Технические изменения» при переходе из карточки заключения */
@@ -1166,7 +1199,7 @@ ${excerpt.slice(0, 22000)}`;
         </tr>`).join("");
         return `<div class="mb-4">
             <h3 class="h6 fw-bold mb-3"><i class="fas fa-triangle-exclamation me-2 text-warning" aria-hidden="true"></i>Риски</h3>
-            <p class="small text-muted">Пересказ подготовлен GigaChat.</p>
+            <p class="small text-muted mb-2">${c.summary ? "Пересказ подготовлен GigaChat." : "Риски по заключению (демо)."}</p>
             <div class="table-responsive-custom">
                 <table class="table table-bordered conclusion-risks-table mb-0">
                     <thead><tr><th>Идентификатор</th><th>Риск</th><th>Минимизация</th><th class="text-end">Действие</th></tr></thead>
@@ -1425,6 +1458,7 @@ ${excerpt.slice(0, 22000)}`;
         }
         currentClientInn = inn;
         currentClientData = JSON.parse(JSON.stringify(mockData[inn]));
+        patchDemoConclusions(currentClientData);
         clientBadge.innerHTML = `<i class="fas fa-check-circle text-success me-1" aria-hidden="true"></i>${currentClientData.clientName} <span class="text-muted">(ИНН: ${inn})</span>`;
         clientBadge.classList.add("bg-white", "shadow-sm");
         infoPanel.style.display = "block";
