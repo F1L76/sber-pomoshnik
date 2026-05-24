@@ -667,22 +667,6 @@
         return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
-    function formatAiHtml(text) {
-        return `<i class="fas fa-sparkles me-2 text-success" aria-hidden="true"></i>${escapeHtml(text).replace(/\n/g, "<br>")}`;
-    }
-
-    function setAiLoading(el, label) {
-        if (!el) return;
-        el.className = "mt-3 mock-ai small";
-        el.innerHTML = `<span class="text-primary"><i class="fas fa-spinner fa-spin me-2" aria-hidden="true"></i>${escapeHtml(label || "GigaChat думает…")}</span>`;
-    }
-
-    function setAiError(el, err) {
-        if (!el) return;
-        el.className = "mt-3 alert alert-danger small mb-0";
-        el.innerHTML = `<i class="fas fa-circle-xmark me-2" aria-hidden="true"></i>${escapeHtml(err.message || String(err))}`;
-    }
-
     async function askGigaChat(userPrompt, systemPrompt, options) {
         const res = await fetch(`${GIGACHAT_API_BASE}/api/gigachat/chat`, {
             method: "POST",
@@ -697,35 +681,6 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
         return data.content;
-    }
-
-    async function runGigaChatIn(el, userPrompt, systemPrompt) {
-        setAiLoading(el);
-        try {
-            const answer = await askGigaChat(userPrompt, systemPrompt);
-            el.className = "mt-3 mock-ai small";
-            el.innerHTML = formatAiHtml(answer);
-            return answer;
-        } catch (err) {
-            setAiError(el, err);
-            throw err;
-        }
-    }
-
-    function getModuleContextText() {
-        if (!currentClientData) return "";
-        const appId = document.getElementById("moduleCtxAppSelect")?.value;
-        const conclId = document.getElementById("moduleCtxConclusionSelect")?.value;
-        const app = appId ? currentClientData.applications.find(a => a.id === appId) : null;
-        const concl = conclId ? currentClientData.conclusions.find(c => c.id === conclId) : null;
-        let s = `Клиент: ${currentClientData.clientName}.`;
-        if (app) s += ` Заявка ${app.id}, тип ${app.type}, осмотр ${app.inspectionDate || "—"}, обременения: ${app.encumbrances || "—"}, этап: ${app.valuation || "—"}.`;
-        if (concl) {
-            s += ` Заключение ${concl.id} от ${concl.date}, объектов: ${concl.objects.length}.`;
-            const names = concl.objects.slice(0, 5).map(o => o.name).join("; ");
-            if (names) s += ` Объекты: ${names}.`;
-        }
-        return s;
     }
 
     const innInput = document.getElementById("innInput");
@@ -1411,12 +1366,12 @@ ${excerpt.slice(0, 22000)}`;
 
     const modules = [
         { id: "priority", name: "Приоритет по заявке", icon: "fas fa-flag-checkered", modal: "#priorityModal", desc: "Согласование приоритета для экспертных заявок" },
-        { id: "questions", name: "Вопросы по заключению", icon: "fas fa-question-circle", modal: "#questionsModal", desc: "База рисков, AI распознавание СЗЗ" },
+        { id: "questions", name: "Вопросы по заключению", icon: "fas fa-question-circle", modal: "#questionsModal", desc: "База рисков, распознавание и резюме СЗЗ" },
         { id: "inspection", name: "Вопросы по осмотру", icon: "fas fa-camera", modal: "#inspectionModal", desc: "Файл верификации, перепланировки" },
         { id: "cost", name: "Не согласен со стоимостью", icon: "fas fa-hand-holding-usd", modal: "#costModal", desc: "Арбитраж стоимости, верификация рынком" },
         { id: "where", name: "Где заявка?", icon: "fas fa-search-location", modal: "#whereModal", desc: "Статусы: осмотр, обременения, оценка" },
-        { id: "express", name: "Экспресс оценка", icon: "fas fa-bolt", modal: "#expressModal", desc: "AI оценка по минимальным параметрам" },
-        { id: "memorandum", name: "Служебная записка", icon: "fas fa-pen-alt", modal: "#memorandumModal", desc: "AI агент по подготовке СЗ" },
+        { id: "express", name: "Экспресс оценка", icon: "fas fa-bolt", modal: "#expressModal", desc: "Оценка по минимальным параметрам (демо)" },
+        { id: "memorandum", name: "Служебная записка", icon: "fas fa-pen-alt", modal: "#memorandumModal", desc: "Подготовка служебной записки (демо)" },
         { id: "techChanges", name: "Технические изменения / Снятие рисков", icon: "fas fa-sync-alt", modal: "#techChangesModal", desc: "Автоснятие риска, изменение КК" },
         { id: "pmz", name: "ПМЗ", icon: "fas fa-building", modal: "#pmzModal", desc: "Подразделение мониторинга залогов" }
     ];
@@ -1531,7 +1486,7 @@ ${excerpt.slice(0, 22000)}`;
         html += '<div id="priorityResult" class="mt-3"></div>';
         container.innerHTML = html;
         bindModuleContextBar();
-        document.getElementById("priorityAgreeBtn").addEventListener("click", async () => {
+        document.getElementById("priorityAgreeBtn").addEventListener("click", () => {
             const appSel = document.getElementById("moduleCtxAppSelect");
             if (!appSel) return;
             const appId = appSel.value;
@@ -1542,18 +1497,10 @@ ${excerpt.slice(0, 22000)}`;
                 resultDiv.innerHTML = '<div class="alert alert-secondary mb-0">У выбранной заявки приоритет уже активен.</div>';
                 return;
             }
-            resultDiv.innerHTML = '<div class="alert alert-info mb-0"><i class="fas fa-paper-plane me-2" aria-hidden="true"></i>Отправка на согласование руководителю…</div>';
-            try {
-                const justification = await askGigaChat(
-                    getModuleContextText() + " Согласуй приоритет для экспертной заявки " + app.id + ". Кратко: обоснование и рекомендация руководителю.",
-                    GIGACHAT_SYSTEM
-                );
-                app.priority = true;
-                updateInfoPanel();
-                resultDiv.innerHTML = '<div class="alert alert-success mb-0"><i class="fas fa-check me-2" aria-hidden="true"></i>Приоритет установлен.</div><div class="mock-ai small mt-2 mb-0">' + formatAiHtml(justification) + '</div>';
-            } catch (err) {
-                setAiError(resultDiv, err);
-            }
+            app.priority = true;
+            updateInfoPanel();
+            const justification = "Экспертная заявка " + app.id + " относится к срочному сопровождению. Рекомендуется приоритет для ускорения этапа оценки и согласования с руководителем (демо).";
+            resultDiv.innerHTML = '<div class="alert alert-success mb-0"><i class="fas fa-check me-2" aria-hidden="true"></i>Приоритет установлен.</div><div class="mock-ai small mt-2 mb-0">' + escapeHtml(justification) + '</div>';
         });
     }
 
@@ -1565,10 +1512,10 @@ ${excerpt.slice(0, 22000)}`;
                     <button type="button" class="nav-link active" id="risks-tab" data-bs-toggle="tab" data-bs-target="#risksTab" role="tab" aria-controls="risksTab" aria-selected="true">База рисков</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button type="button" class="nav-link" id="sxz-tab" data-bs-toggle="tab" data-bs-target="#sxzTab" role="tab" aria-controls="sxzTab" aria-selected="false">AI распознавание СЗЗ</button>
+                    <button type="button" class="nav-link" id="sxz-tab" data-bs-toggle="tab" data-bs-target="#sxzTab" role="tab" aria-controls="sxzTab" aria-selected="false">Распознавание СЗЗ</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button type="button" class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summaryTab" role="tab" aria-controls="summaryTab" aria-selected="false">AI резюме СЗЗ</button>
+                    <button type="button" class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summaryTab" role="tab" aria-controls="summaryTab" aria-selected="false">Резюме СЗЗ</button>
                 </li>
             </ul>
             <div class="tab-content border border-top-0 rounded-bottom-3 p-3 bg-white">
@@ -1587,7 +1534,7 @@ ${excerpt.slice(0, 22000)}`;
                 <div class="tab-pane fade" id="summaryTab" role="tabpanel" aria-labelledby="summary-tab">
                     <label class="form-label small text-muted" for="sxzSummaryText">Текст СЗЗ</label>
                     <textarea class="form-control" rows="3" id="sxzSummaryText" placeholder="Введите текст СЗЗ…"></textarea>
-                    <button type="button" class="btn btn-success mt-3 rounded-pill" id="makeSummaryBtn"><i class="fas fa-robot me-2" aria-hidden="true"></i>Резюме AI</button>
+                    <button type="button" class="btn btn-success mt-3 rounded-pill" id="makeSummaryBtn"><i class="fas fa-file-lines me-2" aria-hidden="true"></i>Сформировать резюме</button>
                     <div id="summaryResult" class="mt-3 mock-ai small"></div>
                 </div>
             </div>`;
@@ -1603,7 +1550,7 @@ ${excerpt.slice(0, 22000)}`;
                 const risk = txt.toLowerCase().includes("ипотек")
                     ? "Обременение ипотекой. Рекомендуется проверка закладной."
                     : "Риски не выявлены.";
-                out.innerHTML = `<i class="fas fa-robot me-2" aria-hidden="true"></i><strong>AI:</strong> ${risk}`;
+                out.innerHTML = `<i class="fas fa-magnifying-glass me-2 text-success" aria-hidden="true"></i><strong>Результат:</strong> ${risk}`;
             });
         }
         const summaryBtn = document.getElementById("makeSummaryBtn");
@@ -1612,7 +1559,7 @@ ${excerpt.slice(0, 22000)}`;
                 const txt = document.getElementById("sxzSummaryText").value.trim();
                 const out = document.getElementById("summaryResult");
                 out.innerHTML = txt
-                    ? '<i class="fas fa-microchip me-2" aria-hidden="true"></i>Краткое резюме: СЗЗ в порядке, залоговые риски отсутствуют.'
+                    ? '<i class="fas fa-file-lines me-2 text-success" aria-hidden="true"></i>Краткое резюме: СЗЗ в порядке, залоговые риски отсутствуют (демо).'
                     : '<span class="text-warning">Введите текст для резюмирования.</span>';
             });
         }
@@ -1721,14 +1668,14 @@ ${excerpt.slice(0, 22000)}`;
             <input type="text" inputmode="decimal" id="area" class="form-control" placeholder="Площадь (м²)" value="65">
             <label class="form-label mt-3" for="region">Регион</label>
             <input id="region" class="form-control" placeholder="Регион" value="Московская область">
-            <button type="button" id="calcExpressBtn" class="btn btn-success mt-4 w-100 rounded-pill py-2 fw-semibold"><i class="fas fa-brain me-2" aria-hidden="true"></i>AI экспресс-оценка</button>
+            <button type="button" id="calcExpressBtn" class="btn btn-success mt-4 w-100 rounded-pill py-2 fw-semibold"><i class="fas fa-calculator me-2" aria-hidden="true"></i>Рассчитать экспресс-оценку</button>
             <div id="expressResult" class="mt-3"></div>`;
         document.getElementById("calcExpressBtn")?.addEventListener("click", () => {
             const type = document.getElementById("estateType").value;
             const area = parseFloat(String(document.getElementById("area").value).replace(",", ".")) || 60;
             const base = type === "Квартира" ? 120000 : (type === "Коммерция" ? 88000 : 98000);
             const estimate = base * area * 1.08;
-            document.getElementById("expressResult").innerHTML = `<div class="mock-ai mb-0"><i class="fas fa-house me-2" aria-hidden="true"></i><strong>AI-оценка:</strong> ${Math.round(estimate).toLocaleString("ru-RU")} ₽</div>`;
+            document.getElementById("expressResult").innerHTML = `<div class="mock-ai mb-0"><i class="fas fa-house me-2" aria-hidden="true"></i><strong>Оценка (демо):</strong> ${Math.round(estimate).toLocaleString("ru-RU")} ₽</div>`;
         });
         bindModuleContextBar();
     }
@@ -1738,7 +1685,7 @@ ${excerpt.slice(0, 22000)}`;
             <p class="small text-muted mb-3">СЗ будет сформирована с учётом выбранных заявки и заключения (демо).</p>
             <label class="form-label" for="baseDocText">Основание (аренда, вывод, изменения…)</label>
             <textarea id="baseDocText" rows="4" class="form-control" placeholder="Введите основание…"></textarea>
-            <button type="button" id="genMemorandumBtn" class="btn btn-dark mt-3 rounded-pill"><i class="fas fa-file-lines me-2" aria-hidden="true"></i>Подготовить СЗ (AI)</button>
+            <button type="button" id="genMemorandumBtn" class="btn btn-dark mt-3 rounded-pill"><i class="fas fa-file-lines me-2" aria-hidden="true"></i>Подготовить СЗ</button>
             <div id="memorandumResult" class="mt-3"></div>`;
         document.getElementById("genMemorandumBtn")?.addEventListener("click", () => {
             const text = document.getElementById("baseDocText").value.trim();
@@ -1751,7 +1698,7 @@ ${excerpt.slice(0, 22000)}`;
             if (lower.includes("аренда")) type = "Аренда";
             else if (lower.includes("вывод")) type = "Вывод";
             document.getElementById("memorandumResult").innerHTML =
-                `<div class="border p-3 rounded-3 bg-light small mb-0">Служебная записка (<strong>${type}</strong>) для заявки <code class="small">${document.getElementById("moduleCtxAppSelect")?.value || "—"}</code> подготовлена AI. Рекомендовано к согласованию.</div>`;
+                `<div class="border p-3 rounded-3 bg-light small mb-0">Служебная записка (<strong>${type}</strong>) для заявки <code class="small">${document.getElementById("moduleCtxAppSelect")?.value || "—"}</code> подготовлена (демо). Рекомендовано к согласованию.</div>`;
         });
         bindModuleContextBar();
     }
@@ -1761,7 +1708,7 @@ ${excerpt.slice(0, 22000)}`;
             <p class="small text-muted mb-3">Укажите заявку и заключение, к которым относится снятие риска.</p>
             <label class="form-label" for="riskDoc">Файл для снятия риска</label>
             <input type="file" id="riskDoc" class="form-control">
-            <button type="button" id="removeRiskBtn" class="btn btn-warning mt-3 rounded-pill"><i class="fas fa-broom me-2" aria-hidden="true"></i>Снять риск (AI)</button>
+            <button type="button" id="removeRiskBtn" class="btn btn-warning mt-3 rounded-pill"><i class="fas fa-broom me-2" aria-hidden="true"></i>Снять риск</button>
             <div id="techResultArea" class="mt-3"></div>
             <p class="text-muted small mt-3 mb-0">После снятия КК обновится автоматически.</p>`;
         document.getElementById("removeRiskBtn")?.addEventListener("click", () => {
@@ -1778,11 +1725,7 @@ ${excerpt.slice(0, 22000)}`;
     function fillPmzModal() {
         document.getElementById("pmzModalBody").innerHTML = renderModuleContextBar({}) + `
             <div class="alert alert-success border-0 rounded-3 mb-3"><i class="fas fa-building me-2" aria-hidden="true"></i><strong>ПМЗ — подразделение мониторинга залогов</strong></div>
-            <div class="row g-3">
-                <div class="col-md-6"><i class="fas fa-chart-line text-success me-2" aria-hidden="true"></i>Задачи: контроль стоимости, страховки, переоценка</div>
-                <div class="col-md-6"><i class="fas fa-phone text-success me-2" aria-hidden="true"></i>Контакты: +7 (495) 123-45-67</div>
-            </div>
-            <div class="mock-ai mt-3 mb-0">Актуальный портфель в норме, риски отсутствуют.</div>`;
+            <p class="mb-0"><i class="fas fa-chart-line text-success me-2" aria-hidden="true"></i>Задачи: контроль стоимости, страховки, переоценка</p>`;
         bindModuleContextBar();
     }
 
