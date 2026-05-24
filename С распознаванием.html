@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>СберБизнес Помощник — AI-платформа сопровождения</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
+    <link href="https://fonts.cdnfonts.com/css/sb-sans-interface" rel="stylesheet">
+    <script src="/vendor/xlsx.full.min.js"></script>
+    <script>
+        if (typeof XLSX === "undefined") {
+            document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>');
+        }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        :root {
+            --sber-green: #21A038;
+            --sber-green-dark: #1B8A32;
+            --sber-blue: #0098F8;
+            --sber-gradient: linear-gradient(135deg, #21A038 0%, #0098F8 100%);
+            --sber-bg: #F0F4F8;
+            --sber-card-bg: #FFFFFF;
+            --sber-text-dark: #1E2A3A;
+            --sber-text-muted: #617188;
+            --sber-border: #E2EAF2;
+            --sber-shadow: 0 4px 24px rgba(30, 42, 58, 0.06);
+            --sber-shadow-hover: 0 12px 40px rgba(30, 42, 58, 0.12);
+            --radius-lg: 20px;
+            --radius-xl: 28px;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            background: var(--sber-bg);
+            font-family: 'SB Sans Interface', 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: var(--sber-text-dark);
+            letter-spacing: -0.015em;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        main {
+            flex: 1;
+        }
+        .card-hover {
+            transition: transform 0.22s ease, box-shadow 0.22s ease;
+            cursor: pointer;
+            border: 1px solid var(--sber-border);
+            background: var(--sber-card-bg);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--sber-shadow);
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--sber-shadow-hover);
+            border-color: rgba(33, 160, 56, 0.25);
+        }
+        .sber-nav {
+            background: linear-gradient(180deg, #1E2A3A 0%, #162030 100%);
+            border-bottom: 3px solid var(--sber-green);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+        .navbar-brand-custom {
+            font-weight: 700;
+            font-size: clamp(1.1rem, 2.5vw, 1.55rem);
+            letter-spacing: -0.03em;
+            color: #fff !important;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+        .sber-logo {
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
+        }
+        .nav-tagline {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.65);
+            white-space: nowrap;
+        }
+        .gigachat-status-btn {
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 0.8rem;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .gigachat-status-btn:hover {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.45);
+            color: #fff;
+        }
+        .gigachat-status-btn:focus-visible {
+            box-shadow: 0 0 0 2px rgba(33, 160, 56, 0.6);
+            outline: none;
+        }
+        .gigachat-status-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            flex-shrink: 0;
+        }
+        @media (max-width: 576px) {
+            .nav-tagline {
+                display: none;
+            }
+        }
+        .btn-primary {
+            background: var(--sber-gradient);
+            border: none;
+            border-radius: 999px;
+            padding: 0.65rem 1.75rem;
+            font-weight: 600;
+            transition: filter 0.2s, transform 0.15s;
+            box-shadow: 0 4px 14px rgba(33, 160, 56, 0.35);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            filter: brightness(1.05);
+            transform: translateY(-1px);
+            color: #fff;
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        .btn-outline-sber {
+            border-radius: 999px;
+            border: 1.5px solid var(--sber-green);
+            color: var(--sber-green);
+            background: transparent;
+            font-weight: 600;
+            transition: background 0.2s, border-color 0.2s, color 0.2s;
+        }
+        .btn-outline-sber:hover {
+            background: rgba(33, 160, 56, 0.1);
+            border-color: var(--sber-green-dark);
+            color: var(--sber-green-dark);
+        }
+        .form-control,
+        .form-select {
+            border-radius: 14px;
+            border: 1px solid #CFDFE9;
+            padding: 0.65rem 1rem;
+            background: #fff;
+        }
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--sber-green);
+            box-shadow: 0 0 0 3px rgba(33, 160, 56, 0.15);
+        }
+        .inn-card {
+            background: var(--sber-card-bg);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--sber-border);
+            box-shadow: var(--sber-shadow);
+        }
+        .module-icon-bg {
+            background: linear-gradient(145deg, rgba(33, 160, 56, 0.12), rgba(0, 152, 248, 0.08));
+            width: 58px;
+            height: 58px;
+            border-radius: 18px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+        }
+        .badge-sber {
+            background: rgba(33, 160, 56, 0.14);
+            color: #156B28;
+            padding: 0.35rem 0.85rem;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+        .info-card {
+            background: var(--sber-card-bg);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--sber-border);
+            box-shadow: var(--sber-shadow);
+            overflow: hidden;
+        }
+        .info-card-header-toggle {
+            cursor: pointer;
+            background: linear-gradient(180deg, #FAFCFE 0%, #F4F8FB 100%) !important;
+            border: none !important;
+            width: 100%;
+            text-align: left;
+            font: inherit;
+            color: inherit;
+            transition: background 0.15s ease;
+        }
+        .info-card-header-toggle:hover {
+            background: linear-gradient(180deg, #F2F7FB 0%, #E9F1F7 100%) !important;
+        }
+        .info-card-header-toggle .collapse-chevron {
+            transition: transform 0.22s ease;
+            color: var(--sber-text-muted);
+            font-size: 0.75rem;
+        }
+        .info-card-header-toggle.collapsed .collapse-chevron {
+            transform: rotate(-90deg);
+        }
+        .info-card-header {
+            border-bottom: 1px solid var(--sber-border);
+            padding: 1rem 1.25rem;
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+        .info-card .card-body {
+            padding: 1.25rem;
+        }
+        .mock-ai {
+            background: linear-gradient(135deg, #F5FAFF 0%, #F0FFF4 100%);
+            border-left: 4px solid var(--sber-green);
+            padding: 1.1rem 1.25rem;
+            border-radius: 16px;
+            font-size: 0.95rem;
+            line-height: 1.55;
+        }
+        .module-modal-tabs.nav-tabs {
+            border-bottom-color: var(--sber-border);
+        }
+        .module-modal-tabs .nav-link {
+            border: none;
+            border-radius: 12px 12px 0 0;
+            color: var(--sber-text-muted);
+            font-weight: 500;
+        }
+        .module-modal-tabs .nav-link:hover {
+            color: var(--sber-text-dark);
+        }
+        .module-modal-tabs .nav-link.active {
+            background-color: #fff;
+            border-bottom: 3px solid var(--sber-green);
+            color: var(--sber-green);
+            font-weight: 600;
+        }
+        .table-responsive-custom {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--sber-border);
+        }
+        .table-details {
+            margin-bottom: 0;
+        }
+        .table-details th {
+            background: #EEF4F9;
+            font-weight: 600;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            border-color: var(--sber-border);
+        }
+        .table-details td {
+            font-size: 0.85rem;
+            vertical-align: middle;
+            border-color: var(--sber-border);
+        }
+        .site-footer {
+            font-size: 0.8rem;
+            color: var(--sber-text-muted);
+            border-top: 1px solid var(--sber-border);
+            padding: 1.5rem 0;
+            margin-top: auto;
+            background: rgba(255, 255, 255, 0.6);
+        }
+        .upload-area {
+            background: linear-gradient(180deg, #F9FDFB 0%, #F4FAF6 100%);
+            border-radius: 18px;
+            border: 1.5px dashed rgba(33, 160, 56, 0.45);
+            padding: 1rem 1.1rem;
+        }
+        .section-title-row {
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .client-badge-wrap .badge {
+            border-radius: 12px;
+            font-weight: 500;
+            max-width: 100%;
+            text-align: left;
+            white-space: normal;
+            word-break: break-word;
+        }
+        @media (max-width: 768px) {
+            .search-row {
+                flex-direction: column;
+                align-items: stretch !important;
+            }
+            .btn-search {
+                width: 100%;
+                margin-top: 0.25rem;
+            }
+        }
+        .modal-header .btn-close {
+            padding: 0.75rem;
+        }
+        #importStatus {
+            min-height: 1.5rem;
+        }
+        .conclusion-info-block {
+            background: linear-gradient(180deg, #F8FBFE 0%, #F4F8FB 100%);
+            border: 1px solid var(--sber-border);
+            border-radius: 16px;
+            padding: 1rem 1.25rem;
+        }
+        .conclusion-info-block dl {
+            margin-bottom: 0;
+        }
+        .conclusion-info-block dt {
+            font-weight: 600;
+            color: var(--sber-text-muted);
+            font-size: 0.8rem;
+        }
+        .conclusion-risks-table th {
+            font-size: 0.8rem;
+            background: #EEF4F9;
+        }
+        .conclusion-risks-table td {
+            font-size: 0.85rem;
+            vertical-align: top;
+        }
+        .module-context-bar {
+            background: linear-gradient(180deg, #F8FAFC 0%, #F0F5FA 100%);
+            border: 1px solid var(--sber-border);
+            border-radius: 14px;
+            padding: 1rem 1.1rem;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar sber-nav sticky-top py-2 py-md-3">
+    <div class="container-fluid px-3 px-md-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <span class="navbar-brand-custom mb-0">
+            <svg class="sber-logo" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle cx="20" cy="20" r="18" fill="#21A038" stroke="white" stroke-width="1.5"/>
+                <path d="M12 20L18 26L28 14" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>СберБизнес Помощник</span>
+        </span>
+        <span class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-sm rounded-pill gigachat-status-btn d-inline-flex align-items-center gap-2 px-3 py-1" id="gigachatStatusBtn" title="Нажмите, чтобы проверить соединение с GigaChat">
+                <span class="rounded-circle gigachat-status-dot bg-secondary" id="gigachatStatusDot" aria-hidden="true"></span>
+                <span id="gigachatStatusBadge" class="fw-semibold">Проверка…</span>
+                <i class="fas fa-arrows-rotate fa-xs opacity-75" aria-hidden="true"></i>
+            </button>
+            <span class="nav-tagline"><i class="fas fa-robot me-1" aria-hidden="true"></i>AI-платформа сопровождения 2.0</span>
+        </span>
+    </div>
+</nav>
+
+<main class="container my-4 my-md-5 px-3">
+    <div class="inn-card p-3 p-md-4 mb-4">
+        <div class="search-row d-flex align-items-end gap-3 flex-wrap">
+            <div class="flex-grow-1" style="min-width: 200px;">
+                <label class="form-label fw-semibold mb-2" for="innInput"><i class="fas fa-building me-1 text-success" aria-hidden="true"></i>ИНН клиента</label>
+                <input type="text" id="innInput" class="form-control form-control-lg" inputmode="numeric" autocomplete="off" placeholder="Введите 10 или 12 цифр" value="1234567890">
+                <div class="form-text mt-2">Тестовые ИНН: <strong>1234567890</strong> (ООО "Тест") · <strong>9876543210</strong> (ИП Петров)</div>
+            </div>
+            <button type="button" id="loadClientBtn" class="btn btn-primary btn-lg btn-search"><i class="fas fa-search me-2" aria-hidden="true"></i>Поиск</button>
+            <div class="client-badge-wrap ms-md-2 w-100 w-md-auto">
+                <span class="badge bg-light text-dark p-3 shadow-sm" id="clientBadge"><i class="fas fa-user-circle me-1" aria-hidden="true"></i>Клиент не выбран</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="infoPanel" class="mt-2 mb-5" style="display: none;">
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="info-card h-100">
+                    <div class="info-card-header p-0 border-0 bg-transparent">
+                        <button type="button" class="info-card-header info-card-header-toggle d-flex align-items-center justify-content-between gap-2 rounded-0" data-bs-toggle="collapse" data-bs-target="#collapseActiveApps" aria-expanded="true" aria-controls="collapseActiveApps" id="toggleActiveApps" title="Скрыть или показать список заявок">
+                            <span><i class="fas fa-tasks me-2 text-success" aria-hidden="true"></i>Активные заявки</span>
+                            <i class="fas fa-chevron-down collapse-chevron" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <div id="collapseActiveApps" class="collapse show">
+                        <div class="card-body" id="activeApplicationsList">—</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="info-card h-100">
+                    <div class="info-card-header p-0 border-0 bg-transparent">
+                        <button type="button" class="info-card-header info-card-header-toggle d-flex align-items-center justify-content-between gap-2 rounded-0" data-bs-toggle="collapse" data-bs-target="#collapseConclusions" aria-expanded="true" aria-controls="collapseConclusions" id="toggleConclusions" title="Скрыть или показать заключения и импорт">
+                            <span><i class="fas fa-file-signature me-2 text-success" aria-hidden="true"></i>Заключения клиента</span>
+                            <i class="fas fa-chevron-down collapse-chevron" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <div id="collapseConclusions" class="collapse show">
+                        <div class="card-body">
+                            <div id="conclusionsList">—</div>
+                            <div class="upload-area mt-4">
+                            <div class="small fw-semibold mb-2"><i class="fas fa-cloud-arrow-up me-1 text-success" aria-hidden="true"></i>Загрузить заключение и перечень залога</div>
+                            <p class="small text-muted mb-3">Нужны оба файла: PDF — пересказ и риски (GigaChat); XLSX — перечень объектов.</p>
+                            <div class="mb-3">
+                                <label class="form-label small mb-1" for="pdfUpload">Файл заключения (PDF)</label>
+                                <input type="file" id="pdfUpload" class="form-control form-control-sm" accept=".pdf,application/pdf">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small mb-1" for="xlsxUpload">Файл перечня залога (XLSX)</label>
+                                <input type="file" id="xlsxUpload" class="form-control form-control-sm" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+                            </div>
+                            <button type="button" id="importConclusionBtn" class="btn btn-success rounded-pill w-100 py-2 fw-semibold">
+                                <i class="fas fa-microchip me-1" aria-hidden="true"></i>Импортировать (AI‑распознавание)
+                            </button>
+                            <div id="importStatus" class="small text-muted mt-3"></div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modulesPanel" style="display: none;">
+        <div class="d-flex section-title-row mb-4">
+            <i class="fas fa-cube fs-4 text-success" aria-hidden="true"></i>
+            <h2 class="fw-bold m-0 h4" style="color: var(--sber-text-dark);">Интеллектуальные сервисы</h2>
+            <span class="badge-sber">AI 2.0</span>
+        </div>
+        <div class="row g-4" id="modulesGrid"></div>
+    </div>
+</main>
+
+<div class="modal fade" id="conclusionDetailModal" tabindex="-1" aria-labelledby="conclusionDetailLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h5 text-success mb-0" id="conclusionDetailLabel"><i class="fas fa-file-contract me-2" aria-hidden="true"></i>Детали заключения</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-4" id="conclusionDetailBody"></div>
+            <div class="modal-footer border-top bg-light rounded-bottom-4 d-flex flex-wrap gap-2 justify-content-between">
+                <button type="button" class="btn btn-outline-danger rounded-pill px-4" id="conclusionDetailDeleteBtn" style="display: none;" title="Удалить это заключение из карточки клиента">
+                    <i class="fas fa-trash-alt me-1" aria-hidden="true"></i>Удалить заключение
+                </button>
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4 ms-auto" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="priorityModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h5 text-success mb-0"><i class="fas fa-flag-checkered me-2" aria-hidden="true"></i>Приоритет по заявке</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-4" id="priorityModalBody"></div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="questionsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h5 text-success mb-0"><i class="fas fa-brain me-2" aria-hidden="true"></i>Вопросы по заключению</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-4" id="questionsModalBody"></div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="inspectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h5 text-success mb-0"><i class="fas fa-clipboard-list me-2" aria-hidden="true"></i>Вопросы по осмотру</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-4" id="inspectionModalBody"></div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="costModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h5 text-success mb-0"><i class="fas fa-ruble-sign me-2" aria-hidden="true"></i>Не согласен со стоимостью</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-4" id="costModalBody"></div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="whereModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h5 text-success mb-0"><i class="fas fa-map-marker-alt me-2" aria-hidden="true"></i>Где заявка?</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-4" id="whereModalBody"></div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="expressModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h5 text-success mb-0"><i class="fas fa-bolt me-2" aria-hidden="true"></i>Экспресс оценка (AI)</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-4" id="expressModalBody"></div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="memorandumModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h5 text-success mb-0"><i class="fas fa-file-alt me-2" aria-hidden="true"></i>Служебная записка</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-4" id="memorandumModalBody"></div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="techChangesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h5 text-success mb-0"><i class="fas fa-sync-alt me-2" aria-hidden="true"></i>Технические изменения</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-4" id="techChangesModalBody"></div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="pmzModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom">
+                <h2 class="modal-title h5 text-success mb-0"><i class="fas fa-building me-2" aria-hidden="true"></i>ПМЗ — мониторинг залогов</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body p-4" id="pmzModalBody"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script>
+    const mockData = {
+        "1234567890": {
+            clientName: 'ООО "Тест"',
+            applications: [
+                { id: "ASZ0000000012345", type: "Автооценка", priority: false, inspectionDate: "2026-05-20", encumbrances: "проверяется", valuation: "завершена" },
+                { id: "ASZ0000000023456", type: "Эксперт", priority: false, inspectionDate: "2026-06-01", encumbrances: "нет", valuation: "в процессе" },
+                { id: "ASZ0000000112345", type: "Эксперт", priority: true, inspectionDate: "2026-05-10", encumbrances: "нет", valuation: "доработка отчёта" }
+            ],
+            conclusions: [
+                { id: "ASZ1000000000456", date: "2026-04-10",
+                    materials: {
+                        encumbranceCheck: { fileName: "egrn_ASZ1000000000456.pdf", fileUrl: "/materials/demo/encumbrance-check.pdf", note: "ЕГРН: обременения не выявлены (выписка от 08.04.2026)" },
+                        inspectionResults: { fileName: "inspection_ASZ1000000000456.pdf", fileUrl: "/materials/demo/inspection-results.pdf", note: "Осмотр 05.04.2026, состояние удовлетворительное" },
+                        inspectionVerificationFile: { fileName: "verification_ASZ1000000000456_20260405.pdf", fileUrl: "/materials/demo/inspection-verification.pdf", note: "Файл верификации осмотра" }
+                    },
+                    objects: [
+                    { name: "Квартира, Москва", cost: 5200000, costType: "рыночная", klassifikator: "010101", identifier: "77:01:0001234:567", qualityCategory: "Высокая", valuationType: "Рыночная", collateralValue: 3120000, discount: 40, conditional: "Объект_1", bankMarketPrice: 5600000 },
+                    { name: "Коммерческое помещение", cost: 3100000, costType: "льготная", klassifikator: "020202", identifier: "77:08:0009876:321", qualityCategory: "Средняя", valuationType: "Льготная", collateralValue: 1860000, discount: 40, conditional: "Объект_2", bankMarketPrice: 3900000 }
+                ]},
+                { id: "ASZ1000000000789", date: "2026-02-28",
+                    materials: {
+                        encumbranceCheck: { fileName: "eisn_ASZ1000000000789.pdf", fileUrl: "/materials/demo/encumbrance-check.pdf", note: "ЕИСН: залог в пользу банка, иные обременения отсутствуют" },
+                        inspectionResults: { fileName: "inspection_ASZ1000000000789.pdf", fileUrl: "/materials/demo/inspection-results.pdf", note: "Дистанционная верификация земельного участка" },
+                        inspectionVerificationFile: null
+                    },
+                    objects: [
+                    { name: "Земельный участок, МО", cost: 2100000, costType: "рыночная", klassifikator: "201.05", identifier: "50:38:0004567:890", qualityCategory: "Стандарт", valuationType: "Рыночная", collateralValue: 1260000, discount: 40, conditional: "ЗУ_1", bankMarketPrice: 2250000 }
+                ]}
+            ]
+        },
+        "9876543210": {
+            clientName: "ИП Петров",
+            applications: [
+                { id: "ASZ0000000034567", type: "Эксперт", priority: false, inspectionDate: "2026-05-28", encumbrances: "ипотека", valuation: "оценка" },
+                { id: "ASZ0000000167890", type: "Автооценка", priority: false, inspectionDate: "2026-06-12", encumbrances: "нет", valuation: "фотоосмотр назначен" },
+                { id: "ASZ0000000189012", type: "Переоценка", priority: false, inspectionDate: "2026-06-20", encumbrances: "залогодержатель", valuation: "в работе у оценщика" }
+            ],
+            conclusions: [
+                { id: "ASZ2000000000111", date: "2026-04-20",
+                    materials: {
+                        encumbranceCheck: { fileName: "egrn_ASZ2000000000111.pdf", fileUrl: "/materials/demo/encumbrance-check.pdf", note: "ЕГРН: ипотека ПАО Сбербанк, арестов нет" },
+                        inspectionResults: { fileName: "inspection_ASZ2000000000111.pdf", fileUrl: "/materials/demo/inspection-results.pdf", note: "Фотоосмотр 18.04.2026" },
+                        inspectionVerificationFile: { fileName: "verify_house_petrov_20260418.pdf", fileUrl: "/materials/demo/inspection-verification.pdf", note: "Верификация осмотра жилого дома" }
+                    },
+                    objects: [
+                    { name: "Жилой дом", cost: 7300000, costType: "рыночная", klassifikator: "040404", identifier: "50:12:0007777:444", qualityCategory: "Высокая", valuationType: "Рыночная", collateralValue: 4380000, discount: 40, conditional: "Объект_1", bankMarketPrice: 7900000 }
+                ]},
+                { id: "ASZ2000000000222", date: "2026-03-15",
+                    materials: {
+                        encumbranceCheck: { fileName: "egrn_eisn_ASZ2000000000222.pdf", fileUrl: "/materials/demo/encumbrance-check.pdf", note: "ЕГРН/ЕИСН: обременения по гаражу и ТС" },
+                        inspectionResults: { fileName: "inspection_ASZ2000000000222.pdf", fileUrl: "/materials/demo/inspection-results.pdf", note: "Осмотр гаража и автомобиля" },
+                        inspectionVerificationFile: { fileName: "verification_petrov_garage_auto.pdf", fileUrl: "/materials/demo/inspection-verification.pdf", note: "Сводный файл верификации" }
+                    },
+                    objects: [
+                    { name: "Гараж", cost: 850000, costType: "рыночная", klassifikator: "102.99", identifier: "77:77:0001111:222", qualityCategory: "Стандарт", valuationType: "Рыночная", collateralValue: 510000, discount: 40, conditional: "ГРЖ_1", bankMarketPrice: 920000 },
+                    { name: "Легковой автомобиль", cost: 2400000, costType: "рыночная", klassifikator: "310.01", identifier: "VIN-X7K9M2N4P1Q8R3T5", qualityCategory: "Высокая", valuationType: "Рыночная", collateralValue: 1440000, discount: 40, conditional: "АВТО_1", bankMarketPrice: 2550000 }
+                ]}
+            ]
+        }
+    };
+
+    let currentClientData = null;
+    let currentClientInn = null;
+
+    if (typeof pdfjsLib !== "undefined") {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+
+    const GIGACHAT_API_BASE = (() => {
+        try {
+            if (location.protocol === "http:" || location.protocol === "https:") return location.origin;
+        } catch (_) { /* ignore */ }
+        return "http://localhost:8787";
+    })();
+
+    const GIGACHAT_SYSTEM = "Ты AI-ассистент «СберБизнес Помощник» — платформы сопровождения залогов и экспертизы в банке. Отвечай профессионально, структурированно, на русском языке. Не выдумывай номера документов и суммы, если их нет во входных данных.";
+
+    let gigaChatOnline = false;
+
+    async function checkGigaChatHealth() {
+        const btn = document.getElementById("gigachatStatusBtn");
+        const dot = document.getElementById("gigachatStatusDot");
+        const label = document.getElementById("gigachatStatusBadge");
+        if (label) {
+            label.innerHTML = '<i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Проверка…';
+        }
+        if (dot) {
+            dot.className = "rounded-circle gigachat-status-dot bg-secondary";
+        }
+        if (btn) btn.disabled = true;
+        try {
+            const res = await fetch(`${GIGACHAT_API_BASE}/api/gigachat/health`, { cache: "no-store" });
+            const data = await res.json();
+            gigaChatOnline = !!data.ok;
+            if (label) {
+                label.textContent = gigaChatOnline ? "GigaChat · онлайн" : "GigaChat · ошибка ключа";
+            }
+            if (dot) {
+                dot.className = "rounded-circle gigachat-status-dot " + (gigaChatOnline ? "bg-success" : "bg-warning");
+            }
+            if (btn) {
+                btn.title = gigaChatOnline
+                    ? ("Модель: " + (data.model || "GigaChat") + " · нажмите для повторной проверки")
+                    : (data.error || "Проверьте GIGACHAT_CREDENTIALS в .env и перезапустите прокси");
+            }
+        } catch (_) {
+            gigaChatOnline = false;
+            if (label) label.textContent = "GigaChat · офлайн";
+            if (dot) dot.className = "rounded-circle gigachat-status-dot bg-secondary";
+            if (btn) {
+                btn.title = "Запустите прокси: node gigachat-proxy.mjs в папке проекта, затем откройте http://localhost:8787/";
+            }
+        }
+        if (btn) btn.disabled = false;
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function formatAiHtml(text) {
+        return `<i class="fas fa-sparkles me-2 text-success" aria-hidden="true"></i>${escapeHtml(text).replace(/\n/g, "<br>")}`;
+    }
+
+    function setAiLoading(el, label) {
+        if (!el) return;
+        el.className = "mt-3 mock-ai small";
+        el.innerHTML = `<span class="text-primary"><i class="fas fa-spinner fa-spin me-2" aria-hidden="true"></i>${escapeHtml(label || "GigaChat думает…")}</span>`;
+    }
+
+    function setAiError(el, err) {
+        if (!el) return;
+        el.className = "mt-3 alert alert-danger small mb-0";
+        el.innerHTML = `<i class="fas fa-circle-xmark me-2" aria-hidden="true"></i>${escapeHtml(err.message || String(err))}`;
+    }
+
+    async function askGigaChat(userPrompt, systemPrompt, options) {
+        const res = await fetch(`${GIGACHAT_API_BASE}/api/gigachat/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                userPrompt,
+                systemPrompt: systemPrompt || GIGACHAT_SYSTEM,
+                temperature: options?.temperature,
+                max_tokens: options?.max_tokens
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        return data.content;
+    }
+
+    async function runGigaChatIn(el, userPrompt, systemPrompt) {
+        setAiLoading(el);
+        try {
+            const answer = await askGigaChat(userPrompt, systemPrompt);
+            el.className = "mt-3 mock-ai small";
+            el.innerHTML = formatAiHtml(answer);
+            return answer;
+        } catch (err) {
+            setAiError(el, err);
+            throw err;
+        }
+    }
+
+    function getModuleContextText() {
+        if (!currentClientData) return "";
+        const appId = document.getElementById("moduleCtxAppSelect")?.value;
+        const conclId = document.getElementById("moduleCtxConclusionSelect")?.value;
+        const app = appId ? currentClientData.applications.find(a => a.id === appId) : null;
+        const concl = conclId ? currentClientData.conclusions.find(c => c.id === conclId) : null;
+        let s = `Клиент: ${currentClientData.clientName}.`;
+        if (app) s += ` Заявка ${app.id}, тип ${app.type}, осмотр ${app.inspectionDate || "—"}, обременения: ${app.encumbrances || "—"}, этап: ${app.valuation || "—"}.`;
+        if (concl) {
+            s += ` Заключение ${concl.id} от ${concl.date}, объектов: ${concl.objects.length}.`;
+            const names = concl.objects.slice(0, 5).map(o => o.name).join("; ");
+            if (names) s += ` Объекты: ${names}.`;
+        }
+        return s;
+    }
+
+    const innInput = document.getElementById("innInput");
+    const loadBtn = document.getElementById("loadClientBtn");
+    const modulesPanel = document.getElementById("modulesPanel");
+    const infoPanel = document.getElementById("infoPanel");
+    const clientBadge = document.getElementById("clientBadge");
+    const activeApplicationsList = document.getElementById("activeApplicationsList");
+    const conclusionsListDiv = document.getElementById("conclusionsList");
+    const importStatusDiv = document.getElementById("importStatus");
+
+    function getClassifierCode3Level(classifierText) {
+        const lower = String(classifierText || "").toLowerCase();
+        if (lower.includes("легковой автомобиль") || lower.includes("легковой")) return "310.01";
+        if (lower.includes("грузовой автомобиль") || lower.includes("грузовой")) return "310.02";
+        if (lower.includes("квартира") || lower.includes("жилое помещение")) return "101.01";
+        if (lower.includes("коммерческое помещение") || lower.includes("офис")) return "102.03";
+        if (lower.includes("земельный участок")) return "201.05";
+        if (lower.includes("жилой дом")) return "101.02";
+        return "999.99";
+    }
+
+    /** Не импортировать строки без нормального наименования (пусто, «не указано», слишком короткое). */
+    const IMPORT_NAME_MIN_LEN = 3;
+
+    function shouldSkipXlsxObjectRow(rawName, displayName) {
+        const raw = String(rawName || "").trim();
+        const d = String(displayName || "").trim();
+        const lower = d.toLowerCase();
+        if (/^не\s*указано\.?$/.test(lower)) return true;
+        if (/^н\/д$/.test(lower) || /^нет$/.test(lower) || /^без\s*названия\.?$/.test(lower)) return true;
+        if (/^[-–—_.\s]+$/.test(d)) return true;
+        if (raw.length === 0) return true;
+        if (d.length < IMPORT_NAME_MIN_LEN) return true;
+        return false;
+    }
+
+    /** Шаблонная/служебная строка перечня в XLSX (заголовки полей, не объект залога). */
+    function isXlsxTechnicalRow(row, colMap, classifierCode, rawNameCell, conditional, estimatedCost) {
+        const rowText = row.map((c) => String(c ?? "").trim()).join(" ").toLowerCase();
+        if (rowText.includes("вид обеспечения") && rowText.includes("описание обеспечения")) return true;
+        if (rowText.includes("местонахождение обеспечения") && (rowText.includes("999.99") || classifierCode === "999.99")) return true;
+        const labels = ["вид обеспечения", "описание обеспечения", "местонахождение обеспечения", "категория качества"];
+        const n = (rawNameCell || conditional || "").trim().toLowerCase();
+        if (labels.some((lbl) => n === lbl || n.startsWith(lbl + " "))) return true;
+        const classifierCell = String(row[colMap.classifier] ?? "").trim();
+        if (/^999\.99$/.test(classifierCell) && /вид обеспечения|описание обеспечения|местонахождение/i.test(rowText)) return true;
+        if (classifierCode === "999.99" && estimatedCost === 0 && /вид обеспечения|описание обеспечения/i.test(rowText)) return true;
+        return false;
+    }
+
+    async function parseXlsxObjects(file) {
+        if (typeof XLSX === "undefined") {
+            throw new Error("Библиотека XLSX не загружена. Перезагрузите страницу (откройте через http://localhost:8787/).");
+        }
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: "array" });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+                    if (!rows || rows.length < 2) {
+                        reject(new Error("XLSX не содержит данных"));
+                        return;
+                    }
+                    const headerRow = rows[0];
+                    const colMap = { conditional: -1, classifier: -1, name: -1, identifier: -1, cost: -1, discount: -1, collateral: -1, quality: -1 };
+                    for (let i = 0; i < headerRow.length; i++) {
+                        const val = String(headerRow[i] || "").toLowerCase();
+                        if (val.includes("условное обозначение") || val.includes("условное")) colMap.conditional = i;
+                        else if (val.includes("классификатор")) colMap.classifier = i;
+                        else if (val.includes("наименование") || val.includes("объект")) colMap.name = i;
+                        else if (val.includes("идентификатор") || val.includes("vin") || val.includes("кадастр")) colMap.identifier = i;
+                        else if (val.includes("оценочная стоимость") || val.includes("стоимость оцен")) colMap.cost = i;
+                        else if (val.includes("дисконт")) colMap.discount = i;
+                        else if (val.includes("залоговая стоимость")) colMap.collateral = i;
+                        else if (val.includes("категория качества")) colMap.quality = i;
+                    }
+                    if (colMap.conditional === -1) colMap.conditional = 0;
+                    if (colMap.classifier === -1) colMap.classifier = 1;
+                    if (colMap.name === -1) colMap.name = 2;
+                    if (colMap.identifier === -1) colMap.identifier = 3;
+                    if (colMap.cost === -1) colMap.cost = 5;
+                    if (colMap.discount === -1) colMap.discount = 8;
+                    if (colMap.collateral === -1) colMap.collateral = 9;
+                    if (colMap.quality === -1) colMap.quality = 10;
+
+                    const objects = [];
+                    for (let i = 1; i < rows.length; i++) {
+                        const row = rows[i];
+                        if (!row[colMap.name] && !row[colMap.conditional]) continue;
+                        const conditional = row[colMap.conditional] ? String(row[colMap.conditional]).trim() : `Объект_${i}`;
+                        const classifierRaw = row[colMap.classifier] ? String(row[colMap.classifier]).trim() : "";
+                        const classifierCode = getClassifierCode3Level(classifierRaw);
+                        const rawNameCell = row[colMap.name] != null && row[colMap.name] !== "" ? String(row[colMap.name]).trim() : "";
+                        const name = rawNameCell || "Не указано";
+                        let estimatedCost = parseFloat(String(row[colMap.cost]).replace(/[^\d,.-]/g, "").replace(",", "."));
+                        if (isNaN(estimatedCost)) estimatedCost = 0;
+                        if (isXlsxTechnicalRow(row, colMap, classifierCode, rawNameCell, conditional, estimatedCost)) continue;
+                        if (shouldSkipXlsxObjectRow(rawNameCell, name)) continue;
+                        const identifier = row[colMap.identifier] ? String(row[colMap.identifier]).trim() : "";
+                        const quality = row[colMap.quality] ? String(row[colMap.quality]).trim() : "Стандарт";
+                        let collateralValue = parseFloat(String(row[colMap.collateral]).replace(/[^\d,.-]/g, "").replace(",", "."));
+                        if (isNaN(collateralValue)) collateralValue = estimatedCost;
+                        let discount = parseFloat(String(row[colMap.discount]).replace(/[^\d,.-]/g, "").replace(",", "."));
+                        if (isNaN(discount)) discount = 0;
+                        objects.push({
+                            conditional,
+                            klassifikator: classifierCode,
+                            klassifikatorRaw: classifierRaw,
+                            name,
+                            identifier,
+                            qualityCategory: quality,
+                            valuationType: estimatedCost > 0 ? "Рыночная" : "Льготная",
+                            cost: estimatedCost,
+                            collateralValue,
+                            discount,
+                            costType: estimatedCost > 0 ? "рыночная" : "льготная",
+                            bankMarketPrice: estimatedCost * 1.05
+                        });
+                    }
+                    if (objects.length === 0) reject(new Error("Не удалось извлечь объекты из XLSX"));
+                    else resolve(objects);
+                } catch (err) {
+                    reject(err instanceof Error ? err : new Error(String(err)));
+                }
+            };
+            reader.onerror = () => reject(new Error("Ошибка чтения XLSX"));
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    async function extractPdfText(file) {
+        if (typeof pdfjsLib === "undefined") {
+            throw new Error("Библиотека PDF.js не загружена");
+        }
+        const data = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data }).promise;
+        const chunks = [];
+        for (let p = 1; p <= pdf.numPages; p++) {
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            chunks.push(content.items.map((it) => it.str).join(" "));
+        }
+        return chunks.join("\n").replace(/\s+/g, " ").trim();
+    }
+
+    function extractBalancedJsonString(s, start) {
+        let depth = 0;
+        let inStr = false;
+        let esc = false;
+        for (let i = start; i < s.length; i++) {
+            const c = s[i];
+            if (inStr) {
+                if (esc) esc = false;
+                else if (c === "\\") esc = true;
+                else if (c === '"') inStr = false;
+            } else {
+                if (c === '"') inStr = true;
+                else if (c === "{") depth++;
+                else if (c === "}") {
+                    depth--;
+                    if (depth === 0) return s.slice(start, i + 1);
+                }
+            }
+        }
+        return null;
+    }
+
+    function tryParseJsonCandidate(raw) {
+        if (!raw) return null;
+        const normalized = String(raw)
+            .replace(/[\u201C\u201D\u00AB\u00BB]/g, '"')
+            .replace(/,\s*([}\]])/g, "$1");
+        let pos = 0;
+        while (pos < normalized.length) {
+            const start = normalized.indexOf("{", pos);
+            if (start === -1) break;
+            const slice = extractBalancedJsonString(normalized, start);
+            if (slice) {
+                try {
+                    return JSON.parse(slice);
+                } catch {
+                    try {
+                        return JSON.parse(slice.replace(/\n/g, " "));
+                    } catch { /* next candidate */ }
+                }
+            }
+            pos = start + 1;
+        }
+        return null;
+    }
+
+    function parseJsonFromGigaChat(text) {
+        if (!text) return null;
+        const candidates = [];
+        for (const m of String(text).matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) {
+            candidates.push(m[1].trim());
+        }
+        candidates.push(String(text).trim());
+        for (const raw of candidates) {
+            const parsed = tryParseJsonCandidate(raw);
+            if (parsed && typeof parsed === "object") return parsed;
+        }
+        return null;
+    }
+
+    const PDF_JSON_SYSTEM = GIGACHAT_SYSTEM + " Отвечай только одним JSON-объектом. Без markdown, без текста до и после JSON. В строках JSON экранируй кавычки как \\\". Для clientName можно писать без кавычек внутри значения (ООО Рога и копыта).";
+
+    function fallbackConclusionNumberFromFile(fileName) {
+        const match = fileName.match(/\d+/);
+        if (match) return "ASZ" + match[0].padStart(12, "0").slice(-12);
+        return "ASZ" + Date.now().toString().slice(-12);
+    }
+
+    /** PDF: краткий пересказ + риски (идентификатор без изменений, risk/minimization — простым языком) */
+    async function analyzePdfConclusion(file, clientInn) {
+        importStatusDiv.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Извлекаем текст из PDF…</span>';
+        const pdfText = await extractPdfText(file);
+        if (!pdfText || pdfText.length < 30) {
+            throw new Error("Не удалось извлечь текст из PDF (возможно, скан без текстового слоя)");
+        }
+        const excerpt = pdfText.length > 30000 ? pdfText.slice(0, 30000) + "…" : pdfText;
+        importStatusDiv.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>GigaChat анализирует заключение…</span>';
+
+        const prompt = `Проанализируй текст заключения по залоговому обеспечению.
+ИНН клиента в системе: ${clientInn || "не указан"}.
+Клиент: ${currentClientData?.clientName || ""}.
+
+Задачи:
+1) Извлеки номер заключения, дату (формат YYYY-MM-DD), ИНН заёмщика из текста (если есть).
+2) clientName — наименование клиента/залогодателя как в документе (ООО/АО/ИП и полное имя). В JSON пиши без символов кавычек внутри значения, чтобы JSON был валидным.
+3) summary — краткий пересказ сути заключения простым человеческим языком (4–6 предложений), без канцелярита.
+4) risks — список рисков из документа. Для каждого элемента:
+   - identifier — скопируй ДОСЛОВНО из документа (VIN, кадастровый номер, условное обозначение объекта);
+   - risk и minimization — перескажи своими словами, понятно неспециалисту; смысл сохрани.
+
+Верни ТОЛЬКО валидный JSON без комментариев:
+{"conclusionNumber":"","conclusionDate":"","clientName":"","borrowerInn":"","summary":"","risks":[{"identifier":"","risk":"","minimization":""}]}
+
+Текст документа:
+${excerpt}`;
+
+        const chatOpts = { temperature: 0.15, max_tokens: 4096 };
+        let raw = await askGigaChat(prompt, PDF_JSON_SYSTEM, chatOpts);
+        let parsed = parseJsonFromGigaChat(raw);
+        if (!parsed) {
+            console.warn("GigaChat PDF: первый ответ не распознан как JSON", raw?.slice(0, 400));
+            importStatusDiv.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Повторный запрос к GigaChat (формат JSON)…</span>';
+            const retryPrompt = `Верни ТОЛЬКО JSON-объект (без markdown). Поля:
+conclusionNumber, conclusionDate (YYYY-MM-DD), clientName (наименование клиента из документа, без кавычек в значении), borrowerInn, summary (4-6 предложений простым языком), risks — массив {identifier, risk, minimization}. identifier — дословно из документа.
+
+Текст заключения:
+${excerpt.slice(0, 22000)}`;
+            raw = await askGigaChat(retryPrompt, PDF_JSON_SYSTEM, chatOpts);
+            parsed = parseJsonFromGigaChat(raw);
+        }
+        if (!parsed) {
+            const hint = (raw || "").replace(/\s+/g, " ").trim().slice(0, 150);
+            throw new Error("GigaChat не вернул JSON по PDF. Повторите импорт или сократите документ. Ответ: " + (hint || "пусто"));
+        }
+
+        const risks = Array.isArray(parsed.risks)
+            ? parsed.risks
+                .filter((r) => r && (r.identifier || r.risk))
+                .map((r) => ({
+                    identifier: String(r.identifier || "—").trim(),
+                    risk: String(r.risk || "—").trim(),
+                    minimization: String(r.minimization || "—").trim()
+                }))
+            : [];
+
+        return {
+            conclusionNumber: String(parsed.conclusionNumber || parsed.number || "").trim(),
+            conclusionDate: String(parsed.conclusionDate || parsed.date || "").trim(),
+            clientName: String(
+                parsed.clientName || parsed.client_name || parsed.borrowerName || parsed.borrower_name || parsed.borrowerId || parsed.borrower_id || ""
+            ).trim(),
+            borrowerInn: String(parsed.borrowerInn || parsed.inn || clientInn || "").trim(),
+            summary: String(parsed.summary || "").trim(),
+            risks
+        };
+    }
+
+    function renderConclusionInfoBlock(c) {
+        const clientName = c.clientName || c.borrowerId || currentClientData?.clientName || "—";
+        const inn = c.inn || currentClientInn || "—";
+        const num = c.id || "—";
+        const date = c.date || "—";
+        return `<div class="conclusion-info-block mb-4">
+            <h3 class="h6 fw-bold mb-3"><i class="fas fa-file-contract me-2 text-success" aria-hidden="true"></i>Информация по заключению</h3>
+            <dl class="row g-2">
+                <div class="col-12"><dt>Наименование клиента</dt><dd class="mb-0">${escapeHtml(clientName)}</dd></div>
+                <div class="col-sm-6"><dt>ИНН</dt><dd class="mb-0">${escapeHtml(inn)}</dd></div>
+                <div class="col-sm-6"><dt>Номер заключения</dt><dd class="mb-0">${escapeHtml(num)}</dd></div>
+                <div class="col-sm-6"><dt>Дата заключения</dt><dd class="mb-0">${escapeHtml(date)}</dd></div>
+            </dl>
+        </div>`;
+    }
+
+    const MATERIAL_DEMO_FILES = {
+        encumbranceCheck: "/materials/demo/encumbrance-check.pdf",
+        inspectionResults: "/materials/demo/inspection-results.pdf",
+        inspectionVerificationFile: "/materials/demo/inspection-verification.pdf"
+    };
+
+    function buildConclusionMaterials(conclusionId) {
+        const id = conclusionId || "import";
+        return {
+            encumbranceCheck: {
+                fileName: `egrn_eisn_${id}.pdf`,
+                fileUrl: MATERIAL_DEMO_FILES.encumbranceCheck,
+                note: "Результат проверки обременений (ЕГРН/ЕИСН)"
+            },
+            inspectionResults: {
+                fileName: `inspection_${id}.pdf`,
+                fileUrl: MATERIAL_DEMO_FILES.inspectionResults,
+                note: "Результаты осмотра"
+            },
+            inspectionVerificationFile: {
+                fileName: `verification_${id}.pdf`,
+                fileUrl: MATERIAL_DEMO_FILES.inspectionVerificationFile,
+                note: "Файл верификации осмотра"
+            }
+        };
+    }
+
+    function normalizeMaterialItem(raw, conclusionId, kind) {
+        if (raw == null || raw === "" || raw === "—") return null;
+        if (typeof raw === "object" && raw.fileUrl) {
+            return {
+                fileName: String(raw.fileName || "document.pdf").trim(),
+                fileUrl: String(raw.fileUrl).trim(),
+                note: String(raw.note || raw.description || "").trim()
+            };
+        }
+        const text = String(raw).trim();
+        if (!text || text === "Не приложено") return null;
+        const looksLikeFile = /\.(pdf|zip|docx?|xlsx?)$/i.test(text);
+        return {
+            fileName: looksLikeFile ? text : `${kind}_${conclusionId || "doc"}.pdf`,
+            fileUrl: MATERIAL_DEMO_FILES[kind] || MATERIAL_DEMO_FILES.encumbranceCheck,
+            note: looksLikeFile ? "" : text
+        };
+    }
+
+    function getConclusionMaterials(c) {
+        const m = c.materials || {};
+        const id = c.id || "";
+        return {
+            encumbranceCheck: normalizeMaterialItem(m.encumbranceCheck || m.encumbrances, id, "encumbranceCheck"),
+            inspectionResults: normalizeMaterialItem(m.inspectionResults || m.inspection, id, "inspectionResults"),
+            inspectionVerificationFile: normalizeMaterialItem(m.inspectionVerificationFile || m.verificationFile, id, "inspectionVerificationFile")
+        };
+    }
+
+    function materialDownloadHref(fileUrl) {
+        if (!fileUrl) return "#";
+        if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+        const base = (typeof GIGACHAT_API_BASE !== "undefined" ? GIGACHAT_API_BASE : "") || "";
+        return base + (fileUrl.startsWith("/") ? fileUrl : "/" + fileUrl);
+    }
+
+    function renderMaterialDownloadRow(label, item) {
+        if (!item || !item.fileUrl) {
+            return `<div class="col-12">
+                <dt class="small text-muted mb-1">${escapeHtml(label)}</dt>
+                <dd class="mb-0"><span class="text-muted">Не приложено</span></dd>
+            </div>`;
+        }
+        const href = materialDownloadHref(item.fileUrl);
+        const name = item.fileName || "document.pdf";
+        const noteHtml = item.note
+            ? `<p class="small text-muted mb-1 mb-md-0">${escapeHtml(item.note)}</p>`
+            : "";
+        return `<div class="col-12">
+            <dt class="small text-muted mb-2">${escapeHtml(label)}</dt>
+            <dd class="mb-0">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-2 p-md-3 border rounded-3 bg-light">
+                    <div class="d-flex align-items-start gap-2 min-w-0">
+                        <i class="fas fa-file-pdf text-danger mt-1 flex-shrink-0" aria-hidden="true"></i>
+                        <div class="min-w-0">
+                            ${noteHtml}
+                            <span class="fw-semibold text-break d-block">${escapeHtml(name)}</span>
+                        </div>
+                    </div>
+                    <a href="${escapeHtml(href)}" download="${escapeHtml(name)}" class="btn btn-sm btn-outline-sber flex-shrink-0" target="_blank" rel="noopener">
+                        <i class="fas fa-download me-1" aria-hidden="true"></i>Скачать
+                    </a>
+                </div>
+            </dd>
+        </div>`;
+    }
+
+    function renderConclusionMaterialsBlock(c) {
+        const m = getConclusionMaterials(c);
+        return `<div class="conclusion-materials-block mt-4 pt-3 border-top">
+            <h3 class="h6 fw-bold mb-3"><i class="fas fa-folder-open me-2 text-success" aria-hidden="true"></i>Материалы по заключению</h3>
+            <dl class="row g-3 mb-0">
+                ${renderMaterialDownloadRow("Результат проверки обременений (ЕГРН/ЕИСН)", m.encumbranceCheck)}
+                ${renderMaterialDownloadRow("Результаты осмотра", m.inspectionResults)}
+                ${renderMaterialDownloadRow("Файл верификации осмотра", m.inspectionVerificationFile)}
+            </dl>
+        </div>`;
+    }
+
+    function renderConclusionRisksBlock(c) {
+        const risks = c.risks || [];
+        if (!risks.length) {
+            return `<div class="mb-4"><h3 class="h6 fw-bold mb-2"><i class="fas fa-triangle-exclamation me-2 text-warning" aria-hidden="true"></i>Риски</h3><p class="text-muted small mb-0">В заключении риски не выявлены или не распознаны из PDF.</p></div>`;
+        }
+        const rows = risks.map((r) => `<tr>
+            <td>${escapeHtml(r.identifier)}</td>
+            <td>${escapeHtml(r.risk)}</td>
+            <td>${escapeHtml(r.minimization)}</td>
+        </tr>`).join("");
+        return `<div class="mb-4">
+            <h3 class="h6 fw-bold mb-3"><i class="fas fa-triangle-exclamation me-2 text-warning" aria-hidden="true"></i>Риски</h3>
+            <p class="small text-muted">Пересказ подготовлен GigaChat.</p>
+            <div class="table-responsive-custom">
+                <table class="table table-bordered conclusion-risks-table mb-0">
+                    <thead><tr><th>Идентификатор</th><th>Риск</th><th>Минимизация</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    async function runAIImport() {
+        if (!currentClientData) {
+            alert("Сначала загрузите клиента по ИНН");
+            return;
+        }
+        const pdfFile = document.getElementById("pdfUpload").files[0];
+        const xlsxFile = document.getElementById("xlsxUpload").files[0];
+        if (!pdfFile || !xlsxFile) {
+            alert("Загрузите оба файла: PDF заключение и XLSX перечень залога");
+            return;
+        }
+        importStatusDiv.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Импорт: XLSX + анализ PDF через GigaChat…</span>';
+
+        try {
+            const objectsList = await parseXlsxObjects(xlsxFile);
+            const pdfAnalysis = await analyzePdfConclusion(pdfFile, currentClientInn);
+
+            let conclusionNumber = pdfAnalysis.conclusionNumber || fallbackConclusionNumberFromFile(pdfFile.name);
+            let conclusionDate = pdfAnalysis.conclusionDate || new Date().toISOString().slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(conclusionDate)) {
+                conclusionDate = new Date().toISOString().slice(0, 10);
+            }
+
+            const newConclusion = {
+                id: conclusionNumber,
+                date: conclusionDate,
+                clientName: pdfAnalysis.clientName || "",
+                inn: pdfAnalysis.borrowerInn || currentClientInn || "",
+                summary: pdfAnalysis.summary || "",
+                risks: pdfAnalysis.risks || [],
+                materials: buildConclusionMaterials(conclusionNumber),
+                objects: objectsList.map(obj => ({
+                    conditional: obj.conditional,
+                    klassifikator: obj.klassifikator,
+                    klassifikatorRaw: obj.klassifikatorRaw,
+                    name: obj.name,
+                    identifier: obj.identifier,
+                    qualityCategory: obj.qualityCategory,
+                    valuationType: obj.valuationType,
+                    cost: obj.cost,
+                    collateralValue: obj.collateralValue,
+                    discount: obj.discount,
+                    costType: obj.costType,
+                    bankMarketPrice: obj.bankMarketPrice || obj.cost
+                }))
+            };
+            currentClientData.conclusions.push(newConclusion);
+            updateInfoPanel();
+            importStatusDiv.innerHTML = `<span class="text-success fw-medium"><i class="fas fa-circle-check me-1" aria-hidden="true"></i>Заключение ${newConclusion.id} импортировано.</span><br>
+                <span class="text-success small">XLSX: ${objectsList.length} объектов · PDF: пересказ и ${newConclusion.risks.length} рисков</span>`;
+            document.getElementById("pdfUpload").value = "";
+            document.getElementById("xlsxUpload").value = "";
+            setTimeout(() => { importStatusDiv.innerHTML = ""; }, 6000);
+        } catch (err) {
+            console.error(err);
+            importStatusDiv.innerHTML = `<span class="text-danger"><i class="fas fa-circle-xmark me-1" aria-hidden="true"></i>${err && err.message ? err.message : "Ошибка распознавания"}</span>`;
+        }
+    }
+
+    function updateInfoPanel() {
+        const apps = currentClientData.applications;
+        activeApplicationsList.innerHTML = (apps.length ? apps.map(app => `<div class="mb-3 pb-3 border-bottom border-light-subtle"><i class="fas fa-ticket-alt me-2 text-success" aria-hidden="true"></i><strong>${app.id}</strong> <span class="text-muted">(${app.type})</span>${app.priority ? ' <span class="badge bg-success ms-1">Приоритет</span>' : ""}<br><small class="text-muted">Осмотр: ${app.inspectionDate || "—"} · Этап: ${app.valuation || "—"}</small></div>`).join("") : '<p class="text-muted mb-0">Нет заявок</p>');
+
+        const cons = currentClientData.conclusions;
+        conclusionsListDiv.innerHTML = (cons.length ? cons.map(c => `
+            <div class="mb-3 pb-3 border-bottom border-light-subtle d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div class="flex-grow-1" style="min-width: 0;">
+                    <i class="fas fa-file-pdf me-2 text-success" aria-hidden="true"></i>
+                    <strong>${c.id}</strong> <span class="text-muted">от ${c.date}</span><br>
+                    <small class="text-muted">Объектов: ${c.objects.length}${(c.risks && c.risks.length) ? " · Рисков: " + c.risks.length : ""}</small>
+                </div>
+                <div class="d-flex flex-wrap gap-1 flex-shrink-0 align-items-start">
+                    <button type="button" class="btn btn-sm btn-outline-sber conclusion-detail-btn" data-conclusion-id="${c.id}">
+                        <i class="fas fa-info-circle me-1" aria-hidden="true"></i>Подробнее
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger conclusion-delete-btn" data-conclusion-id="${c.id}" title="Удалить заключение">
+                        <i class="fas fa-trash-alt" aria-hidden="true"></i><span class="visually-hidden"> Удалить</span>
+                    </button>
+                </div>
+            </div>
+        `).join("") : '<p class="text-muted mb-0">Нет заключений</p>');
+
+        document.querySelectorAll(".conclusion-detail-btn").forEach(btn => {
+            btn.removeEventListener("click", detailHandler);
+            btn.addEventListener("click", detailHandler);
+        });
+        document.querySelectorAll(".conclusion-delete-btn").forEach(btn => {
+            btn.removeEventListener("click", deleteConclusionHandler);
+            btn.addEventListener("click", deleteConclusionHandler);
+        });
+    }
+
+    function detailHandler(e) {
+        const conclusionId = e.currentTarget.getAttribute("data-conclusion-id");
+        showConclusionDetails(conclusionId);
+    }
+
+    function deleteConclusion(conclusionId) {
+        if (!currentClientData || !conclusionId) return;
+        const c = currentClientData.conclusions.find(x => x.id === conclusionId);
+        if (!c) return;
+        if (!confirm(`Удалить заключение ${conclusionId} от ${c.date}? Это действие нельзя отменить.`)) return;
+        currentClientData.conclusions = currentClientData.conclusions.filter(x => x.id !== conclusionId);
+        const modalEl = document.getElementById("conclusionDetailModal");
+        if (modalEl && modalEl.dataset.openConclusionId === conclusionId) {
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+        }
+        const delFoot = document.getElementById("conclusionDetailDeleteBtn");
+        if (delFoot) {
+            delFoot.style.display = "none";
+            delFoot.removeAttribute("data-conclusion-id");
+        }
+        updateInfoPanel();
+    }
+
+    function deleteConclusionHandler(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const conclusionId = e.currentTarget.getAttribute("data-conclusion-id");
+        deleteConclusion(conclusionId);
+    }
+
+    function formatMoney(n) {
+        const v = Number(n);
+        if (isNaN(v)) return "0";
+        return v.toLocaleString("ru-RU");
+    }
+
+    /** Залоговая стоимость = оценочная минус дисконт (%) */
+    function calcCollateralFromDiscount(estimatedCost, discountPct) {
+        const cost = Number(estimatedCost);
+        const d = Number(discountPct);
+        if (isNaN(cost) || cost <= 0) return 0;
+        if (isNaN(d) || d <= 0) return cost;
+        if (d >= 100) return 0;
+        return Math.round(cost * (1 - d / 100));
+    }
+
+    function showConclusionDetails(conclusionId) {
+        const conclusion = currentClientData.conclusions.find(c => c.id === conclusionId);
+        if (!conclusion) return;
+
+        let tableRows = "";
+        conclusion.objects.forEach((obj, idx) => {
+            const conditionalNotation = obj.conditional || `Obj-${idx + 1}`;
+            const klass = obj.klassifikator || (obj.klassifikatorRaw ? getClassifierCode3Level(obj.klassifikatorRaw) : "—");
+            const name = obj.name || "—";
+            const identifier = obj.identifier || "—";
+            const quality = obj.qualityCategory || "Стандарт";
+            const costNum = obj.cost != null ? Number(obj.cost) : 0;
+            const valueType = obj.valuationType || (obj.costType === "льготная" ? "Льготная" : "Рыночная");
+            const estimatedCost = formatMoney(costNum);
+            let discountVal = obj.discount;
+            if (discountVal === undefined || discountVal === null || isNaN(Number(discountVal))) {
+                discountVal = 40;
+            } else {
+                discountVal = Number(discountVal);
+            }
+            const collNum = calcCollateralFromDiscount(costNum, discountVal);
+            const collateral = formatMoney(collNum);
+            discountVal = Number(discountVal).toFixed(1);
+
+            tableRows += `<tr>
+                <td>${conditionalNotation}</td>
+                <td>${klass}</td>
+                <td>${name}</td>
+                <td>${identifier}</td>
+                <td>${quality}</td>
+                <td>${valueType}</td>
+                <td class="text-end">${estimatedCost} ₽</td>
+                <td class="text-end">${collateral} ₽</td>
+                <td class="text-end">${discountVal}%</td>
+            </tr>`;
+        });
+
+        const modalBody = document.getElementById("conclusionDetailBody");
+        const summaryHtml = conclusion.summary
+            ? `<div class="mock-ai mb-4"><h3 class="h6 fw-bold mb-2"><i class="fas fa-align-left me-2 text-success" aria-hidden="true"></i>Краткий пересказ</h3><p class="mb-0 small">${escapeHtml(conclusion.summary).replace(/\n/g, "<br>")}</p></div>`
+            : "";
+        modalBody.innerHTML = `
+            ${renderConclusionInfoBlock(conclusion)}
+            ${summaryHtml}
+            ${renderConclusionRisksBlock(conclusion)}
+            <h3 class="h6 fw-bold mt-2 mb-3"><i class="fas fa-list me-2 text-success" aria-hidden="true"></i>Перечень объектов залога</h3>
+            <div class="table-responsive-custom">
+                <table class="table table-bordered table-striped table-details table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Условное обозначение</th>
+                            <th>Классификатор (3 ур.)</th>
+                            <th>Наименование</th>
+                            <th>Идентификатор</th>
+                            <th>Категория качества</th>
+                            <th>Вид стоимости</th>
+                            <th class="text-end">Оценочная стоимость</th>
+                            <th class="text-end">Залоговая стоимость</th>
+                            <th class="text-end">Дисконт</th>
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            </div>
+            ${renderConclusionMaterialsBlock(conclusion)}
+        `;
+        const modalEl = document.getElementById("conclusionDetailModal");
+        modalEl.dataset.openConclusionId = conclusionId;
+        const delBtn = document.getElementById("conclusionDetailDeleteBtn");
+        if (delBtn) {
+            delBtn.style.display = "inline-block";
+            delBtn.setAttribute("data-conclusion-id", conclusionId);
+        }
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+
+    document.getElementById("conclusionDetailDeleteBtn")?.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-conclusion-id");
+        if (id) deleteConclusion(id);
+    });
+    document.getElementById("conclusionDetailModal")?.addEventListener("hidden.bs.modal", () => {
+        const modalEl = document.getElementById("conclusionDetailModal");
+        if (modalEl) delete modalEl.dataset.openConclusionId;
+        const delBtn = document.getElementById("conclusionDetailDeleteBtn");
+        if (delBtn) {
+            delBtn.style.display = "none";
+            delBtn.removeAttribute("data-conclusion-id");
+        }
+    });
+
+    loadBtn.addEventListener("click", () => {
+        const inn = innInput.value.trim().replace(/\D/g, "");
+        if (!inn) {
+            alert("Введите ИНН");
+            return;
+        }
+        if (!mockData[inn]) {
+            alert("Клиент не найден. Доступные ИНН: 1234567890, 9876543210");
+            return;
+        }
+        currentClientInn = inn;
+        currentClientData = JSON.parse(JSON.stringify(mockData[inn]));
+        clientBadge.innerHTML = `<i class="fas fa-check-circle text-success me-1" aria-hidden="true"></i>${currentClientData.clientName} <span class="text-muted">(ИНН: ${inn})</span>`;
+        clientBadge.classList.add("bg-white", "shadow-sm");
+        infoPanel.style.display = "block";
+        modulesPanel.style.display = "block";
+        updateInfoPanel();
+        renderModules();
+
+        const importBtn = document.getElementById("importConclusionBtn");
+        importBtn.removeEventListener("click", runAIImport);
+        importBtn.addEventListener("click", runAIImport);
+    });
+
+    const modules = [
+        { id: "priority", name: "Приоритет по заявке", icon: "fas fa-flag-checkered", modal: "#priorityModal", desc: "Согласование приоритета для экспертных заявок" },
+        { id: "questions", name: "Вопросы по заключению", icon: "fas fa-question-circle", modal: "#questionsModal", desc: "База рисков, AI распознавание СЗЗ" },
+        { id: "inspection", name: "Вопросы по осмотру", icon: "fas fa-camera", modal: "#inspectionModal", desc: "Файл верификации, перепланировки" },
+        { id: "cost", name: "Не согласен со стоимостью", icon: "fas fa-hand-holding-usd", modal: "#costModal", desc: "Арбитраж стоимости, верификация рынком" },
+        { id: "where", name: "Где заявка?", icon: "fas fa-search-location", modal: "#whereModal", desc: "Статусы: осмотр, обременения, оценка" },
+        { id: "express", name: "Экспресс оценка", icon: "fas fa-bolt", modal: "#expressModal", desc: "AI оценка по минимальным параметрам" },
+        { id: "memorandum", name: "Служебная записка", icon: "fas fa-pen-alt", modal: "#memorandumModal", desc: "AI агент по подготовке СЗ" },
+        { id: "techChanges", name: "Технические изменения / Снятие рисков", icon: "fas fa-sync-alt", modal: "#techChangesModal", desc: "Автоснятие риска, изменение КК" },
+        { id: "pmz", name: "ПМЗ", icon: "fas fa-building", modal: "#pmzModal", desc: "Подразделение мониторинга залогов" }
+    ];
+
+    function renderModules() {
+        const grid = document.getElementById("modulesGrid");
+        if (!grid) return;
+        grid.innerHTML = "";
+        modules.forEach(mod => {
+            const col = document.createElement("div");
+            col.className = "col-sm-6 col-xl-4";
+            col.innerHTML = `
+                <div class="card card-hover h-100 p-4 text-center d-flex flex-column">
+                    <div class="module-icon-bg mx-auto"><i class="${mod.icon} fs-2" style="color: #21A038;" aria-hidden="true"></i></div>
+                    <h3 class="h6 fw-bold mt-1 mb-2">${mod.name}</h3>
+                    <p class="small text-muted px-1 mb-3 flex-grow-1">${mod.desc}</p>
+                    <button type="button" class="btn btn-outline-sber mt-auto open-module-btn" data-module="${mod.id}">Открыть</button>
+                </div>
+            `;
+            grid.appendChild(col);
+        });
+        document.querySelectorAll(".open-module-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const modId = btn.getAttribute("data-module");
+                openModuleModal(modId);
+            });
+        });
+    }
+
+    function objectBankMarketPrice(obj) {
+        const c = Number(obj.cost);
+        const b = obj.bankMarketPrice != null ? Number(obj.bankMarketPrice) : NaN;
+        if (!isNaN(b) && b > 0) return b;
+        if (!isNaN(c) && c > 0) return c * 1.05;
+        return 0;
+    }
+
+    /** Верхняя панель: выпадающие заявка и заключение для всех интеллектуальных сервисов */
+    function renderModuleContextBar(opts) {
+        opts = opts || {};
+        const showApp = opts.showApp !== false;
+        const showConclusion = opts.showConclusion !== false;
+        const appTypesFilter = opts.appTypesFilter || null;
+        let apps = currentClientData.applications || [];
+        if (appTypesFilter && appTypesFilter.length) {
+            apps = apps.filter(a => appTypesFilter.includes(a.type));
+        }
+        const cons = currentClientData.conclusions || [];
+        let inner = '<p class="small fw-semibold text-dark mb-2"><i class="fas fa-link text-success me-1" aria-hidden="true"></i>Контекст: заявка и заключение</p>';
+        if (showApp) {
+            if (!apps.length) {
+                inner += '<p class="small text-warning mb-2">Нет заявок для отображения в списке.</p>';
+            } else {
+                inner += '<label class="form-label small mb-1" for="moduleCtxAppSelect">Заявка</label>' +
+                    '<select id="moduleCtxAppSelect" class="form-select mb-3">' +
+                    apps.map(a => `<option value="${a.id}">${a.id} · ${a.type} · ${a.valuation || "—"}</option>`).join("") +
+                    "</select>";
+            }
+        }
+        if (showConclusion) {
+            if (!cons.length) {
+                inner += '<p class="small text-warning mb-0">Нет заключений в карточке клиента.</p>';
+            } else {
+                inner += '<label class="form-label small mb-1" for="moduleCtxConclusionSelect">Заключение</label>' +
+                    '<select id="moduleCtxConclusionSelect" class="form-select">' +
+                    cons.map(c => `<option value="${c.id}">${c.id} · от ${c.date} · ${c.objects.length} объекта</option>`).join("") +
+                    "</select>";
+            }
+        }
+        inner += '<p class="small text-muted mt-2 mb-0" id="moduleCtxHint"></p>';
+        return `<div class="module-context-bar mb-3">${inner}</div>`;
+    }
+
+    function bindModuleContextBar() {
+        const appSel = document.getElementById("moduleCtxAppSelect");
+        const conSel = document.getElementById("moduleCtxConclusionSelect");
+        const hint = document.getElementById("moduleCtxHint");
+        const update = () => {
+            if (!hint) return;
+            const parts = [];
+            if (appSel) {
+                const a = currentClientData.applications.find(x => x.id === appSel.value);
+                if (a) {
+                    parts.push(`Заявка ${a.id} (${a.type}): осмотр ${a.inspectionDate || "—"}, обременения — ${a.encumbrances || "—"}, этап — ${a.valuation || "—"}`);
+                }
+            }
+            if (conSel) {
+                const c = currentClientData.conclusions.find(x => x.id === conSel.value);
+                if (c) {
+                    parts.push(`Заключение ${c.id}: ${c.objects.length} объекта в перечне.`);
+                }
+            }
+            hint.textContent = parts.join(" ");
+        };
+        appSel?.addEventListener("change", update);
+        conSel?.addEventListener("change", update);
+        update();
+    }
+
+    function fillPriorityModal() {
+        const container = document.getElementById("priorityModalBody");
+        const expertApps = currentClientData.applications.filter(a => a.type === "Эксперт");
+        if (expertApps.length === 0) {
+            container.innerHTML = '<div class="alert alert-info mb-0">Нет заявок с типом исполнителя «Эксперт».</div>';
+            return;
+        }
+        const cons = currentClientData.conclusions;
+        const hasCons = cons.length > 0;
+        let html = renderModuleContextBar({ appTypesFilter: ["Эксперт"], showConclusion: hasCons });
+        html += '<p class="small text-muted mb-3">В списке заявок только тип «Эксперт» — для него доступно согласование приоритета.</p>';
+        html += '<button type="button" class="btn btn-primary rounded-pill" id="priorityAgreeBtn"><i class="fas fa-flag-checkered me-2" aria-hidden="true"></i>Согласовать приоритет</button>';
+        html += '<div id="priorityResult" class="mt-3"></div>';
+        container.innerHTML = html;
+        bindModuleContextBar();
+        document.getElementById("priorityAgreeBtn").addEventListener("click", async () => {
+            const appSel = document.getElementById("moduleCtxAppSelect");
+            if (!appSel) return;
+            const appId = appSel.value;
+            const app = currentClientData.applications.find(a => a.id === appId);
+            const resultDiv = document.getElementById("priorityResult");
+            if (!app || app.type !== "Эксперт") return;
+            if (app.priority) {
+                resultDiv.innerHTML = '<div class="alert alert-secondary mb-0">У выбранной заявки приоритет уже активен.</div>';
+                return;
+            }
+            resultDiv.innerHTML = '<div class="alert alert-info mb-0"><i class="fas fa-paper-plane me-2" aria-hidden="true"></i>Отправка на согласование руководителю…</div>';
+            try {
+                const justification = await askGigaChat(
+                    getModuleContextText() + " Согласуй приоритет для экспертной заявки " + app.id + ". Кратко: обоснование и рекомендация руководителю.",
+                    GIGACHAT_SYSTEM
+                );
+                app.priority = true;
+                updateInfoPanel();
+                resultDiv.innerHTML = '<div class="alert alert-success mb-0"><i class="fas fa-check me-2" aria-hidden="true"></i>Приоритет установлен.</div><div class="mock-ai small mt-2 mb-0">' + formatAiHtml(justification) + '</div>';
+            } catch (err) {
+                setAiError(resultDiv, err);
+            }
+        });
+    }
+
+    function fillQuestionsModal() {
+        const container = document.getElementById("questionsModalBody");
+        container.innerHTML = renderModuleContextBar({}) + `
+            <ul class="nav nav-tabs module-modal-tabs mb-0" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button type="button" class="nav-link active" id="risks-tab" data-bs-toggle="tab" data-bs-target="#risksTab" role="tab" aria-controls="risksTab" aria-selected="true">База рисков</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button type="button" class="nav-link" id="sxz-tab" data-bs-toggle="tab" data-bs-target="#sxzTab" role="tab" aria-controls="sxzTab" aria-selected="false">AI распознавание СЗЗ</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button type="button" class="nav-link" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summaryTab" role="tab" aria-controls="summaryTab" aria-selected="false">AI резюме СЗЗ</button>
+                </li>
+            </ul>
+            <div class="tab-content border border-top-0 rounded-bottom-3 p-3 bg-white">
+                <div class="tab-pane fade show active" id="risksTab" role="tabpanel" aria-labelledby="risks-tab">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item border-0 px-0"><strong>Риск: нецелевое использование</strong><br><span class="text-muted small">Минимизация: проверка документов</span></div>
+                        <div class="list-group-item border-0 px-0"><strong>Риск: перепланировка</strong><br><span class="text-muted small">Минимизация: техпаспорт</span></div>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="sxzTab" role="tabpanel" aria-labelledby="sxz-tab">
+                    <label class="form-label small text-muted" for="sxzText">Текст СЗЗ</label>
+                    <textarea class="form-control" rows="4" id="sxzText" placeholder="Вставьте текст СЗЗ…"></textarea>
+                    <button type="button" class="btn btn-primary mt-3 rounded-pill" id="recognizeRiskBtn"><i class="fas fa-magnifying-glass me-2" aria-hidden="true"></i>Распознать риски</button>
+                    <div id="riskResult" class="mt-3 mock-ai small"></div>
+                </div>
+                <div class="tab-pane fade" id="summaryTab" role="tabpanel" aria-labelledby="summary-tab">
+                    <label class="form-label small text-muted" for="sxzSummaryText">Текст СЗЗ</label>
+                    <textarea class="form-control" rows="3" id="sxzSummaryText" placeholder="Введите текст СЗЗ…"></textarea>
+                    <button type="button" class="btn btn-success mt-3 rounded-pill" id="makeSummaryBtn"><i class="fas fa-robot me-2" aria-hidden="true"></i>Резюме AI</button>
+                    <div id="summaryResult" class="mt-3 mock-ai small"></div>
+                </div>
+            </div>`;
+        const recognizeBtn = document.getElementById("recognizeRiskBtn");
+        if (recognizeBtn) {
+            recognizeBtn.addEventListener("click", () => {
+                const txt = document.getElementById("sxzText").value.trim();
+                const out = document.getElementById("riskResult");
+                if (!txt) {
+                    out.innerHTML = '<span class="text-warning">Введите текст.</span>';
+                    return;
+                }
+                const risk = txt.toLowerCase().includes("ипотек")
+                    ? "Обременение ипотекой. Рекомендуется проверка закладной."
+                    : "Риски не выявлены.";
+                out.innerHTML = `<i class="fas fa-robot me-2" aria-hidden="true"></i><strong>AI:</strong> ${risk}`;
+            });
+        }
+        const summaryBtn = document.getElementById("makeSummaryBtn");
+        if (summaryBtn) {
+            summaryBtn.addEventListener("click", () => {
+                const txt = document.getElementById("sxzSummaryText").value.trim();
+                const out = document.getElementById("summaryResult");
+                out.innerHTML = txt
+                    ? '<i class="fas fa-microchip me-2" aria-hidden="true"></i>Краткое резюме: СЗЗ в порядке, залоговые риски отсутствуют.'
+                    : '<span class="text-warning">Введите текст для резюмирования.</span>';
+            });
+        }
+        bindModuleContextBar();
+    }
+
+    function fillInspectionModal() {
+        const container = document.getElementById("inspectionModalBody");
+        container.innerHTML = renderModuleContextBar({}) + `
+            <label class="form-label small" for="verifyFile">Файл верификации (изображение или PDF)</label>
+            <input type="file" class="form-control" id="verifyFile" accept="image/*,.pdf,application/pdf">
+            <button type="button" class="btn btn-warning mt-3 rounded-pill" id="analyzeInspectBtn"><i class="fas fa-clipboard-check me-2" aria-hidden="true"></i>Анализ перепланировок</button>
+            <div id="inspectResult" class="mt-3"></div>`;
+        document.getElementById("analyzeInspectBtn")?.addEventListener("click", () => {
+            if (!document.getElementById("verifyFile").files.length) {
+                alert("Выберите файл верификации");
+                return;
+            }
+            document.getElementById("inspectResult").innerHTML = '<div class="alert alert-warning mb-0"><i class="fas fa-triangle-exclamation me-2" aria-hidden="true"></i>Выявлены признаки перепланировки. Рекомендация: согласование с БТИ.</div>';
+        });
+        bindModuleContextBar();
+    }
+
+    function fillCostModal() {
+        const cons = currentClientData.conclusions;
+        const body = document.getElementById("costModalBody");
+        if (!cons.length) {
+            body.innerHTML = '<div class="alert alert-warning mb-0">Нет заключений для сравнения стоимости.</div>';
+            return;
+        }
+        let html = renderModuleContextBar({});
+        html += '<p class="fw-semibold small mb-2">Арбитраж по объекту выбранного вверху заключения</p>';
+        html += '<div id="costObjectArea"></div><div id="costResultArea" class="mt-3"></div>';
+        body.innerHTML = html;
+        bindModuleContextBar();
+        const sel = document.getElementById("moduleCtxConclusionSelect");
+        if (!sel) return;
+        const loadObj = () => {
+            const concl = cons.find(c => c.id === sel.value);
+            if (!concl) return;
+            if (!concl.objects || !concl.objects.length) {
+                document.getElementById("costObjectArea").innerHTML = '<div class="alert alert-warning mb-0">В заключении нет объектов.</div>';
+                document.getElementById("costResultArea").innerHTML = "";
+                return;
+            }
+            const objHtml = '<label class="form-label mt-2" for="costObjectSelect">Объект оценки</label><select id="costObjectSelect" class="form-select">' +
+                concl.objects.map((o, i) => {
+                    const costStr = (Number(o.cost) || 0).toLocaleString("ru-RU");
+                    return `<option value="${i}">${o.name} (${costStr} ₽, тип: ${o.costType || "—"})</option>`;
+                }).join("") +
+                '</select><button type="button" id="runArbitrationBtn" class="btn btn-danger mt-3 rounded-pill">Запустить арбитраж</button>';
+            document.getElementById("costObjectArea").innerHTML = objHtml;
+            document.getElementById("runArbitrationBtn")?.addEventListener("click", () => {
+                const idx = parseInt(document.getElementById("costObjectSelect").value, 10);
+                const obj = concl.objects[idx];
+                const resultEl = document.getElementById("costResultArea");
+                if (!obj) return;
+                if (obj.costType !== "рыночная") {
+                    resultEl.innerHTML = '<div class="alert alert-warning mb-0"><i class="fas fa-triangle-exclamation me-2" aria-hidden="true"></i>Нерыночная стоимость. Рекомендуется отправить на оценку по рынку.</div>';
+                } else {
+                    const costNum = Number(obj.cost) || 0;
+                    const bankPrice = objectBankMarketPrice(obj);
+                    const diff = Math.abs(costNum - bankPrice);
+                    const percent = costNum > 0 ? (diff / costNum) * 100 : 0;
+                    const ok = percent <= 10;
+                    resultEl.innerHTML = `<div class="mock-ai mb-0">Сравнение с портфелем: рыночная цена ${bankPrice.toLocaleString("ru-RU")} ₽. Отклонение ${percent.toFixed(1)}%. ${ok ? "<strong class=\"text-success\">Пересчёт не требуется.</strong>" : "<strong class=\"text-danger\">Отправка на ручной пересчёт.</strong>"}</div>`;
+                }
+            });
+        };
+        sel.addEventListener("change", loadObj);
+        loadObj();
+    }
+
+    function fillWhereModal() {
+        const apps = currentClientData.applications;
+        const body = document.getElementById("whereModalBody");
+        if (!apps.length) {
+            body.innerHTML = '<div class="alert alert-info mb-0">Нет активных заявок.</div>';
+            return;
+        }
+        body.innerHTML = renderModuleContextBar({}) + '<p class="small fw-semibold mb-2">Статус по выбранной заявке</p><div id="whereStatusResult"></div>';
+        bindModuleContextBar();
+        const show = () => {
+            const appSel = document.getElementById("moduleCtxAppSelect");
+            if (!appSel) return;
+            const app = apps.find(a => a.id === appSel.value);
+            if (!app) return;
+            document.getElementById("whereStatusResult").innerHTML =
+                `<div class="card border-0 shadow-sm rounded-3"><div class="card-body">
+                    <div class="mb-2"><i class="fas fa-calendar-day me-2 text-success" aria-hidden="true"></i><strong>Осмотр:</strong> ${app.inspectionDate || "не назначен"}</div>
+                    <div class="mb-2"><i class="fas fa-magnifying-glass me-2 text-success" aria-hidden="true"></i><strong>Обременения:</strong> ${app.encumbrances || "—"}</div>
+                    <div class="mb-0"><i class="fas fa-chart-line me-2 text-success" aria-hidden="true"></i><strong>Оценка / этап:</strong> ${app.valuation || "—"}</div>
+                </div></div>`;
+        };
+        document.getElementById("moduleCtxAppSelect")?.addEventListener("change", show);
+        document.getElementById("moduleCtxConclusionSelect")?.addEventListener("change", show);
+        show();
+    }
+
+    function fillExpressModal() {
+        document.getElementById("expressModalBody").innerHTML = renderModuleContextBar({}) + `
+            <p class="small text-muted mb-3">Экспресс-оценка ориентировочная; выберите заявку и заключение выше для привязки к делу.</p>
+            <label class="form-label" for="estateType">Тип объекта</label>
+            <select id="estateType" class="form-select"><option>Квартира</option><option>Коммерция</option><option>Дом</option></select>
+            <label class="form-label mt-3" for="area">Площадь (м²)</label>
+            <input type="text" inputmode="decimal" id="area" class="form-control" placeholder="Площадь (м²)" value="65">
+            <label class="form-label mt-3" for="region">Регион</label>
+            <input id="region" class="form-control" placeholder="Регион" value="Московская область">
+            <button type="button" id="calcExpressBtn" class="btn btn-success mt-4 w-100 rounded-pill py-2 fw-semibold"><i class="fas fa-brain me-2" aria-hidden="true"></i>AI экспресс-оценка</button>
+            <div id="expressResult" class="mt-3"></div>`;
+        document.getElementById("calcExpressBtn")?.addEventListener("click", () => {
+            const type = document.getElementById("estateType").value;
+            const area = parseFloat(String(document.getElementById("area").value).replace(",", ".")) || 60;
+            const base = type === "Квартира" ? 120000 : (type === "Коммерция" ? 88000 : 98000);
+            const estimate = base * area * 1.08;
+            document.getElementById("expressResult").innerHTML = `<div class="mock-ai mb-0"><i class="fas fa-house me-2" aria-hidden="true"></i><strong>AI-оценка:</strong> ${Math.round(estimate).toLocaleString("ru-RU")} ₽</div>`;
+        });
+        bindModuleContextBar();
+    }
+
+    function fillMemorandumModal() {
+        document.getElementById("memorandumModalBody").innerHTML = renderModuleContextBar({}) + `
+            <p class="small text-muted mb-3">СЗ будет сформирована с учётом выбранных заявки и заключения (демо).</p>
+            <label class="form-label" for="baseDocText">Основание (аренда, вывод, изменения…)</label>
+            <textarea id="baseDocText" rows="4" class="form-control" placeholder="Введите основание…"></textarea>
+            <button type="button" id="genMemorandumBtn" class="btn btn-dark mt-3 rounded-pill"><i class="fas fa-file-lines me-2" aria-hidden="true"></i>Подготовить СЗ (AI)</button>
+            <div id="memorandumResult" class="mt-3"></div>`;
+        document.getElementById("genMemorandumBtn")?.addEventListener("click", () => {
+            const text = document.getElementById("baseDocText").value.trim();
+            if (!text) {
+                alert("Введите документ-основание");
+                return;
+            }
+            const lower = text.toLowerCase();
+            let type = "Согласование изменений";
+            if (lower.includes("аренда")) type = "Аренда";
+            else if (lower.includes("вывод")) type = "Вывод";
+            document.getElementById("memorandumResult").innerHTML =
+                `<div class="border p-3 rounded-3 bg-light small mb-0">Служебная записка (<strong>${type}</strong>) для заявки <code class="small">${document.getElementById("moduleCtxAppSelect")?.value || "—"}</code> подготовлена AI. Рекомендовано к согласованию.</div>`;
+        });
+        bindModuleContextBar();
+    }
+
+    function fillTechChangesModal() {
+        document.getElementById("techChangesModalBody").innerHTML = renderModuleContextBar({}) + `
+            <p class="small text-muted mb-3">Укажите заявку и заключение, к которым относится снятие риска.</p>
+            <label class="form-label" for="riskDoc">Файл для снятия риска</label>
+            <input type="file" id="riskDoc" class="form-control">
+            <button type="button" id="removeRiskBtn" class="btn btn-warning mt-3 rounded-pill"><i class="fas fa-broom me-2" aria-hidden="true"></i>Снять риск (AI)</button>
+            <div id="techResultArea" class="mt-3"></div>
+            <p class="text-muted small mt-3 mb-0">После снятия КК обновится автоматически.</p>`;
+        document.getElementById("removeRiskBtn")?.addEventListener("click", () => {
+            if (!document.getElementById("riskDoc").files.length) {
+                alert("Загрузите документ");
+                return;
+            }
+            document.getElementById("techResultArea").innerHTML =
+                '<div class="alert alert-success mb-0"><i class="fas fa-check me-2" aria-hidden="true"></i>Риск снят для выбранного контекста, КК изменена в АС Залоги.</div>';
+        });
+        bindModuleContextBar();
+    }
+
+    function fillPmzModal() {
+        document.getElementById("pmzModalBody").innerHTML = renderModuleContextBar({}) + `
+            <div class="alert alert-success border-0 rounded-3 mb-3"><i class="fas fa-building me-2" aria-hidden="true"></i><strong>ПМЗ — подразделение мониторинга залогов</strong></div>
+            <div class="row g-3">
+                <div class="col-md-6"><i class="fas fa-chart-line text-success me-2" aria-hidden="true"></i>Задачи: контроль стоимости, страховки, переоценка</div>
+                <div class="col-md-6"><i class="fas fa-phone text-success me-2" aria-hidden="true"></i>Контакты: +7 (495) 123-45-67</div>
+            </div>
+            <div class="mock-ai mt-3 mb-0">Актуальный портфель в норме, риски отсутствуют.</div>`;
+        bindModuleContextBar();
+    }
+
+    function openModuleModal(moduleId) {
+        if (!currentClientData) {
+            alert("Сначала загрузите данные клиента по ИНН");
+            return;
+        }
+        switch (moduleId) {
+            case "priority": fillPriorityModal(); break;
+            case "questions": fillQuestionsModal(); break;
+            case "inspection": fillInspectionModal(); break;
+            case "cost": fillCostModal(); break;
+            case "where": fillWhereModal(); break;
+            case "express": fillExpressModal(); break;
+            case "memorandum": fillMemorandumModal(); break;
+            case "techChanges": fillTechChangesModal(); break;
+            case "pmz": fillPmzModal(); break;
+            default: return;
+        }
+        const mod = modules.find(m => m.id === moduleId);
+        if (!mod) return;
+        const modalEl = document.querySelector(mod.modal);
+        if (!modalEl) return;
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+
+    document.getElementById("gigachatStatusBtn")?.addEventListener("click", () => {
+        checkGigaChatHealth();
+    });
+    checkGigaChatHealth();
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") checkGigaChatHealth();
+    });
+</script>
+
+<footer class="site-footer">
+    <div class="container text-center px-3">
+        <p class="mb-0">© 2026 СберБизнес Помощник — AI-платформа сопровождения залогов и экспертизы</p>
+    </div>
+</footer>
+</body>
+</html>
