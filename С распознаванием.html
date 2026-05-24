@@ -1458,7 +1458,7 @@ ${excerpt.slice(0, 22000)}`;
     function renderModuleContextBar(opts) {
         opts = opts || {};
         const showApp = opts.showApp !== false;
-        const showConclusion = opts.showConclusion !== false;
+        const showConclusion = opts.showConclusion === true;
         const appTypesFilter = opts.appTypesFilter || null;
         let apps = currentClientData.applications || [];
         if (appTypesFilter && appTypesFilter.length) {
@@ -1496,9 +1496,10 @@ ${excerpt.slice(0, 22000)}`;
         </div>`;
     }
 
-    function bindModuleContextBar() {
-        const appSel = document.getElementById("moduleCtxAppSelect");
-        const conSel = document.getElementById("moduleCtxConclusionSelect");
+    function bindModuleContextBar(rootEl) {
+        if (!rootEl) return;
+        const appSel = rootEl.querySelector("#moduleCtxAppSelect");
+        const conSel = rootEl.querySelector("#moduleCtxConclusionSelect");
         const hint = document.getElementById("moduleCtxHint");
         const update = () => {
             if (!hint) return;
@@ -1534,9 +1535,9 @@ ${excerpt.slice(0, 22000)}`;
         html += '<button type="button" class="btn btn-primary rounded-pill" id="priorityAgreeBtn"><i class="fas fa-flag-checkered me-2" aria-hidden="true"></i>Установить приоритет</button>';
         html += '<div id="priorityResult" class="mt-3"></div>';
         container.innerHTML = html;
-        bindModuleContextBar();
+        bindModuleContextBar(container);
         document.getElementById("priorityAgreeBtn").addEventListener("click", () => {
-            const appSel = document.getElementById("moduleCtxAppSelect");
+            const appSel = container.querySelector("#moduleCtxAppSelect");
             if (!appSel) return;
             const appId = appSel.value;
             const app = currentClientData.applications.find(a => a.id === appId);
@@ -1582,7 +1583,7 @@ ${excerpt.slice(0, 22000)}`;
 
     function fillQuestionsModal() {
         const container = document.getElementById("questionsModalBody");
-        container.innerHTML = renderModuleContextBar({}) + `
+        container.innerHTML = renderModuleContextBar({ showConclusion: true }) + `
             <ul class="nav nav-tabs module-modal-tabs mb-0" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button type="button" class="nav-link active" id="risks-tab" data-bs-toggle="tab" data-bs-target="#risksTab" role="tab" aria-controls="risksTab" aria-selected="true">База рисков</button>
@@ -1639,12 +1640,12 @@ ${excerpt.slice(0, 22000)}`;
                     : '<span class="text-warning">Введите текст для резюмирования.</span>';
             });
         }
-        bindModuleContextBar();
+        bindModuleContextBar(container);
     }
 
     function fillInspectionModal() {
         const container = document.getElementById("inspectionModalBody");
-        container.innerHTML = renderModuleContextBar({}) + `
+        container.innerHTML = renderModuleContextBar({ showConclusion: true }) + `
             <label class="form-label small" for="verifyFile">Файл верификации (изображение или PDF)</label>
             <input type="file" class="form-control" id="verifyFile" accept="image/*,.pdf,application/pdf">
             <button type="button" class="btn btn-warning mt-3 rounded-pill" id="analyzeInspectBtn"><i class="fas fa-clipboard-check me-2" aria-hidden="true"></i>Анализ перепланировок</button>
@@ -1656,7 +1657,7 @@ ${excerpt.slice(0, 22000)}`;
             }
             document.getElementById("inspectResult").innerHTML = '<div class="alert alert-warning mb-0"><i class="fas fa-triangle-exclamation me-2" aria-hidden="true"></i>Выявлены признаки перепланировки. Рекомендация: согласование с БТИ.</div>';
         });
-        bindModuleContextBar();
+        bindModuleContextBar(container);
     }
 
     function fillCostModal() {
@@ -1666,12 +1667,12 @@ ${excerpt.slice(0, 22000)}`;
             body.innerHTML = '<div class="alert alert-warning mb-0">Нет заключений для сравнения стоимости.</div>';
             return;
         }
-        let html = renderModuleContextBar({});
+        let html = renderModuleContextBar({ showConclusion: true });
         html += '<p class="fw-semibold small mb-2">Арбитраж по объекту выбранного вверху заключения</p>';
         html += '<div id="costObjectArea"></div><div id="costResultArea" class="mt-3"></div>';
         body.innerHTML = html;
-        bindModuleContextBar();
-        const sel = document.getElementById("moduleCtxConclusionSelect");
+        bindModuleContextBar(body);
+        const sel = body.querySelector("#moduleCtxConclusionSelect");
         if (!sel) return;
         const loadObj = () => {
             const concl = cons.find(c => c.id === sel.value);
@@ -1716,10 +1717,10 @@ ${excerpt.slice(0, 22000)}`;
             body.innerHTML = '<div class="alert alert-info mb-0">Нет активных заявок.</div>';
             return;
         }
-        body.innerHTML = renderModuleContextBar({}) + '<p class="small fw-semibold mb-2">Статус по выбранной заявке</p><div id="whereStatusResult"></div>';
-        bindModuleContextBar();
+        body.innerHTML = renderModuleContextBar({ showConclusion: true }) + '<p class="small fw-semibold mb-2">Статус по выбранной заявке</p><div id="whereStatusResult"></div>';
+        bindModuleContextBar(body);
         const show = () => {
-            const appSel = document.getElementById("moduleCtxAppSelect");
+            const appSel = body.querySelector("#moduleCtxAppSelect");
             if (!appSel) return;
             const app = apps.find(a => a.id === appSel.value);
             if (!app) return;
@@ -1730,13 +1731,14 @@ ${excerpt.slice(0, 22000)}`;
                     <div class="mb-0"><i class="fas fa-chart-line me-2 text-success" aria-hidden="true"></i><strong>Оценка / этап:</strong> ${app.valuation || "—"}</div>
                 </div></div>`;
         };
-        document.getElementById("moduleCtxAppSelect")?.addEventListener("change", show);
-        document.getElementById("moduleCtxConclusionSelect")?.addEventListener("change", show);
+        body.querySelector("#moduleCtxAppSelect")?.addEventListener("change", show);
+        body.querySelector("#moduleCtxConclusionSelect")?.addEventListener("change", show);
         show();
     }
 
     function fillExpressModal() {
-        document.getElementById("expressModalBody").innerHTML = renderModuleContextBar({}) + `
+        const expressBody = document.getElementById("expressModalBody");
+        expressBody.innerHTML = renderModuleContextBar({ showConclusion: true }) + `
             <p class="small text-muted mb-3">Экспресс-оценка ориентировочная; выберите заявку и заключение выше для привязки к делу.</p>
             <label class="form-label" for="estateType">Тип объекта</label>
             <select id="estateType" class="form-select"><option>Квартира</option><option>Коммерция</option><option>Дом</option></select>
@@ -1753,11 +1755,12 @@ ${excerpt.slice(0, 22000)}`;
             const estimate = base * area * 1.08;
             document.getElementById("expressResult").innerHTML = `<div class="mock-ai mb-0"><i class="fas fa-house me-2" aria-hidden="true"></i><strong>Оценка (демо):</strong> ${Math.round(estimate).toLocaleString("ru-RU")} ₽</div>`;
         });
-        bindModuleContextBar();
+        bindModuleContextBar(expressBody);
     }
 
     function fillMemorandumModal() {
-        document.getElementById("memorandumModalBody").innerHTML = renderModuleContextBar({}) + `
+        const memoBody = document.getElementById("memorandumModalBody");
+        memoBody.innerHTML = renderModuleContextBar({ showConclusion: true }) + `
             <p class="small text-muted mb-3">СЗ будет сформирована с учётом выбранных заявки и заключения (демо).</p>
             <label class="form-label" for="baseDocText">Основание (аренда, вывод, изменения…)</label>
             <textarea id="baseDocText" rows="4" class="form-control" placeholder="Введите основание…"></textarea>
@@ -1774,13 +1777,14 @@ ${excerpt.slice(0, 22000)}`;
             if (lower.includes("аренда")) type = "Аренда";
             else if (lower.includes("вывод")) type = "Вывод";
             document.getElementById("memorandumResult").innerHTML =
-                `<div class="border p-3 rounded-3 bg-light small mb-0">Служебная записка (<strong>${type}</strong>) для заявки <code class="small">${document.getElementById("moduleCtxAppSelect")?.value || "—"}</code> подготовлена (демо). Рекомендовано к согласованию.</div>`;
+                `<div class="border p-3 rounded-3 bg-light small mb-0">Служебная записка (<strong>${type}</strong>) для заявки <code class="small">${memoBody.querySelector("#moduleCtxAppSelect")?.value || "—"}</code> подготовлена (демо). Рекомендовано к согласованию.</div>`;
         });
-        bindModuleContextBar();
+        bindModuleContextBar(memoBody);
     }
 
     function fillTechChangesModal() {
-        document.getElementById("techChangesModalBody").innerHTML = renderModuleContextBar({}) + `
+        const techBody = document.getElementById("techChangesModalBody");
+        techBody.innerHTML = renderModuleContextBar({ showConclusion: true }) + `
             <p class="small text-muted mb-3">Укажите заявку и заключение, к которым относится снятие риска.</p>
             <label class="form-label" for="riskDoc">Файл для снятия риска</label>
             <input type="file" id="riskDoc" class="form-control">
@@ -1795,14 +1799,15 @@ ${excerpt.slice(0, 22000)}`;
             document.getElementById("techResultArea").innerHTML =
                 '<div class="alert alert-success mb-0"><i class="fas fa-check me-2" aria-hidden="true"></i>Риск снят для выбранного контекста, КК изменена в АС Залоги.</div>';
         });
-        bindModuleContextBar();
+        bindModuleContextBar(techBody);
     }
 
     function fillPmzModal() {
-        document.getElementById("pmzModalBody").innerHTML = renderModuleContextBar({}) + `
+        const pmzBody = document.getElementById("pmzModalBody");
+        pmzBody.innerHTML = renderModuleContextBar({ showConclusion: true }) + `
             <div class="alert alert-success border-0 rounded-3 mb-3"><i class="fas fa-building me-2" aria-hidden="true"></i><strong>ПМЗ — подразделение мониторинга залогов</strong></div>
             <p class="mb-0"><i class="fas fa-chart-line text-success me-2" aria-hidden="true"></i>Задачи: контроль стоимости, страховки, переоценка</p>`;
-        bindModuleContextBar();
+        bindModuleContextBar(pmzBody);
     }
 
     function openModuleModal(moduleId) {
