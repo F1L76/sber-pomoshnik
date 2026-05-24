@@ -258,14 +258,6 @@
             vertical-align: middle;
             border-color: var(--sber-border);
         }
-        .site-footer {
-            font-size: 0.8rem;
-            color: var(--sber-text-muted);
-            border-top: 1px solid var(--sber-border);
-            padding: 1.5rem 0;
-            margin-top: auto;
-            background: rgba(255, 255, 255, 0.6);
-        }
         .upload-area {
             background: linear-gradient(180deg, #F9FDFB 0%, #F4FAF6 100%);
             border-radius: 18px;
@@ -324,10 +316,50 @@
             vertical-align: top;
         }
         .module-context-bar {
-            background: linear-gradient(180deg, #F8FAFC 0%, #F0F5FA 100%);
+            margin-bottom: 1rem;
+        }
+        .module-context-fields {
+            background: #fff;
             border: 1px solid var(--sber-border);
             border-radius: 14px;
-            padding: 1rem 1.1rem;
+            padding: 1rem 1.15rem;
+            box-shadow: 0 2px 8px rgba(30, 42, 58, 0.04);
+        }
+        .module-context-title {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--sber-text-dark);
+            margin-bottom: 0.75rem;
+        }
+        .module-context-hint {
+            margin: 0.75rem 0 0;
+            padding: 0.5rem 0 0;
+            font-size: 0.8125rem;
+            line-height: 1.5;
+            color: var(--sber-text-muted);
+            border: none;
+            background: transparent;
+        }
+        .module-context-hint:not(:empty)::before {
+            content: "";
+            display: block;
+            width: 2.5rem;
+            height: 3px;
+            border-radius: 999px;
+            background: var(--sber-gradient);
+            margin-bottom: 0.5rem;
+        }
+        .site-footer {
+            font-size: 0.8rem;
+            color: var(--sber-text-muted);
+            padding: 1.25rem 0 1.75rem;
+            margin-top: auto;
+            background: transparent;
+            border: none;
+        }
+        .site-footer p {
+            margin: 0;
+            letter-spacing: 0.01em;
         }
     </style>
 </head>
@@ -1433,29 +1465,35 @@ ${excerpt.slice(0, 22000)}`;
             apps = apps.filter(a => appTypesFilter.includes(a.type));
         }
         const cons = currentClientData.conclusions || [];
-        let inner = '<p class="small fw-semibold text-dark mb-2"><i class="fas fa-link text-success me-1" aria-hidden="true"></i>Контекст: заявка и заключение</p>';
+        let contextTitle = "Контекст: заявка и заключение";
+        if (showApp && !showConclusion) contextTitle = "Контекст: заявка";
+        else if (!showApp && showConclusion) contextTitle = "Контекст: заключение";
+        let fields = "";
         if (showApp) {
             if (!apps.length) {
-                inner += '<p class="small text-warning mb-2">Нет заявок для отображения в списке.</p>';
+                fields += '<p class="small text-warning mb-0">Нет заявок для отображения в списке.</p>';
             } else {
-                inner += '<label class="form-label small mb-1" for="moduleCtxAppSelect">Заявка</label>' +
-                    '<select id="moduleCtxAppSelect" class="form-select mb-3">' +
+                fields += '<label class="form-label small mb-1" for="moduleCtxAppSelect">Заявка</label>' +
+                    '<select id="moduleCtxAppSelect" class="form-select' + (showConclusion ? " mb-3" : " mb-0") + '">' +
                     apps.map(a => `<option value="${a.id}">${a.id} · ${a.type} · ${a.valuation || "—"}</option>`).join("") +
                     "</select>";
             }
         }
         if (showConclusion) {
             if (!cons.length) {
-                inner += '<p class="small text-warning mb-0">Нет заключений в карточке клиента.</p>';
+                fields += '<p class="small text-warning mb-0">Нет заключений в карточке клиента.</p>';
             } else {
-                inner += '<label class="form-label small mb-1" for="moduleCtxConclusionSelect">Заключение</label>' +
-                    '<select id="moduleCtxConclusionSelect" class="form-select">' +
+                fields += '<label class="form-label small mb-1" for="moduleCtxConclusionSelect">Заключение</label>' +
+                    '<select id="moduleCtxConclusionSelect" class="form-select mb-0">' +
                     cons.map(c => `<option value="${c.id}">${c.id} · от ${c.date} · ${c.objects.length} объекта</option>`).join("") +
                     "</select>";
             }
         }
-        inner += '<p class="small text-muted mt-2 mb-0" id="moduleCtxHint"></p>';
-        return `<div class="module-context-bar mb-3">${inner}</div>`;
+        const title = '<p class="module-context-title mb-0"><i class="fas fa-link text-success me-1" aria-hidden="true"></i>' + contextTitle + '</p>';
+        return `<div class="module-context-bar">
+            <div class="module-context-fields">${title}${fields}</div>
+            <p class="module-context-hint" id="moduleCtxHint"></p>
+        </div>`;
     }
 
     function bindModuleContextBar() {
@@ -1491,9 +1529,7 @@ ${excerpt.slice(0, 22000)}`;
             container.innerHTML = '<div class="alert alert-info mb-0">Нет заявок с типом исполнителя «Эксперт».</div>';
             return;
         }
-        const cons = currentClientData.conclusions;
-        const hasCons = cons.length > 0;
-        let html = renderModuleContextBar({ appTypesFilter: ["Эксперт"], showConclusion: hasCons });
+        let html = renderModuleContextBar({ appTypesFilter: ["Эксперт"], showConclusion: false });
         html += '<p class="small text-muted mb-3">В списке заявок только тип «Эксперт» — для него доступна установка приоритета.</p>';
         html += '<button type="button" class="btn btn-primary rounded-pill" id="priorityAgreeBtn"><i class="fas fa-flag-checkered me-2" aria-hidden="true"></i>Установить приоритет</button>';
         html += '<div id="priorityResult" class="mt-3"></div>';
