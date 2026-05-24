@@ -315,6 +315,13 @@
             font-size: 0.85rem;
             vertical-align: top;
         }
+        .conclusion-risks-table .conclusion-remove-risk-btn {
+            white-space: nowrap;
+        }
+        .tech-selected-risk-panel {
+            background: linear-gradient(135deg, #FFF9F0 0%, #FFF5F5 100%);
+            border-left: 4px solid #f0ad4e;
+        }
         .module-context-bar {
             margin-bottom: 1rem;
         }
@@ -602,6 +609,10 @@
             ],
             conclusions: [
                 { id: "ASZ1000000000456", date: "2026-04-10",
+                    risks: [
+                        { identifier: "З-01", risk: "Несоответствие площади по данным БТИ", minimization: "Запросить актуальный техпаспорт и пересчёт" },
+                        { identifier: "З-02", risk: "Обременение не отражено в тексте заключения", minimization: "Сверка с выпиской ЕГРН и корректировка формулировок" }
+                    ],
                     materials: {
                         encumbranceCheck: { fileName: "egrn_ASZ1000000000456.pdf", fileUrl: "/materials/demo/encumbrance-check.pdf", note: "ЕГРН: обременения не выявлены (выписка от 08.04.2026)" },
                         inspectionResults: { fileName: "inspection_ASZ1000000000456.pdf", fileUrl: "/materials/demo/inspection-results.pdf", note: "Осмотр 05.04.2026, состояние удовлетворительное" },
@@ -655,6 +666,8 @@
 
     let currentClientData = null;
     let currentClientInn = null;
+    /** Предзаполнение модуля «Технические изменения» при переходе из карточки заключения */
+    let techChangesPrefill = null;
 
     if (typeof pdfjsLib !== "undefined") {
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -1139,21 +1152,36 @@ ${excerpt.slice(0, 22000)}`;
         if (!risks.length) {
             return `<div class="mb-4"><h3 class="h6 fw-bold mb-2"><i class="fas fa-triangle-exclamation me-2 text-warning" aria-hidden="true"></i>Риски</h3><p class="text-muted small mb-0">В заключении риски не выявлены или не распознаны из PDF.</p></div>`;
         }
-        const rows = risks.map((r) => `<tr>
+        const conclusionId = escapeHtml(c.id);
+        const rows = risks.map((r, idx) => `<tr>
             <td>${escapeHtml(r.identifier)}</td>
             <td>${escapeHtml(r.risk)}</td>
             <td>${escapeHtml(r.minimization)}</td>
+            <td class="text-end align-middle">
+                <button type="button" class="btn btn-sm btn-outline-warning rounded-pill conclusion-remove-risk-btn"
+                    data-conclusion-id="${conclusionId}" data-risk-index="${idx}">
+                    <i class="fas fa-broom me-1" aria-hidden="true"></i>Снять риск
+                </button>
+            </td>
         </tr>`).join("");
         return `<div class="mb-4">
             <h3 class="h6 fw-bold mb-3"><i class="fas fa-triangle-exclamation me-2 text-warning" aria-hidden="true"></i>Риски</h3>
             <p class="small text-muted">Пересказ подготовлен GigaChat.</p>
             <div class="table-responsive-custom">
                 <table class="table table-bordered conclusion-risks-table mb-0">
-                    <thead><tr><th>Идентификатор</th><th>Риск</th><th>Минимизация</th></tr></thead>
+                    <thead><tr><th>Идентификатор</th><th>Риск</th><th>Минимизация</th><th class="text-end">Действие</th></tr></thead>
                     <tbody>${rows}</tbody>
                 </table>
             </div>
         </div>`;
+    }
+
+    function openTechChangesForRisk(conclusionId, riskIndex) {
+        if (!currentClientData) return;
+        techChangesPrefill = { conclusionId, riskIndex: Number(riskIndex) };
+        const detailModal = document.getElementById("conclusionDetailModal");
+        bootstrap.Modal.getInstance(detailModal)?.hide();
+        openModuleModal("techChanges");
     }
 
     async function runAIImport() {
@@ -1784,22 +1812,109 @@ ${excerpt.slice(0, 22000)}`;
 
     function fillTechChangesModal() {
         const techBody = document.getElementById("techChangesModalBody");
+        const prefill = techChangesPrefill;
+        techChangesPrefill = null;
         techBody.innerHTML = renderModuleContextBar({ showConclusion: true }) + `
-            <p class="small text-muted mb-3">Укажите заявку и заключение, к которым относится снятие риска.</p>
+            <label class="form-label small mb-1" for="techRiskSelect">Риск в заключении</label>
+            <select id="techRiskSelect" class="form-select mb-3" disabled>
+                <option value="">Выберите заключение</option>
+            </select>
+            <div id="techSelectedRiskPanel" class="alert tech-selected-risk-panel border-0 rounded-3 small mb-3 d-none" role="status"></div>
+            <p class="small text-muted mb-3">Укажите заявку, заключение и риск, затем приложите документ для снятия.</p>
             <label class="form-label" for="riskDoc">Файл для снятия риска</label>
             <input type="file" id="riskDoc" class="form-control">
             <button type="button" id="removeRiskBtn" class="btn btn-warning mt-3 rounded-pill"><i class="fas fa-broom me-2" aria-hidden="true"></i>Снять риск</button>
             <div id="techResultArea" class="mt-3"></div>
             <p class="text-muted small mt-3 mb-0">После снятия КК обновится автоматически.</p>`;
-        document.getElementById("removeRiskBtn")?.addEventListener("click", () => {
-            if (!document.getElementById("riskDoc").files.length) {
+        bindModuleContextBar(techBody);
+        const conSel = techBody.querySelector("#moduleCtxConclusionSelect");
+        const riskSel = techBody.querySelector("#techRiskSelect");
+        const riskPanel = techBody.querySelector("#techSelectedRiskPanel");
+        const resultArea = techBody.querySelector("#techResultArea");
+
+        const updateTechRiskPanel = () => {
+            if (!riskSel || !riskPanel || !conSel) return;
+            const concl = currentClientData.conclusions.find(c => c.id === conSel.value);
+            const risks = concl?.risks || [];
+            const idx = parseInt(riskSel.value, 10);
+            const r = !isNaN(idx) && risks[idx] ? risks[idx] : null;
+            if (!r) {
+                riskPanel.classList.add("d-none");
+                riskPanel.innerHTML = "";
+                return;
+            }
+            riskPanel.classList.remove("d-none");
+            riskPanel.innerHTML = `<strong><i class="fas fa-triangle-exclamation me-1 text-warning" aria-hidden="true"></i>Выбран риск:</strong> ` +
+                `<span class="fw-semibold">${escapeHtml(r.identifier || "—")}</span> — ${escapeHtml(r.risk)}` +
+                `<br><span class="text-muted">Минимизация: ${escapeHtml(r.minimization)}</span>`;
+        };
+
+        const updateTechRiskOptions = () => {
+            if (!riskSel || !conSel) return;
+            const concl = currentClientData.conclusions.find(c => c.id === conSel.value);
+            const risks = concl?.risks || [];
+            if (!concl) {
+                riskSel.innerHTML = '<option value="">Выберите заключение</option>';
+                riskSel.disabled = true;
+                updateTechRiskPanel();
+                return;
+            }
+            if (!risks.length) {
+                riskSel.innerHTML = '<option value="">В заключении нет рисков</option>';
+                riskSel.disabled = true;
+                updateTechRiskPanel();
+                return;
+            }
+            riskSel.disabled = false;
+            riskSel.innerHTML = risks.map((r, i) => {
+                const idPart = r.identifier ? r.identifier + " — " : "";
+                const label = (idPart + (r.risk || "Риск")).slice(0, 120);
+                return `<option value="${i}">${escapeHtml(label)}</option>`;
+            }).join("");
+            updateTechRiskPanel();
+        };
+
+        conSel?.addEventListener("change", () => {
+            if (resultArea) resultArea.innerHTML = "";
+            updateTechRiskOptions();
+        });
+        riskSel?.addEventListener("change", () => {
+            if (resultArea) resultArea.innerHTML = "";
+            updateTechRiskPanel();
+        });
+
+        updateTechRiskOptions();
+        if (prefill?.conclusionId && conSel) {
+            const hasConcl = currentClientData.conclusions.some(c => c.id === prefill.conclusionId);
+            if (hasConcl) {
+                conSel.value = prefill.conclusionId;
+                updateTechRiskOptions();
+                if (riskSel && !riskSel.disabled && prefill.riskIndex != null && !isNaN(prefill.riskIndex)) {
+                    const concl = currentClientData.conclusions.find(c => c.id === prefill.conclusionId);
+                    if (concl?.risks && concl.risks[prefill.riskIndex]) {
+                        riskSel.value = String(prefill.riskIndex);
+                        updateTechRiskPanel();
+                    }
+                }
+            }
+        }
+
+        techBody.querySelector("#removeRiskBtn")?.addEventListener("click", () => {
+            const riskDoc = techBody.querySelector("#riskDoc");
+            if (!riskDoc?.files.length) {
                 alert("Загрузите документ");
                 return;
             }
-            document.getElementById("techResultArea").innerHTML =
-                '<div class="alert alert-success mb-0"><i class="fas fa-check me-2" aria-hidden="true"></i>Риск снят для выбранного контекста, КК изменена в АС Залоги.</div>';
+            const conclId = conSel?.value || "—";
+            const rIdx = parseInt(riskSel?.value, 10);
+            const concl = currentClientData.conclusions.find(c => c.id === conclId);
+            const r = concl?.risks && !isNaN(rIdx) ? concl.risks[rIdx] : null;
+            const riskLabel = r ? (r.identifier || r.risk) : "выбранный";
+            if (resultArea) {
+                resultArea.innerHTML = '<div class="alert alert-success mb-0"><i class="fas fa-check me-2" aria-hidden="true"></i>Риск «' +
+                    escapeHtml(riskLabel) + '» снят по заключению <strong>' + escapeHtml(conclId) + '</strong>. КК изменена в АС Залоги.</div>';
+            }
         });
-        bindModuleContextBar(techBody);
     }
 
     function fillPmzModal() {
@@ -1834,6 +1949,13 @@ ${excerpt.slice(0, 22000)}`;
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();
     }
+
+    document.getElementById("conclusionDetailBody")?.addEventListener("click", (e) => {
+        const btn = e.target.closest(".conclusion-remove-risk-btn");
+        if (!btn) return;
+        e.preventDefault();
+        openTechChangesForRisk(btn.getAttribute("data-conclusion-id"), btn.getAttribute("data-risk-index"));
+    });
 
     initPriorityBossConfirm();
 
