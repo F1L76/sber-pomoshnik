@@ -456,6 +456,19 @@
         </div>
     </div>
 </div>
+<div class="modal fade" id="priorityBossConfirmModal" tabindex="-1" aria-labelledby="priorityBossConfirmLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-body text-center p-4">
+                <p class="fw-semibold mb-0" id="priorityBossConfirmLabel">Приоритет согласован с Руководителем</p>
+                <div class="d-flex gap-2 justify-content-center mt-4">
+                    <button type="button" class="btn btn-success rounded-pill px-4" id="priorityBossYesBtn">Да</button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" id="priorityBossNoBtn">Нет</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="modal fade" id="questionsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
@@ -1365,7 +1378,7 @@ ${excerpt.slice(0, 22000)}`;
     });
 
     const modules = [
-        { id: "priority", name: "Приоритет по заявке", icon: "fas fa-flag-checkered", modal: "#priorityModal", desc: "Согласование приоритета для экспертных заявок" },
+        { id: "priority", name: "Приоритет по заявке", icon: "fas fa-flag-checkered", modal: "#priorityModal", desc: "Установка приоритета для экспертных заявок" },
         { id: "questions", name: "Вопросы по заключению", icon: "fas fa-question-circle", modal: "#questionsModal", desc: "База рисков, распознавание и резюме СЗЗ" },
         { id: "inspection", name: "Вопросы по осмотру", icon: "fas fa-camera", modal: "#inspectionModal", desc: "Файл верификации, перепланировки" },
         { id: "cost", name: "Не согласен со стоимостью", icon: "fas fa-hand-holding-usd", modal: "#costModal", desc: "Арбитраж стоимости, верификация рынком" },
@@ -1481,8 +1494,8 @@ ${excerpt.slice(0, 22000)}`;
         const cons = currentClientData.conclusions;
         const hasCons = cons.length > 0;
         let html = renderModuleContextBar({ appTypesFilter: ["Эксперт"], showConclusion: hasCons });
-        html += '<p class="small text-muted mb-3">В списке заявок только тип «Эксперт» — для него доступно согласование приоритета.</p>';
-        html += '<button type="button" class="btn btn-primary rounded-pill" id="priorityAgreeBtn"><i class="fas fa-flag-checkered me-2" aria-hidden="true"></i>Согласовать приоритет</button>';
+        html += '<p class="small text-muted mb-3">В списке заявок только тип «Эксперт» — для него доступна установка приоритета.</p>';
+        html += '<button type="button" class="btn btn-primary rounded-pill" id="priorityAgreeBtn"><i class="fas fa-flag-checkered me-2" aria-hidden="true"></i>Установить приоритет</button>';
         html += '<div id="priorityResult" class="mt-3"></div>';
         container.innerHTML = html;
         bindModuleContextBar();
@@ -1497,10 +1510,37 @@ ${excerpt.slice(0, 22000)}`;
                 resultDiv.innerHTML = '<div class="alert alert-secondary mb-0">У выбранной заявки приоритет уже активен.</div>';
                 return;
             }
+            resultDiv.innerHTML = "";
+            priorityPendingAppId = app.id;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("priorityBossConfirmModal")).show();
+        });
+    }
+
+    let priorityPendingAppId = null;
+
+    function initPriorityBossConfirm() {
+        const confirmEl = document.getElementById("priorityBossConfirmModal");
+        const yesBtn = document.getElementById("priorityBossYesBtn");
+        const noBtn = document.getElementById("priorityBossNoBtn");
+        if (!confirmEl || !yesBtn || !noBtn || yesBtn.dataset.bound) return;
+        yesBtn.dataset.bound = "1";
+        const confirmModal = bootstrap.Modal.getOrCreateInstance(confirmEl);
+        yesBtn.addEventListener("click", () => {
+            confirmModal.hide();
+            const resultDiv = document.getElementById("priorityResult");
+            const app = currentClientData?.applications.find(a => a.id === priorityPendingAppId);
+            priorityPendingAppId = null;
+            if (!app || !resultDiv) return;
             app.priority = true;
             updateInfoPanel();
-            const justification = "Экспертная заявка " + app.id + " относится к срочному сопровождению. Рекомендуется приоритет для ускорения этапа оценки и согласования с руководителем (демо).";
-            resultDiv.innerHTML = '<div class="alert alert-success mb-0"><i class="fas fa-check me-2" aria-hidden="true"></i>Приоритет установлен.</div><div class="mock-ai small mt-2 mb-0">' + escapeHtml(justification) + '</div>';
+            resultDiv.innerHTML = '<div class="alert alert-success mb-0"><i class="fas fa-check me-2" aria-hidden="true"></i>По заявке ' + escapeHtml(app.id) + ' установлен приоритет</div>';
+        });
+        noBtn.addEventListener("click", () => {
+            confirmModal.hide();
+            const resultDiv = document.getElementById("priorityResult");
+            priorityPendingAppId = null;
+            if (!resultDiv) return;
+            resultDiv.innerHTML = '<div class="alert alert-danger mb-0 d-flex align-items-center gap-2"><i class="fas fa-user-tie fa-lg" aria-hidden="true" title="Руководитель"></i><span>Приоритет необходимо согласовать с руководителем</span></div>';
         });
     }
 
@@ -1753,6 +1793,8 @@ ${excerpt.slice(0, 22000)}`;
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();
     }
+
+    initPriorityBossConfirm();
 
     document.getElementById("gigachatStatusBtn")?.addEventListener("click", () => {
         checkGigaChatHealth();
