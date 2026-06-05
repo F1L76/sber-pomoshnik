@@ -15,3 +15,7 @@ services:
         value: "20"
       - key: GIGACHAT_CREDENTIALS
         sync: false
+      - key: LANGFLOW_API_KEY
+        sync: false
+      - key: LANGFLOW_RUN_URL
+        sync: false

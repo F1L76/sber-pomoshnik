@@ -11,6 +11,7 @@ import http from "http";
 import https from "https";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -18,6 +19,9 @@ const PORT = Number(process.env.PORT) || 8787;
 const HOST = process.env.HOST || "0.0.0.0";
 const OAUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth";
 const CHAT_URL = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions";
+const LANGFLOW_RUN_URL =
+    process.env.LANGFLOW_RUN_URL ||
+    "https://aigateway.delta.sbrf.ru/langflow/api/v1/run/47d95744-0889-4cd6-bdbd-e8e657304bdf";
 
 const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
@@ -149,6 +153,66 @@ async function chatCompletion(messages, opts, alreadyRetried) {
     return content;
 }
 
+function extractLangflowText(json) {
+    if (!json || typeof json !== "object") return null;
+    const tryPaths = [
+        () => json.outputs?.[0]?.outputs?.[0]?.results?.message?.text,
+        () => json.outputs?.[0]?.outputs?.[0]?.results?.message?.data?.text,
+        () => json.outputs?.[0]?.outputs?.[0]?.artifacts?.message,
+        () => json.outputs?.[0]?.outputs?.[0]?.messages?.[0]?.message,
+        () => json.messages?.[0]?.message,
+        () => (typeof json.result === "string" ? json.result : null),
+        () => (typeof json.output === "string" ? json.output : null)
+    ];
+    for (const getVal of tryPaths) {
+        const v = getVal();
+        if (typeof v === "string" && v.trim()) return v.trim();
+    }
+    let best = "";
+    const walk = (node) => {
+        if (typeof node === "string") {
+            if (node.length > best.length && node.length > 60) best = node;
+            return;
+        }
+        if (!node || typeof node !== "object") return;
+        for (const key of Object.keys(node)) walk(node[key]);
+    };
+    walk(json);
+    return best.trim() || null;
+}
+
+async function runLangflowChat(inputValue, sessionId) {
+    const apiKey = process.env.LANGFLOW_API_KEY;
+    if (!apiKey) {
+        throw new Error("Не задан LANGFLOW_API_KEY в файле .env");
+    }
+    if (!inputValue || !String(inputValue).trim()) {
+        throw new Error("Пустой запрос к Langflow");
+    }
+    const payload = JSON.stringify({
+        output_type: "chat",
+        input_type: "chat",
+        input_value: String(inputValue),
+        session_id: sessionId || crypto.randomUUID()
+    });
+    const { status, json, raw } = await requestJson(LANGFLOW_RUN_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey
+        }
+    }, payload);
+
+    if (status !== 200 && status !== 201) {
+        throw new Error(json.detail || json.message || json.error || raw || `Langflow HTTP ${status}`);
+    }
+    const text = extractLangflowText(json);
+    if (!text) {
+        throw new Error("Langflow не вернул текст ответа. Проверьте flow и формат ответа API.");
+    }
+    return { content: text, session_id: sessionId || json.session_id };
+}
+
 const MIME = {
     ".html": "text/html; charset=utf-8",
     ".js": "text/javascript; charset=utf-8",
@@ -215,6 +279,40 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/langflow/health") {
+        const hasKey = Boolean(process.env.LANGFLOW_API_KEY);
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(
+            JSON.stringify({
+                ok: hasKey,
+                hasKey,
+                error: hasKey ? null : "Нет LANGFLOW_API_KEY в .env",
+                runUrl: LANGFLOW_RUN_URL.replace(/\/[^/]+$/, "/…")
+            })
+        );
+        return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/langflow/memorandum") {
+        try {
+            const raw = await readBody(req);
+            const body = JSON.parse(raw || "{}");
+            const inputValue = body.input_value || body.prompt;
+            if (!inputValue) {
+                res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ error: "input_value обязателен" }));
+                return;
+            }
+            const result = await runLangflowChat(inputValue, body.session_id);
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ content: result.content, session_id: result.session_id }));
+        } catch (e) {
+            res.writeHead(502, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ error: e.message || String(e) }));
+        }
+        return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/gigachat/chat") {
         try {
             const raw = await readBody(req);
@@ -266,5 +364,8 @@ server.listen(PORT, HOST, () => {
     console.log(`Откройте: http://localhost:${PORT}/ (локально) или URL вашего сервера`);
     if (!process.env.GIGACHAT_CREDENTIALS) {
         console.warn("⚠ Создайте .env из .env.example и укажите GIGACHAT_CREDENTIALS");
+    }
+    if (!process.env.LANGFLOW_API_KEY) {
+        console.warn("⚠ Для служебных записок укажите LANGFLOW_API_KEY в .env (AI Gateway / Langflow)");
     }
 });

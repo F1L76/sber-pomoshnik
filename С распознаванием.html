@@ -220,6 +220,39 @@
             font-size: 0.95rem;
             line-height: 1.55;
         }
+        .memorandum-preview {
+            background: #fff;
+            border: 1px solid var(--sber-border);
+            border-radius: 14px;
+            padding: 1.25rem 1.35rem;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .memorandum-preview .memo-title {
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 1rem;
+            letter-spacing: 0.02em;
+        }
+        .memorandum-preview .memo-meta {
+            color: var(--sber-text-muted);
+            margin-bottom: 0.75rem;
+        }
+        .memorandum-ai-intro {
+            background: linear-gradient(135deg, #F5FAFF 0%, #F0FFF4 100%);
+            border-left: 4px solid var(--sber-green);
+            border-radius: 16px;
+            padding: 1.1rem 1.25rem;
+        }
+        .memorandum-ai-intro .memorandum-ai-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--sber-text-dark);
+            margin-bottom: 0.65rem;
+        }
         .module-modal-tabs.nav-tabs {
             border-bottom-color: var(--sber-border);
         }
@@ -726,6 +759,8 @@
     let currentClientInn = null;
     /** Предзаполнение модуля «Технические изменения» при переходе из карточки заключения */
     let techChangesPrefill = null;
+    /** Сессия Langflow для повторных запросов в блоке служебной записки */
+    let memoLangflowSessionId = null;
 
     if (typeof pdfjsLib !== "undefined") {
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -1503,7 +1538,7 @@ ${excerpt.slice(0, 22000)}`;
         { id: "cost", name: "Не согласен со стоимостью", icon: "fas fa-hand-holding-usd", modal: "#costModal", desc: "Арбитраж стоимости, верификация рынком" },
         { id: "where", name: "Где заявка?", icon: "fas fa-search-location", modal: "#whereModal", desc: "Статусы: осмотр, обременения, оценка" },
         { id: "express", name: "Экспресс оценка", icon: "fas fa-bolt", modal: "#expressModal", desc: "Оценка по минимальным параметрам (демо)" },
-        { id: "memorandum", name: "Служебная записка", icon: "fas fa-pen-alt", modal: "#memorandumModal", desc: "Подготовка служебной записки (демо)" },
+        { id: "memorandum", name: "Служебная записка", icon: "fas fa-pen-alt", modal: "#memorandumModal", desc: "AI-подготовка СЗ по документу-основанию" },
         { id: "techChanges", name: "Технические изменения / Снятие рисков", icon: "fas fa-sync-alt", modal: "#techChangesModal", desc: "Автоснятие риска, изменение КК" },
         { id: "pmz", name: "ПМЗ", icon: "fas fa-building", modal: "#pmzModal", desc: "Подразделение мониторинга залогов" }
     ];
@@ -1845,28 +1880,231 @@ ${excerpt.slice(0, 22000)}`;
         bindModuleContextBar(expressBody);
     }
 
+    function detectMemorandumTypeFromFileName(fileName) {
+        const lower = (fileName || "").toLowerCase();
+        if (lower.includes("аренд")) return "Согласование Аренды";
+        if (lower.includes("вывод")) return "Вывод из Залога";
+        return "Согласование изменений";
+    }
+
+    function buildMemorandumPlainText(opts) {
+        const today = new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+        const lines = [
+            "СЛУЖЕБНАЯ ЗАПИСКА",
+            "",
+            "Кому: " + opts.recipient,
+            "От: " + opts.author,
+            "Дата: " + today,
+            "",
+            "Тема: " + opts.typeLabel,
+            "",
+            "Уважаемый(ая) коллега!",
+            "",
+            "Прошу согласовать " + opts.typeLabel.toLowerCase() + " в рамках сопровождения залога клиента " + opts.clientName +
+                (opts.inn ? " (ИНН " + opts.inn + ")" : "") + ".",
+            "",
+            "Основание:",
+            opts.basis,
+            "",
+            opts.recommendation,
+            "",
+            "С уважением,",
+            opts.author
+        ];
+        return lines.join("\n");
+    }
+
+    function memorandumResultActionsHtml() {
+        return `<div class="d-flex flex-wrap gap-2 mt-3">
+            <button type="button" class="btn btn-outline-sber btn-sm rounded-pill" id="copyMemorandumBtn"><i class="fas fa-copy me-1" aria-hidden="true"></i>Копировать текст</button>
+            <button type="button" class="btn btn-success btn-sm rounded-pill" id="submitMemorandumBtn"><i class="fas fa-paper-plane me-1" aria-hidden="true"></i>Направить на согласование</button>
+        </div>
+        <div id="memorandumSubmitStatus" class="mt-2"></div>`;
+    }
+
+    function buildMemorandumHtml(plainText, meta) {
+        const bodyHtml = escapeHtml(plainText).replace(/\n/g, "<br>");
+        return `<div class="memorandum-preview" id="memorandumPreview">
+            <div class="memo-title">СЛУЖЕБНАЯ ЗАПИСКА</div>
+            <div class="memo-meta mb-2">${escapeHtml(meta.typeLabel)} · ${escapeHtml(meta.clientName)}${meta.inn ? " · ИНН " + escapeHtml(meta.inn) : ""}</div>
+            <div class="memo-body">${bodyHtml}</div>
+        </div>${memorandumResultActionsHtml()}`;
+    }
+
+    function buildMemorandumAiHtml(plainText, meta) {
+        const bodyHtml = escapeHtml(plainText).replace(/\n/g, "<br>");
+        return `<div class="memorandum-preview" id="memorandumPreview">
+            <div class="memo-meta mb-2"><i class="fas fa-robot me-1 text-success" aria-hidden="true"></i>AI Gateway · ${escapeHtml(meta.typeLabel)} · ${escapeHtml(meta.clientName)}${meta.inn ? " · ИНН " + escapeHtml(meta.inn) : ""}</div>
+            <div class="memo-body">${bodyHtml}</div>
+        </div>${memorandumResultActionsHtml()}`;
+    }
+
+    function buildMemorandumLangflowPrompt(file, documentText, typeLabel, clientName, inn) {
+        return (
+            "Подготовь служебную записку для подразделения сопровождения залогов банка.\n\n" +
+            "Клиент: " + clientName + "\n" +
+            "ИНН: " + (inn || "—") + "\n" +
+            "Тип служебной записки: " + typeLabel + "\n" +
+            "Документ-основание: " + file.name + "\n\n" +
+            "Текст документа-основания:\n\"\"\"\n" +
+            documentText.slice(0, 14000) +
+            "\n\"\"\"\n\n" +
+            "Сформируй полный текст СЗ на русском: кому, от кого, дата, тема, обращение, суть, основание, рекомендация, подпись. Без markdown."
+        );
+    }
+
+    async function extractMemorandumDocumentText(file) {
+        const ext = (file.name.split(".").pop() || "").toLowerCase();
+        if (ext === "pdf") {
+            return extractPdfText(file);
+        }
+        return (
+            "[Документ Word: " + file.name + ". Полный текст не извлечён — используй имя файла и контекст клиента для подготовки СЗ.]"
+        );
+    }
+
+    async function requestMemorandumFromLangflow(prompt) {
+        if (!memoLangflowSessionId) {
+            memoLangflowSessionId = crypto.randomUUID();
+        }
+        const res = await fetch(`${GIGACHAT_API_BASE}/api/langflow/memorandum`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                input_value: prompt,
+                session_id: memoLangflowSessionId
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || "Ошибка AI Gateway HTTP " + res.status);
+        }
+        if (data.session_id) {
+            memoLangflowSessionId = data.session_id;
+        }
+        return data.content;
+    }
+
+    async function refreshLangflowMemoStatus(root) {
+        const el = root?.querySelector("#langflowMemoStatus");
+        if (!el) return;
+        try {
+            const res = await fetch(`${GIGACHAT_API_BASE}/api/langflow/health`, { cache: "no-store" });
+            const data = await res.json();
+            if (data.ok) {
+                el.innerHTML = '<span class="text-success"><i class="fas fa-circle-check me-1" aria-hidden="true"></i>AI Gateway подключён</span>';
+            } else {
+                el.innerHTML = '<span class="text-warning"><i class="fas fa-triangle-exclamation me-1" aria-hidden="true"></i>' +
+                    escapeHtml(data.error || "Ключ AI Gateway не настроен — будет использован локальный шаблон") + "</span>";
+            }
+        } catch (_) {
+            el.innerHTML = '<span class="text-muted"><i class="fas fa-plug-circle-xmark me-1" aria-hidden="true"></i>AI Gateway недоступен — локальный шаблон</span>';
+        }
+    }
+
+    function bindMemorandumResultActions(resultEl, lastMemorandumPlain) {
+        resultEl.querySelector("#copyMemorandumBtn")?.addEventListener("click", async () => {
+            try {
+                await navigator.clipboard.writeText(lastMemorandumPlain);
+                const btn = resultEl.querySelector("#copyMemorandumBtn");
+                if (btn) btn.innerHTML = '<i class="fas fa-check me-1" aria-hidden="true"></i>Скопировано';
+                setTimeout(() => {
+                    if (btn) btn.innerHTML = '<i class="fas fa-copy me-1" aria-hidden="true"></i>Копировать текст';
+                }, 2000);
+            } catch (_) {
+                alert("Не удалось скопировать. Выделите текст вручную.");
+            }
+        });
+        resultEl.querySelector("#submitMemorandumBtn")?.addEventListener("click", () => {
+            const status = resultEl.querySelector("#memorandumSubmitStatus");
+            if (status) {
+                status.innerHTML = '<div class="alert alert-success border-0 rounded-3 small mb-0"><i class="fas fa-check me-2" aria-hidden="true"></i>СЗ направлена на согласование. Статус: <strong>На рассмотрении</strong> (демо).</div>';
+            }
+        });
+    }
+
     function fillMemorandumModal() {
         const memoBody = document.getElementById("memorandumModalBody");
-        memoBody.innerHTML = renderModuleContextBar({ showConclusion: true }) + `
-            <p class="small text-muted mb-3">СЗ будет сформирована с учётом выбранных заявки и заключения (демо).</p>
-            <label class="form-label" for="baseDocText">Основание (аренда, вывод, изменения…)</label>
-            <textarea id="baseDocText" rows="4" class="form-control" placeholder="Введите основание…"></textarea>
-            <button type="button" id="genMemorandumBtn" class="btn btn-dark mt-3 rounded-pill"><i class="fas fa-file-lines me-2" aria-hidden="true"></i>Подготовить СЗ</button>
+        memoLangflowSessionId = null;
+        memoBody.innerHTML = `
+            <div class="memorandum-ai-intro mb-4">
+                <p class="memorandum-ai-title mb-0"><i class="fas fa-robot me-2 text-success" aria-hidden="true"></i>AI Подготовка Служебной записки</p>
+                <p class="small text-muted mb-0 mt-2">Я могу подготовить служебную записку по <strong>Согласованию Аренды</strong>, <strong>Выводу из Залога</strong>, <strong>Согласованию изменений</strong>. Загрузите документ-основание для подготовки служебной записки.</p>
+                <p class="small mb-0 mt-2" id="langflowMemoStatus">Проверка AI Gateway…</p>
+            </div>
+            <div class="upload-area">
+                <label class="form-label fw-semibold mb-2" for="memoBasisFile"><i class="fas fa-file-arrow-up me-1 text-success" aria-hidden="true"></i>Документ-основание</label>
+                <p class="small text-muted mb-2">Форматы: PDF, Word (.doc, .docx)</p>
+                <input type="file" class="form-control" id="memoBasisFile" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                <p class="small text-muted mt-2 mb-0" id="memoFileNameHint">Файл не выбран</p>
+            </div>
+            <button type="button" id="prepareMemorandumBtn" class="btn btn-primary mt-3 rounded-pill px-4"><i class="fas fa-wand-magic-sparkles me-2" aria-hidden="true"></i>Подготовить служебную записку</button>
             <div id="memorandumResult" class="mt-3"></div>`;
-        document.getElementById("genMemorandumBtn")?.addEventListener("click", () => {
-            const text = document.getElementById("baseDocText").value.trim();
-            if (!text) {
-                alert("Введите документ-основание");
+
+        let lastMemorandumPlain = "";
+
+        memoBody.querySelector("#memoBasisFile")?.addEventListener("change", (e) => {
+            const file = e.target.files?.[0];
+            const hint = memoBody.querySelector("#memoFileNameHint");
+            if (!hint) return;
+            hint.textContent = file ? "Выбран файл: " + file.name : "Файл не выбран";
+            hint.classList.toggle("text-success", !!file);
+            hint.classList.toggle("text-muted", !file);
+        });
+
+        refreshLangflowMemoStatus(memoBody);
+
+        memoBody.querySelector("#prepareMemorandumBtn")?.addEventListener("click", async () => {
+            const fileInput = memoBody.querySelector("#memoBasisFile");
+            const file = fileInput?.files?.[0];
+            if (!file) {
+                alert("Загрузите документ-основание (PDF или Word)");
                 return;
             }
-            const lower = text.toLowerCase();
-            let type = "Согласование изменений";
-            if (lower.includes("аренда")) type = "Аренда";
-            else if (lower.includes("вывод")) type = "Вывод";
-            document.getElementById("memorandumResult").innerHTML =
-                `<div class="border p-3 rounded-3 bg-light small mb-0">Служебная записка (<strong>${type}</strong>) для заявки <code class="small">${memoBody.querySelector("#moduleCtxAppSelect")?.value || "—"}</code> подготовлена (демо). Рекомендовано к согласованию.</div>`;
+            const ext = (file.name.split(".").pop() || "").toLowerCase();
+            if (!["pdf", "doc", "docx"].includes(ext)) {
+                alert("Допустимы только файлы PDF или Word (.doc, .docx)");
+                return;
+            }
+
+            const resultEl = memoBody.querySelector("#memorandumResult");
+            const prepareBtn = memoBody.querySelector("#prepareMemorandumBtn");
+            if (!resultEl) return;
+
+            const typeLabel = detectMemorandumTypeFromFileName(file.name);
+            const clientName = currentClientData?.clientName || "—";
+            const inn = currentClientInn || "";
+            const meta = { typeLabel, clientName, inn };
+
+            resultEl.innerHTML = '<p class="text-primary small mb-0"><i class="fas fa-spinner fa-spin me-2" aria-hidden="true"></i>AI Gateway готовит служебную записку…</p>';
+            if (prepareBtn) prepareBtn.disabled = true;
+
+            try {
+                const documentText = await extractMemorandumDocumentText(file);
+                const prompt = buildMemorandumLangflowPrompt(file, documentText, typeLabel, clientName, inn);
+                const aiText = await requestMemorandumFromLangflow(prompt);
+                lastMemorandumPlain = aiText;
+                resultEl.innerHTML = buildMemorandumAiHtml(aiText, meta);
+            } catch (err) {
+                console.warn("Langflow memorandum:", err);
+                const basis = "Документ-основание: «" + file.name + "». AI Gateway: " + (err.message || String(err));
+                lastMemorandumPlain = buildMemorandumPlainText({
+                    recipient: "Руководителю подразделения сопровождения залогов",
+                    author: "Специалист по сопровождению залогов",
+                    typeLabel,
+                    clientName,
+                    inn,
+                    basis,
+                    recommendation: "Рекомендую направить служебную записку на согласование (локальный шаблон)."
+                });
+                resultEl.innerHTML =
+                    '<div class="alert alert-warning border-0 rounded-3 small">' + escapeHtml(err.message || String(err)) +
+                    ". Использован локальный шаблон.</div>" + buildMemorandumHtml(lastMemorandumPlain, meta);
+            }
+
+            bindMemorandumResultActions(resultEl, lastMemorandumPlain);
+            if (prepareBtn) prepareBtn.disabled = false;
         });
-        bindModuleContextBar(memoBody);
     }
 
     function fillTechChangesModal() {
