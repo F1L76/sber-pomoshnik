@@ -77,6 +77,12 @@
             align-items: center;
             justify-content: space-between;
         }
+        .year-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+        }
         .search-input-group {
             display: flex;
             align-items: stretch;
@@ -241,9 +247,15 @@
 
         const EXPORT_COLUMNS = TABLE_COLUMNS;
 
+        const YEAR_LOAD_ORDER = [2026, 2025, 2024];
+        const DEFAULT_FIRST_YEAR = 2026;
+
         let searchState = {
             quarterCadNumber: "",
             allDeals: [],
+            availableYears: [...YEAR_LOAD_ORDER],
+            loadedYears: new Set(),
+            yearNotes: [],
             meta: {},
             filters: {}
         };
@@ -270,6 +282,47 @@
                 loadingMessageIndex = (loadingMessageIndex + 1) % LOADING_MESSAGES.length;
                 text.textContent = LOADING_MESSAGES[loadingMessageIndex];
             }, 2200);
+        }
+
+        function sleep(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
+        async function fetchWithRetry(url, options, retries = 4) {
+            let lastErr;
+            for (let i = 0; i < retries; i++) {
+                try {
+                    return await fetch(url, options);
+                } catch (err) {
+                    lastErr = err;
+                    if (i < retries - 1) await sleep(2500 * (i + 1));
+                }
+            }
+            throw lastErr;
+        }
+
+        async function pollDealsJob(jobId, year) {
+            const text = document.getElementById("searchLoadingText");
+            const yearLabel = year ? ` за ${year} год` : "";
+            for (let attempt = 0; attempt < 90; attempt++) {
+                await sleep(2000);
+                const st = await fetchWithRetry(
+                    `${API_BASE}/api/deals/search/status/${encodeURIComponent(jobId)}`
+                );
+                const raw = await st.text();
+                let job;
+                try {
+                    job = raw ? JSON.parse(raw) : {};
+                } catch {
+                    throw new Error("Сервер вернул неверный ответ при проверке статуса");
+                }
+                if (!st.ok) throw new Error(job.error || `HTTP ${st.status}`);
+                if (job.status === "done") return job.result;
+                if (job.status === "error") throw new Error(job.error || "Ошибка поиска");
+                const sec = (attempt + 1) * 2;
+                text.textContent = `Сканируем датасеты Росреестра${yearLabel}… (${sec} с)`;
+            }
+            throw new Error("Поиск занял слишком много времени. Попробуйте ещё раз.");
         }
 
         function hideSearchLoading() {
@@ -630,18 +683,120 @@
             document.getElementById("exportExcelBtn")?.addEventListener("click", exportExcel);
         }
 
-        function refreshResultsView() {
+        function getNextYearToLoad() {
+            return YEAR_LOAD_ORDER.find(
+                (y) => searchState.availableYears.includes(y) && !searchState.loadedYears.has(y)
+            );
+        }
+
+        function renderYearActions() {
+            const nextYear = getNextYearToLoad();
+            if (!nextYear) return "";
+            return `<div class="year-actions mb-3" id="yearActionsBlock">
+                <button type="button" class="btn btn-outline-primary" id="loadYearBtn">
+                    <i class="fa-solid fa-calendar-plus me-1" aria-hidden="true"></i>Анализировать ${nextYear} год
+                </button>
+                <span class="text-muted small">Добавит сделки и аренду за ${nextYear} год к текущей таблице</span>
+            </div>`;
+        }
+
+        function renderResultsNote() {
+            const loaded = [...searchState.loadedYears].sort((a, b) => b - a);
+            let html = `<p class="text-muted mb-2">Кадастровый квартал: <strong>${escapeHtml(searchState.quarterCadNumber)}</strong></p>`;
+            if (loaded.length) {
+                html += `<p class="small text-muted mb-2">Проанализированы годы: <strong>${loaded.join(", ")}</strong></p>`;
+            }
+            for (const msg of searchState.yearNotes) {
+                html += `<div class="alert alert-info py-2 small mb-2">${escapeHtml(msg)}</div>`;
+            }
+            if (searchState.meta?.truncated) {
+                html += `<div class="alert alert-warning py-2 small">Показаны первые ${searchState.meta.shown} из ${searchState.meta.totalInQuarter} записей за последний загруженный год.</div>`;
+            }
+            return html;
+        }
+
+        function renderResultsView() {
             const filtered = getFilteredDeals();
             const stats = buildClientStats(filtered);
-            const statsEl = document.getElementById("statsBlock");
-            const tableEl = document.getElementById("tableBlock");
-            if (statsEl) {
-                statsEl.outerHTML = renderStats(stats, filtered.length, searchState.allDeals.length);
-            }
-            if (tableEl) {
-                tableEl.outerHTML = renderDealsTable(filtered);
-            }
+            const results = document.getElementById("results");
+            results.innerHTML =
+                `<div id="resultsNote">${renderResultsNote()}</div>` +
+                renderYearActions() +
+                renderStats(stats, filtered.length, searchState.allDeals.length) +
+                renderDealsTable(filtered);
+            results.classList.remove("d-none");
             bindFilterHandlers();
+            bindLoadYearBtn();
+        }
+
+        function refreshResultsView() {
+            renderResultsView();
+        }
+
+        async function requestDealsSearch(quarter, year) {
+            const res = await fetchWithRetry(`${API_BASE}/api/deals/search`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ quarterCadNumber: quarter, limit: 10000, year })
+            });
+            const raw = await res.text();
+            let data;
+            try {
+                data = raw ? JSON.parse(raw) : {};
+            } catch {
+                throw new Error("Сервер вернул неверный ответ");
+            }
+            if (!res.ok && res.status !== 202) throw new Error(data.error || `HTTP ${res.status}`);
+            if ((data.async && data.jobId) || res.status === 202) {
+                data = await pollDealsJob(data.jobId, year ?? data.year);
+            }
+            return data;
+        }
+
+        function bindLoadYearBtn() {
+            const btn = document.getElementById("loadYearBtn");
+            if (!btn) return;
+            btn.addEventListener("click", () => loadNextYear());
+        }
+
+        async function loadNextYear() {
+            const year = getNextYearToLoad();
+            if (!year) return;
+            const btn = document.getElementById("loadYearBtn");
+            const alertBox = document.getElementById("alertBox");
+            alertBox.innerHTML = "";
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Загрузка ${year}…`;
+            }
+            showSearchLoading();
+            document.getElementById("searchLoadingText").textContent = `Сканируем данные за ${year} год…`;
+            try {
+                const data = await requestDealsSearch(searchState.quarterCadNumber, year);
+                searchState.loadedYears.add(year);
+                if (data.deals?.length) {
+                    searchState.allDeals = searchState.allDeals.concat(data.deals);
+                }
+                if (data.message && !data.found) {
+                    searchState.yearNotes.push(data.message);
+                }
+                if (data.meta) searchState.meta = data.meta;
+                renderResultsView();
+            } catch (err) {
+                const isNetwork =
+                    err.name === "TypeError" ||
+                    /load failed|failed to fetch|network/i.test(String(err.message));
+                const msg = isNetwork
+                    ? `Не удалось загрузить данные за ${year} год. Проверьте соединение и попробуйте снова.`
+                    : err.message;
+                alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(msg)}</div>`;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fa-solid fa-calendar-plus me-1" aria-hidden="true"></i>Анализировать ${year} год`;
+                }
+            } finally {
+                hideSearchLoading();
+            }
         }
 
         function dealsToRows(deals) {
@@ -672,24 +827,17 @@
             XLSX.writeFile(wb, `sdelki_${safeQuarter}.xlsx`);
         }
 
-        function showResults(data) {
+        function initSearchResults(data, firstYear) {
             searchState = {
                 quarterCadNumber: data.quarterCadNumber,
                 allDeals: data.deals || [],
+                availableYears: data.meta?.availableYears || [...YEAR_LOAD_ORDER],
+                loadedYears: new Set([firstYear]),
+                yearNotes: data.message && !data.found ? [data.message] : [],
                 meta: data.meta || {},
                 filters: {}
             };
-
-            const filtered = getFilteredDeals();
-            const stats = buildClientStats(filtered);
-            const results = document.getElementById("results");
-            let note = `<p class="text-muted mb-3">Кадастровый квартал: <strong>${escapeHtml(data.quarterCadNumber)}</strong></p>`;
-            if (data.meta?.truncated) {
-                note += `<div class="alert alert-warning py-2 small">Показаны первые ${data.meta.shown} из ${data.meta.totalInQuarter} записей. Для полной выгрузки увеличьте лимит на сервере.</div>`;
-            }
-            results.innerHTML = note + renderStats(stats, filtered.length, searchState.allDeals.length) + renderDealsTable(filtered);
-            results.classList.remove("d-none");
-            bindFilterHandlers();
+            renderResultsView();
         }
 
         document.getElementById("searchForm").addEventListener("submit", async (e) => {
@@ -705,22 +853,21 @@
             showSearchLoading();
 
             try {
-                const res = await fetch(`${API_BASE}/api/deals/search`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ quarterCadNumber: quarter, limit: 10000 })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-
-                if (!data.found) {
-                    alertBox.innerHTML = `<div class="alert alert-info">${escapeHtml(data.message || "Сделки не найдены")}</div>`;
-                    return;
-                }
-
-                showResults(data);
+                document.getElementById("searchLoadingText").textContent =
+                    `Сканируем данные за ${DEFAULT_FIRST_YEAR} год…`;
+                const data = await requestDealsSearch(quarter, DEFAULT_FIRST_YEAR);
+                initSearchResults(data, DEFAULT_FIRST_YEAR);
             } catch (err) {
-                alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message)}</div>`;
+                const isNetwork =
+                    err.name === "TypeError" ||
+                    /load failed|failed to fetch|network/i.test(String(err.message));
+                const onRender = /onrender\.com/i.test(API_BASE);
+                const msg = isNetwork
+                    ? onRender
+                        ? "Сервер просыпается или связь прервана. Подождите 10–20 с и нажмите «Найти» снова — поиск займёт около минуты."
+                        : `Не удалось связаться с сервером (${API_BASE}). Откройте http://localhost:8787/deals и убедитесь, что запущен npm start.`
+                    : err.message;
+                alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(msg)}</div>`;
             } finally {
                 hideSearchLoading();
                 btn.disabled = false;

@@ -7,6 +7,7 @@
     "dev": "node gigachat-proxy.mjs",
     "cadastral": "node scripts/cadastral-cli.mjs",
     "deals:index": "node scripts/build-deals-quarter-index.mjs",
+    "deals:import": "node scripts/import-deals-sqlite.mjs",
     "postinstall": "node node_modules/playwright-core/cli.js install chromium || true"
   },
   "dependencies": {

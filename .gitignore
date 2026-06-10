@@ -3,6 +3,12 @@ node_modules/
 .cache/
 .DS_Store
 
+# SQLite-кэш сделок (собирается при деплое: npm run deals:import)
+data/deals/deals.sqlite
+data/deals/deals.sqlite-wal
+data/deals/deals.sqlite-shm
+data/deals/.deals-import-manifest.json
+
 # Старые прототипы и резервные копии
 Резерв/
 Прототип*.html

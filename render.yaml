@@ -4,7 +4,8 @@ services:
     name: sber-pomoshnik
     runtime: node
     plan: free
-    buildCommand: echo "ok"
+    # Импорт SQLite ~6 GB; на free tier может не хватить RAM — тогда поиск идёт по CSV
+    buildCommand: node scripts/import-deals-sqlite.mjs || echo "deals sqlite import skipped"
     startCommand: npm start
     envVars:
       - key: GIGACHAT_SCOPE
@@ -12,7 +13,7 @@ services:
       - key: GIGACHAT_MODEL
         value: GigaChat
       - key: NODE_VERSION
-        value: "20"
+        value: "22"
       - key: GIGACHAT_CREDENTIALS
         sync: false
       - key: LANGFLOW_API_KEY

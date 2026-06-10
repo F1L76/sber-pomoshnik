@@ -17,6 +17,8 @@ import { searchByCadastralNumber, streamCadastralSearch } from "./lib/cadastral-
 import { getPanoramaCachePath } from "./lib/yandex-panorama-screenshot.mjs";
 import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
 import { searchDealsByQuarter, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
+import { isSqliteReady } from "./lib/deals-sqlite.mjs";
+import { createDealsJob, getDealsJob } from "./lib/deals-jobs.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
@@ -417,6 +419,19 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === "GET" && url.pathname.startsWith("/api/deals/search/status/")) {
+        const jobId = decodeURIComponent(url.pathname.slice("/api/deals/search/status/".length));
+        const job = getDealsJob(jobId);
+        if (!job) {
+            res.writeHead(404, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+            res.end(JSON.stringify({ error: "Задача не найдена или истекла" }));
+            return;
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify(job));
+        return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/deals/search") {
         try {
             const raw = await readBody(req);
@@ -428,10 +443,28 @@ const server = http.createServer(async (req, res) => {
                 res.end(JSON.stringify({ error: "quarterCadNumber обязателен" }));
                 return;
             }
-            const limit = body.limit != null ? Number(body.limit) : undefined;
-            const result = await searchDealsByQuarter(quarter, { limit: limit || 10000 });
-            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
-            res.end(JSON.stringify(result));
+            const limit = body.limit != null ? Number(body.limit) : 10000;
+            const year = body.year != null ? Number(body.year) : null;
+            const searchOpts = { limit, ...(year != null && !Number.isNaN(year) ? { year } : {}) };
+
+            // SQLite — мгновенно; без него на Render лимит ~30 с, поэтому всегда фоновая задача
+            if (isSqliteReady()) {
+                const result = await searchDealsByQuarter(quarter, searchOpts);
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+                res.end(JSON.stringify(result));
+                return;
+            }
+
+            const jobId = createDealsJob(quarter, searchOpts);
+            res.writeHead(202, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+            res.end(JSON.stringify({
+                async: true,
+                jobId,
+                year: year ?? null,
+                message: year
+                    ? `Поиск за ${year} год запущен. Обычно 30–90 секунд.`
+                    : "Поиск по датасетам запущен. Обычно 1–3 минуты."
+            }));
         } catch (e) {
             const msg = e.message || String(e);
             const status = /памят|memory|heap|timeout/i.test(msg) ? 503 : 400;
