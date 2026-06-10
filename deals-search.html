@@ -83,6 +83,17 @@
             gap: 0.75rem;
             align-items: center;
         }
+        .object-type-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem 1.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e8edf2;
+        }
+        .object-type-filters .form-check {
+            margin-bottom: 0;
+        }
         .search-input-group {
             display: flex;
             align-items: stretch;
@@ -185,10 +196,36 @@
                     <input type="text" class="form-control form-control-lg" id="quarterInput"
                            placeholder="77:05:0001005" required>
                     <button type="submit" class="btn btn-sber btn-lg btn-search" id="searchBtn">
-                        <i class="fa-solid fa-magnifying-glass me-2"></i>Найти сделки
+                        <i class="fa-solid fa-magnifying-glass me-2"></i>Найти
                     </button>
                 </div>
                 <div class="form-text mt-2">Формат: XX:XX:XXXXXXX. Можно вставить полный кадастровый номер — возьмём квартал автоматически.</div>
+                <fieldset class="object-type-filters">
+                    <legend class="form-label fw-semibold mb-2 fs-6">Что искать</legend>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="operationDeal" value="deal" checked>
+                        <label class="form-check-label" for="operationDeal">Продажа</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="operationRent" value="rent" checked>
+                        <label class="form-check-label" for="operationRent">Аренда</label>
+                    </div>
+                </fieldset>
+                <fieldset class="object-type-filters">
+                    <legend class="form-label fw-semibold mb-2 fs-6">Тип объекта</legend>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="objectTypeLand" value="002001001000" checked>
+                        <label class="form-check-label" for="objectTypeLand">ЗУ</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="objectTypeBuilding" value="002001002000" checked>
+                        <label class="form-check-label" for="objectTypeBuilding">Здание</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="objectTypePremises" value="002001003000" checked>
+                        <label class="form-check-label" for="objectTypePremises">Помещение</label>
+                    </div>
+                </fieldset>
             </form>
         </section>
 
@@ -199,11 +236,11 @@
                 src="/assets/loading-sbercat.gif"
                 width="88"
                 height="88"
-                alt="Сберкот ищет сделки"
+                alt="Сберкот ищет продажи"
                 onerror="this.onerror=null;this.src='https://gifs.obs.ru-moscow-1.hc.sbercloud.ru/f61fbd71aa1b7d2456a24782a6af8553657c341a6d7e02d28f23205097d4b44b.gif'"
             >
             <div class="search-loading-body">
-                <p class="search-loading-title">Ищем сделки по кварталу</p>
+                <p class="search-loading-title">Ищем продажи по кварталу</p>
                 <p class="search-loading-text mb-0" id="searchLoadingText">Сканируем датасеты Росреестра…</p>
                 <div class="loader-progress" aria-hidden="true">
                     <div class="loader-progress-bar"></div>
@@ -237,10 +274,11 @@
             { key: "city", title: "Город" },
             { key: "street", title: "Улица" },
             { key: "year_build", title: "Год постройки", align: "end" },
+            { key: "operationKind", title: "Операция" },
             { key: "realestateTypeLabel", title: "Тип объекта" },
             { key: "purposeLabel", title: "Вид объекта", format: "purpose" },
             { key: "area", title: "Площадь", align: "end", format: "number" },
-            { key: "deal_price", title: "Цена сделки", align: "end", format: "money" },
+            { key: "deal_price", title: "Сумма", align: "end", format: "money" },
             { key: "pricePerSqm", title: "₽/м²", align: "end", format: "money" },
             { key: "doc_type", title: "Тип документа" }
         ];
@@ -256,14 +294,30 @@
             availableYears: [...YEAR_LOAD_ORDER],
             loadedYears: new Set(),
             yearNotes: [],
+            objectTypes: [],
+            operationKinds: ["deal", "rent"],
             meta: {},
             filters: {}
         };
 
+        function getSelectedObjectTypes() {
+            return ["objectTypeLand", "objectTypeBuilding", "objectTypePremises"]
+                .map((id) => document.getElementById(id))
+                .filter((el) => el?.checked)
+                .map((el) => el.value);
+        }
+
+        function getSelectedOperationKinds() {
+            const kinds = [];
+            if (document.getElementById("operationDeal")?.checked) kinds.push("deal");
+            if (document.getElementById("operationRent")?.checked) kinds.push("rent");
+            return kinds;
+        }
+
         const LOADING_MESSAGES = [
             "Сканируем датасеты Росреестра…",
             "Отбираем записи по кадастровому кварталу…",
-            "Проверяем сделки и договоры аренды…",
+            "Проверяем продажи и договоры аренды…",
             "Группируем данные по периодам…",
             "Формируем сводку…"
         ];
@@ -479,6 +533,7 @@
                 if (f.period && periodDisplay(d) !== f.period) return false;
                 if (f.city && d.city !== f.city) return false;
                 if (f.docType && d.doc_type !== f.docType) return false;
+                if (f.operationKind && d.operationKind !== f.operationKind) return false;
                 if (f.objectType && d.realestateTypeLabel !== f.objectType) return false;
                 if (f.purposeLabel && objectKindLabel(d) !== f.purposeLabel) return false;
                 if (f.street) {
@@ -624,6 +679,7 @@
                             ${yearBuildInputFilter("yearBuildMax", "до", f.yearBuildMax)}
                         </div>
                     </th>
+                    <th>${selectFilter("operationKind", uniqueValues(all, "operationKind"), f.operationKind, "Все")}</th>
                     <th>${selectFilter("objectType", uniqueValues(all, "realestateTypeLabel"), f.objectType, "Все")}</th>
                     <th>${selectFilter("purposeLabel", uniquePurposeLabels(all), f.purposeLabel, "Все")}</th>
                     <th>
@@ -662,7 +718,7 @@
 
             return `<section class="card-panel p-4" id="tableBlock">
                 <div class="export-bar mb-3">
-                    <h2 class="h5 mb-0">Сделки и аренда <span class="text-muted fs-6 fw-normal">(${deals.length})</span></h2>
+                    <h2 class="h5 mb-0">Продажа и аренда <span class="text-muted fs-6 fw-normal">(${deals.length})</span></h2>
                     <div class="d-flex flex-wrap gap-2">
                         <button type="button" class="btn btn-sm btn-outline-success" id="exportExcelBtn">
                             <i class="fa-solid fa-file-excel me-1"></i>Excel
@@ -722,7 +778,7 @@
                 <button type="button" class="btn btn-outline-primary" id="loadYearBtn">
                     <i class="fa-solid fa-calendar-plus me-1" aria-hidden="true"></i>Анализировать ${nextYear} год
                 </button>
-                <span class="text-muted small">Добавит сделки и аренду за ${nextYear} год к текущей таблице</span>
+                <span class="text-muted small">Добавит продажи и аренду за ${nextYear} год к текущей таблице</span>
             </div>`;
         }
 
@@ -731,6 +787,13 @@
             let html = `<p class="text-muted mb-2">Кадастровый квартал: <strong>${escapeHtml(searchState.quarterCadNumber)}</strong></p>`;
             if (loaded.length) {
                 html += `<p class="small text-muted mb-2">Проанализированы годы: <strong>${loaded.join(", ")}</strong></p>`;
+            }
+            const rentN = searchState.allDeals.filter((d) => d.operationKind === "Аренда").length;
+            const dealN = searchState.allDeals.length - rentN;
+            if (searchState.allDeals.length) {
+                html += `<p class="small text-muted mb-2">В таблице: <strong>${dealN}</strong> продаж, <strong>${rentN}</strong> договоров аренды</p>`;
+            } else if (searchState.loadedYears?.size) {
+                html += `<p class="small text-muted mb-2">Продаж и аренды по выбранным фильтрам не найдено</p>`;
             }
             for (const msg of searchState.yearNotes) {
                 html += `<div class="alert alert-info py-2 small mb-2">${escapeHtml(msg)}</div>`;
@@ -759,11 +822,19 @@
             renderResultsView();
         }
 
-        async function requestDealsSearch(quarter, year) {
+        async function requestDealsSearch(quarter, year, objectTypes, operationKinds) {
+            const types = objectTypes ?? searchState.objectTypes ?? getSelectedObjectTypes();
+            const ops = operationKinds ?? searchState.operationKinds ?? getSelectedOperationKinds();
             const res = await fetchWithRetry(`${API_BASE}/api/deals/search`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ quarterCadNumber: quarter, limit: 10000, year })
+                body: JSON.stringify({
+                    quarterCadNumber: quarter,
+                    limit: 10000,
+                    year,
+                    objectTypes: types,
+                    operationKinds: ops
+                })
             });
             const raw = await res.text();
             let data;
@@ -848,18 +919,20 @@
             const rows = dealsToRows(deals);
             const ws = XLSX.utils.json_to_sheet(rows);
             const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Сделки");
+            XLSX.utils.book_append_sheet(wb, ws, "Продажа");
             const safeQuarter = searchState.quarterCadNumber.replace(/:/g, "-");
             XLSX.writeFile(wb, `sdelki_${safeQuarter}.xlsx`);
         }
 
-        function initSearchResults(data, firstYear) {
+        function initSearchResults(data, firstYear, objectTypes, operationKinds) {
             searchState = {
                 quarterCadNumber: data.quarterCadNumber,
                 allDeals: data.deals || [],
                 availableYears: data.meta?.availableYears || [...YEAR_LOAD_ORDER],
                 loadedYears: new Set([firstYear]),
                 yearNotes: data.message && !data.found ? [data.message] : [],
+                objectTypes: objectTypes || [],
+                operationKinds: operationKinds || ["deal", "rent"],
                 meta: data.meta || {},
                 filters: {}
             };
@@ -875,14 +948,26 @@
 
             alertBox.innerHTML = "";
             results.classList.add("d-none");
+            const objectTypes = getSelectedObjectTypes();
+            const operationKinds = getSelectedOperationKinds();
+            if (!operationKinds.length) {
+                alertBox.innerHTML =
+                    '<div class="alert alert-warning">Отметьте хотя бы один вид: Продажа или Аренда.</div>';
+                return;
+            }
+            if (!objectTypes.length) {
+                alertBox.innerHTML =
+                    '<div class="alert alert-warning">Отметьте хотя бы один тип объекта: ЗУ, Здание или Помещение.</div>';
+                return;
+            }
             btn.disabled = true;
             showSearchLoading();
 
             try {
                 document.getElementById("searchLoadingText").textContent =
                     `Сканируем данные за ${DEFAULT_FIRST_YEAR} год…`;
-                const data = await requestDealsSearch(quarter, DEFAULT_FIRST_YEAR);
-                initSearchResults(data, DEFAULT_FIRST_YEAR);
+                const data = await requestDealsSearch(quarter, DEFAULT_FIRST_YEAR, objectTypes, operationKinds);
+                initSearchResults(data, DEFAULT_FIRST_YEAR, objectTypes, operationKinds);
             } catch (err) {
                 const isNetwork =
                     err.name === "TypeError" ||

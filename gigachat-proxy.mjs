@@ -445,7 +445,20 @@ const server = http.createServer(async (req, res) => {
             }
             const limit = body.limit != null ? Number(body.limit) : 10000;
             const year = body.year != null ? Number(body.year) : null;
-            const searchOpts = { limit, ...(year != null && !Number.isNaN(year) ? { year } : {}) };
+            const objectTypes = Array.isArray(body.objectTypes)
+                ? body.objectTypes
+                : body.objectType != null
+                  ? [body.objectType]
+                  : undefined;
+            const operationKinds = Array.isArray(body.operationKinds)
+                ? body.operationKinds
+                : undefined;
+            const searchOpts = {
+                limit,
+                ...(year != null && !Number.isNaN(year) ? { year } : {}),
+                ...(objectTypes?.length ? { objectTypes } : {}),
+                ...(operationKinds?.length ? { operationKinds } : {})
+            };
 
             // SQLite — мгновенно; без него на Render лимит ~30 с, поэтому всегда фоновая задача
             if (isSqliteReady()) {

@@ -119,11 +119,35 @@
         }
         .panorama-photo {
             width: 100%;
-            max-width: 650px;
             height: auto;
             border-radius: 14px;
             border: 1px solid var(--sber-border);
             display: block;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+        }
+        .panorama-duo {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+        @media (max-width: 768px) {
+            .panorama-duo { grid-template-columns: 1fr; }
+        }
+        .panorama-card {
+            border: 1px solid var(--sber-border);
+            border-radius: 14px;
+            padding: 0.75rem;
+            background: #fafcfb;
+        }
+        .panorama-card-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
         }
         .boundary-map {
             max-width: 360px;
@@ -157,7 +181,7 @@
                 <div>
                     <p class="small mb-1 opacity-75">СберБизнес Помощник · сопровождение 2.0</p>
                     <h1 class="h3 mb-1"><i class="fa-solid fa-map-location-dot me-2 text-success"></i>Поиск информации по кадастровому номеру</h1>
-                    <p class="mb-0 opacity-75">Росреестр (НСПД), kadbase.ru, фото 2ГИС и объявления Авито, Циан, Домклик</p>
+                    <p class="mb-0 opacity-75">Росреестр (НСПД), kadbase.ru, фото 2ГИС и Яндекс Карт, объявления Авито, Циан, Домклик</p>
                 </div>
                 <a href="/" class="btn btn-outline-light btn-sm">← СберБизнес Помощник</a>
             </div>
@@ -210,7 +234,7 @@
         const alertBox = document.getElementById("alertBox");
 
         const SOURCE_LABELS = { cian: "Циан", avito: "Авито", domclick: "Домклик" };
-        const SOURCE_PROGRESS = { rosreestr: "Росреестр", kadbase: "kadbase.ru", panorama: "Фото 2ГИС", avito: "Авито", domclick: "Домклик", cian: "Циан" };
+        const SOURCE_PROGRESS = { rosreestr: "Росреестр", kadbase: "kadbase.ru", panorama: "2ГИС и Яндекс", avito: "Авито", domclick: "Домклик", cian: "Циан" };
         let progressState = {};
         let kadbaseRendered = false;
 
@@ -282,6 +306,35 @@
                 </div>`;
         }
 
+        function renderPanoramaPhotoCard(photo) {
+            const is2gis = String(photo.imageSource || "").startsWith("2gis");
+            const badgeClass = is2gis ? "source-2gis" : "source-yandex";
+            const imageSrc = photo.imageUrl
+                ? `${escapeHtml(photo.imageUrl.startsWith("/") ? API_BASE + photo.imageUrl : photo.imageUrl)}?t=${Date.now()}`
+                : null;
+            const openBtn = photo.pageUrl
+                ? `<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(photo.pageUrl)}" target="_blank" rel="noopener">Открыть</a>`
+                : "";
+            const body = imageSrc
+                ? `<a href="${escapeHtml(photo.pageUrl || imageSrc)}" target="_blank" rel="noopener">
+                    <img class="panorama-photo" src="${imageSrc}" alt="${escapeHtml(photo.caption || photo.sourceLabel)}">
+                   </a>`
+                : `<p class="text-muted small mb-0">${escapeHtml(photo.error || "Фото не получено")}</p>`;
+            const meta = [
+                photo.screenshotCached ? "из кэша" : null,
+                photo.status === "error" ? null : photo.caption
+            ].filter(Boolean).join(" · ");
+
+            return `<div class="panorama-card">
+                <div class="panorama-card-title">
+                    <span class="source-badge ${badgeClass}">${escapeHtml(photo.sourceLabel || (is2gis ? "2ГИС" : "Яндекс Карты"))}</span>
+                    ${openBtn}
+                </div>
+                ${body}
+                ${meta ? `<p class="text-muted small mt-2 mb-0">${escapeHtml(meta)}</p>` : ""}
+            </div>`;
+        }
+
         function renderPanorama(panorama) {
             if (!panorama) {
                 return `<div class="panorama-block">
@@ -290,52 +343,32 @@
                 </div>`;
             }
 
-            const is2gis = panorama.imageSource?.startsWith("2gis");
-            const sourceBadge = panorama.imageSource
-                ? `<span class="source-badge source-${is2gis ? "2gis" : "yandex"} me-2">${escapeHtml(panorama.sourceLabel || (is2gis ? "2ГИС" : "Яндекс"))}</span>`
-                : "";
-
-            const imageSrc = panorama.imageUrl
-                ? `${escapeHtml(panorama.imageUrl.startsWith("/") ? API_BASE + panorama.imageUrl : panorama.imageUrl)}?t=${Date.now()}`
-                : null;
-            const openUrl = panorama.dgisUrl || panorama.mapsUrl || panorama.imageUrl;
-            const photoHtml = imageSrc
-                ? `<a href="${escapeHtml(openUrl || "#")}" target="_blank" rel="noopener">
-                    <img class="panorama-photo mb-2" src="${imageSrc}" alt="Фото объекта">
-                   </a>`
-                : `<p class="text-muted small mb-2">${escapeHtml(panorama.error || "Фото не получено")}</p>`;
-
             const coords = panorama.lat != null && panorama.lon != null
                 ? ` (${Number(panorama.lat).toFixed(5)}, ${Number(panorama.lon).toFixed(5)})`
                 : "";
 
-            const caption = is2gis
-                ? (panorama.imageSource === "2gis-photo"
-                    ? "Фото здания из 2ГИС"
-                    : "Карта 2ГИС — объект на местности")
-                : "Панорама Яндекс Карт (запасной вариант)";
+            const photos = Array.isArray(panorama.photos) && panorama.photos.length
+                ? panorama.photos
+                : panorama.imageUrl
+                  ? [{
+                        imageUrl: panorama.imageUrl,
+                        imageSource: panorama.imageSource,
+                        sourceLabel: panorama.sourceLabel,
+                        pageUrl: panorama.dgisUrl || panorama.mapsUrl,
+                        caption: panorama.sourceLabel,
+                        screenshotCached: panorama.screenshotCached,
+                        status: "ok"
+                    }]
+                  : [];
 
-            const links = [];
-            if (panorama.dgisUrl) {
-                links.push(`<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(panorama.dgisUrl)}" target="_blank" rel="noopener">Открыть в 2ГИС</a>`);
-            }
-            if (panorama.mapsUrl && !is2gis) {
-                links.push(`<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(panorama.mapsUrl)}" target="_blank" rel="noopener">Яндекс Карты</a>`);
-            }
+            const cards = photos.length
+                ? `<div class="panorama-duo">${photos.map(renderPanoramaPhotoCard).join("")}</div>`
+                : `<p class="text-muted small mb-0">${escapeHtml(panorama.error || "Фото не получено")}</p>`;
 
             return `<div class="panorama-block">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                    <div class="info-label mb-0"><i class="fa-solid fa-camera me-1"></i>Фото объекта ${sourceBadge}</div>
-                    <div class="d-flex flex-wrap gap-2">${links.join("")}</div>
-                </div>
-                ${photoHtml}
-                <p class="text-muted small mb-2">${escapeHtml(caption)}${coords}${panorama.screenshotCached ? " · из кэша" : ""}${panorama.fallbackNote ? ` · ${escapeHtml(panorama.fallbackNote)}` : ""}</p>
-                ${panorama.staticMapUrl && !is2gis ? `<div class="panorama-fallback">
-                    <div class="info-label mb-1">Карта</div>
-                    <a href="${escapeHtml(panorama.mapsUrl || "#")}" target="_blank" rel="noopener">
-                        <img src="${escapeHtml(panorama.staticMapUrl)}" alt="Местоположение на карте" loading="lazy">
-                    </a>
-                </div>` : ""}
+                <div class="info-label mb-2"><i class="fa-solid fa-camera me-1"></i>Фото объекта</div>
+                ${cards}
+                ${coords ? `<p class="text-muted small mt-2 mb-0">Координаты${coords}</p>` : ""}
             </div>`;
         }
 
@@ -534,8 +567,8 @@
         function showPanoramaLoading() {
             const block = document.getElementById("panoramaBlock");
             block.classList.remove("d-none");
-            block.innerHTML = `<div class="info-label mb-2"><i class="fa-solid fa-camera me-1"></i>Фото объекта (2ГИС)</div>
-                <div class="d-flex align-items-center gap-2 text-muted"><div class="spinner-border spinner-border-sm text-success"></div>Получаем фото из 2ГИС…</div>`;
+            block.innerHTML = `<div class="info-label mb-2"><i class="fa-solid fa-camera me-1"></i>Фото объекта</div>
+                <div class="d-flex align-items-center gap-2 text-muted"><div class="spinner-border spinner-border-sm text-success"></div>Получаем фото 2ГИС и панораму Яндекс Карт…</div>`;
         }
 
         async function consumeSearchStream(response) {
