@@ -454,6 +454,25 @@
             );
         }
 
+        const YEAR_BUILD_FILTERS = new Set(["yearBuildMin", "yearBuildMax"]);
+
+        function isYearBuildFilterReady(value) {
+            const s = String(value ?? "").trim();
+            return s === "" || /^\d{4}$/.test(s);
+        }
+
+        function yearBuildFilterShouldRefresh(prev, next) {
+            const o = String(prev ?? "").trim();
+            const n = String(next ?? "").trim();
+            if (n === "" || /^\d{4}$/.test(n)) return true;
+            if (/^\d{4}$/.test(o) && !/^\d{4}$/.test(n)) return true;
+            return false;
+        }
+
+        function yearBuildInputFilter(id, placeholder, current) {
+            return `<input type="text" inputmode="numeric" maxlength="4" class="form-control form-control-sm" data-filter="${id}" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(current || "")}" aria-label="Фильтр года постройки">`;
+        }
+
         function getFilteredDeals() {
             const f = searchState.filters;
             return searchState.allDeals.filter((d) => {
@@ -466,11 +485,11 @@
                     const street = String(d.street || "").toLowerCase();
                     if (!street.includes(f.street.toLowerCase())) return false;
                 }
-                if (f.yearBuildMin !== "" && f.yearBuildMin != null) {
+                if (isYearBuildFilterReady(f.yearBuildMin) && String(f.yearBuildMin).trim() !== "") {
                     const year = d.year_build != null ? Number(d.year_build) : NaN;
                     if (!Number.isFinite(year) || year < Number(f.yearBuildMin)) return false;
                 }
-                if (f.yearBuildMax !== "" && f.yearBuildMax != null) {
+                if (isYearBuildFilterReady(f.yearBuildMax) && String(f.yearBuildMax).trim() !== "") {
                     const year = d.year_build != null ? Number(d.year_build) : NaN;
                     if (!Number.isFinite(year) || year > Number(f.yearBuildMax)) return false;
                 }
@@ -601,8 +620,8 @@
                     <th>${inputFilter("street", "Улица…", f.street)}</th>
                     <th>
                         <div class="d-flex flex-column gap-1">
-                            ${inputFilter("yearBuildMin", "от", f.yearBuildMin, "number")}
-                            ${inputFilter("yearBuildMax", "до", f.yearBuildMax, "number")}
+                            ${yearBuildInputFilter("yearBuildMin", "от", f.yearBuildMin)}
+                            ${yearBuildInputFilter("yearBuildMax", "до", f.yearBuildMax)}
                         </div>
                     </th>
                     <th>${selectFilter("objectType", uniqueValues(all, "realestateTypeLabel"), f.objectType, "Все")}</th>
@@ -664,14 +683,21 @@
 
         function bindFilterHandlers() {
             document.querySelectorAll("[data-filter]").forEach((el) => {
-                el.addEventListener("input", () => {
-                    searchState.filters[el.dataset.filter] = el.value;
-                    refreshResultsView();
-                });
-                el.addEventListener("change", () => {
-                    searchState.filters[el.dataset.filter] = el.value;
-                    refreshResultsView();
-                });
+                const applyFilter = (refresh) => {
+                    const id = el.dataset.filter;
+                    const prev = searchState.filters[id];
+                    const next = el.value.replace(/\D/g, "").slice(0, 4);
+                    if (next !== el.value) el.value = next;
+                    searchState.filters[id] = next;
+                    if (!refresh) return;
+                    if (YEAR_BUILD_FILTERS.has(id)) {
+                        if (yearBuildFilterShouldRefresh(prev, next)) refreshResultsView();
+                    } else {
+                        refreshResultsView();
+                    }
+                };
+                el.addEventListener("input", () => applyFilter(true));
+                el.addEventListener("change", () => applyFilter(true));
             });
             const resetBtn = document.getElementById("resetFiltersBtn");
             if (resetBtn) {
