@@ -13,6 +13,10 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
+import { searchByCadastralNumber, streamCadastralSearch } from "./lib/cadastral-search.mjs";
+import { getPanoramaCachePath } from "./lib/yandex-panorama-screenshot.mjs";
+import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
+import { searchDealsByQuarter, getDealsDatasetInfo } from "./lib/deals-lookup.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
@@ -219,7 +223,13 @@ const MIME = {
     ".css": "text/css; charset=utf-8",
     ".json": "application/json",
     ".ico": "image/x-icon",
-    ".pdf": "application/pdf"
+    ".pdf": "application/pdf",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml"
 };
 
 function serveStatic(req, res, filePath) {
@@ -308,6 +318,122 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ content: result.content, session_id: result.session_id }));
         } catch (e) {
             res.writeHead(502, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ error: e.message || String(e) }));
+        }
+        return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/cadastral/search/stream") {
+        (async () => {
+            try {
+                const raw = await readBody(req);
+                const body = JSON.parse(raw || "{}");
+                const cadastralNumber = body.cadastralNumber || body.cadastral_number || body.kn;
+                if (!cadastralNumber) {
+                    res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                    res.end(JSON.stringify({ error: "cadastralNumber обязателен" }));
+                    return;
+                }
+                res.writeHead(200, {
+                    "Content-Type": "application/x-ndjson; charset=utf-8",
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "Access-Control-Allow-Origin": "*"
+                });
+                for await (const chunk of streamCadastralSearch(cadastralNumber)) {
+                    res.write(JSON.stringify(chunk) + "\n");
+                }
+                res.end();
+            } catch (e) {
+                if (!res.headersSent) {
+                    res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                }
+                res.end(JSON.stringify({ event: "error", error: e.message || String(e) }) + "\n");
+            }
+        })();
+        return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/cadastral/search") {
+        try {
+            const raw = await readBody(req);
+            const body = JSON.parse(raw || "{}");
+            const cadastralNumber = body.cadastralNumber || body.cadastral_number || body.kn;
+            if (!cadastralNumber) {
+                res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ error: "cadastralNumber обязателен" }));
+                return;
+            }
+            const result = await searchByCadastralNumber(cadastralNumber);
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(result));
+        } catch (e) {
+            res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ error: e.message || String(e) }));
+        }
+        return;
+    }
+
+    if (
+        (req.method === "GET" || req.method === "HEAD") &&
+        (url.pathname.startsWith("/api/cadastral/panorama/") ||
+            url.pathname.startsWith("/api/cadastral/photo/"))
+    ) {
+        const filename = url.pathname.includes("/photo/")
+            ? url.pathname.slice("/api/cadastral/photo/".length)
+            : url.pathname.slice("/api/cadastral/panorama/".length);
+        const file = getPlacePhotoCachePath(filename) || getPanoramaCachePath(filename);
+        if (!file) {
+            res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+            res.end("Not found");
+            return;
+        }
+        const contentType = /\.jpe?g$/i.test(filename) ? "image/jpeg" : "image/png";
+        res.writeHead(200, {
+            "Content-Type": contentType,
+            "Cache-Control": "public, max-age=86400"
+        });
+        if (req.method === "HEAD") {
+            res.end();
+            return;
+        }
+        fs.createReadStream(file).pipe(res);
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/cadastral") {
+        serveStatic(req, res, path.join(__dirname, "cadastral-search.html"));
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/deals") {
+        serveStatic(req, res, path.join(__dirname, "deals-search.html"));
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/deals/info") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify(getDealsDatasetInfo()));
+        return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/deals/search") {
+        try {
+            const raw = await readBody(req);
+            const body = JSON.parse(raw || "{}");
+            const quarter =
+                body.quarterCadNumber || body.quarter_cad_number || body.quarter || body.cadastralNumber || body.kn;
+            if (!quarter) {
+                res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ error: "quarterCadNumber обязателен" }));
+                return;
+            }
+            const limit = body.limit != null ? Number(body.limit) : undefined;
+            const result = await searchDealsByQuarter(quarter, { limit: limit || 10000 });
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+            res.end(JSON.stringify(result));
+        } catch (e) {
+            res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
             res.end(JSON.stringify({ error: e.message || String(e) }));
         }
         return;

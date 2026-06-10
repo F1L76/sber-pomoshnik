@@ -1,5 +1,6 @@
 .env
 node_modules/
+.cache/
 .DS_Store
 
 # Старые прототипы и резервные копии

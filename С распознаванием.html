@@ -470,12 +470,12 @@
             <div class="col-lg-6">
                 <div class="info-card h-100">
                     <div class="info-card-header p-0 border-0 bg-transparent">
-                        <button type="button" class="info-card-header info-card-header-toggle d-flex align-items-center justify-content-between gap-2 rounded-0" data-bs-toggle="collapse" data-bs-target="#collapseActiveApps" aria-expanded="true" aria-controls="collapseActiveApps" id="toggleActiveApps" title="Скрыть или показать список заявок">
+                        <button type="button" class="info-card-header info-card-header-toggle collapsed d-flex align-items-center justify-content-between gap-2 rounded-0" data-bs-toggle="collapse" data-bs-target="#collapseActiveApps" aria-expanded="false" aria-controls="collapseActiveApps" id="toggleActiveApps" title="Скрыть или показать список заявок">
                             <span><i class="fas fa-tasks me-2 text-success" aria-hidden="true"></i>Активные заявки</span>
                             <i class="fas fa-chevron-down collapse-chevron" aria-hidden="true"></i>
                         </button>
                     </div>
-                    <div id="collapseActiveApps" class="collapse show">
+                    <div id="collapseActiveApps" class="collapse">
                         <div class="card-body" id="activeApplicationsList">—</div>
                     </div>
                 </div>
@@ -483,12 +483,12 @@
             <div class="col-lg-6">
                 <div class="info-card h-100">
                     <div class="info-card-header p-0 border-0 bg-transparent">
-                        <button type="button" class="info-card-header info-card-header-toggle d-flex align-items-center justify-content-between gap-2 rounded-0" data-bs-toggle="collapse" data-bs-target="#collapseConclusions" aria-expanded="true" aria-controls="collapseConclusions" id="toggleConclusions" title="Скрыть или показать заключения и импорт">
+                        <button type="button" class="info-card-header info-card-header-toggle collapsed d-flex align-items-center justify-content-between gap-2 rounded-0" data-bs-toggle="collapse" data-bs-target="#collapseConclusions" aria-expanded="false" aria-controls="collapseConclusions" id="toggleConclusions" title="Скрыть или показать заключения и импорт">
                             <span><i class="fas fa-file-signature me-2 text-success" aria-hidden="true"></i>Заключения клиента</span>
                             <i class="fas fa-chevron-down collapse-chevron" aria-hidden="true"></i>
                         </button>
                     </div>
-                    <div id="collapseConclusions" class="collapse show">
+                    <div id="collapseConclusions" class="collapse">
                         <div class="card-body">
                             <div id="conclusionsList">—</div>
                             <div class="upload-area mt-4">
@@ -1523,6 +1523,12 @@ ${excerpt.slice(0, 22000)}`;
         clientBadge.classList.add("bg-white", "shadow-sm");
         infoPanel.style.display = "block";
         modulesPanel.style.display = "block";
+        ["collapseActiveApps", "collapseConclusions"].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el && window.bootstrap?.Collapse) {
+                bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).hide();
+            }
+        });
         updateInfoPanel();
         renderModules();
 
@@ -1537,6 +1543,8 @@ ${excerpt.slice(0, 22000)}`;
         { id: "inspection", name: "Вопросы по осмотру", icon: "fas fa-camera", modal: "#inspectionModal", desc: "Файл верификации, перепланировки" },
         { id: "cost", name: "Не согласен со стоимостью", icon: "fas fa-hand-holding-usd", modal: "#costModal", desc: "Арбитраж стоимости, верификация рынком" },
         { id: "where", name: "Где заявка?", icon: "fas fa-search-location", modal: "#whereModal", desc: "Статусы: осмотр, обременения, оценка" },
+        { id: "cadastral", name: "Поиск информации по кадастровому номеру", icon: "fas fa-map-location-dot", href: "/cadastral", desc: "Росреестр (НСПД), kadbase.ru, фото 2ГИС и объявления Авито, Циан, Домклик" },
+        { id: "deals", name: "Данные о сделках с недвижимостью", icon: "fas fa-handshake", href: "/deals", desc: "Сделки по кадастровому кварталу" },
         { id: "express", name: "Экспресс оценка", icon: "fas fa-bolt", modal: "#expressModal", desc: "Оценка по минимальным параметрам (демо)" },
         { id: "memorandum", name: "Служебная записка", icon: "fas fa-pen-alt", modal: "#memorandumModal", desc: "AI-подготовка СЗ по документу-основанию" },
         { id: "techChanges", name: "Технические изменения / Снятие рисков", icon: "fas fa-sync-alt", modal: "#techChangesModal", desc: "Автоснятие риска, изменение КК" },
@@ -2223,6 +2231,18 @@ ${excerpt.slice(0, 22000)}`;
     }
 
     function openModuleModal(moduleId) {
+        const mod = modules.find(m => m.id === moduleId);
+        if (!mod) return;
+
+        if (mod.href) {
+            const target =
+                location.protocol === "file:"
+                    ? `http://localhost:8787${mod.href}`
+                    : mod.href;
+            window.location.href = target;
+            return;
+        }
+
         if (!currentClientData) {
             alert("Сначала загрузите данные клиента по ИНН");
             return;
@@ -2239,8 +2259,6 @@ ${excerpt.slice(0, 22000)}`;
             case "pmz": fillPmzModal(); break;
             default: return;
         }
-        const mod = modules.find(m => m.id === moduleId);
-        if (!mod) return;
         const modalEl = document.querySelector(mod.modal);
         if (!modalEl) return;
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);

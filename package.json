@@ -4,6 +4,11 @@
   "type": "module",
   "scripts": {
     "start": "node gigachat-proxy.mjs",
-    "dev": "node gigachat-proxy.mjs"
+    "dev": "node gigachat-proxy.mjs",
+    "cadastral": "node scripts/cadastral-cli.mjs",
+    "postinstall": "node node_modules/playwright-core/cli.js install chromium || true"
+  },
+  "dependencies": {
+    "playwright-core": "^1.52.0"
   }
 }

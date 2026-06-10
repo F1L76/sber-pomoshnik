@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Данные о сделках с недвижимостью — СберБизнес Помощник</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.cdnfonts.com/css/sb-sans-interface" rel="stylesheet">
+    <script src="/vendor/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --sber-green: #21A038;
+            --sber-bg: #F0F4F8;
+            --sber-card: #FFFFFF;
+            --sber-text: #1E2A3A;
+            --sber-muted: #617188;
+            --sber-border: #E2EAF2;
+            --radius: 20px;
+        }
+        body {
+            font-family: 'SB Sans Interface', system-ui, sans-serif;
+            background: var(--sber-bg);
+            color: var(--sber-text);
+            min-height: 100vh;
+        }
+        .hero {
+            background: linear-gradient(135deg, #1E2A3A 0%, #243447 100%);
+            color: #fff;
+            border-bottom: 3px solid var(--sber-green);
+            padding: 2rem 0 2.5rem;
+        }
+        .card-panel {
+            background: var(--sber-card);
+            border: 1px solid var(--sber-border);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 24px rgba(30, 42, 58, 0.06);
+        }
+        .btn-sber {
+            background: var(--sber-green);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+        }
+        .btn-sber:hover { background: #1B8A32; color: #fff; }
+        .info-label {
+            font-size: 0.8rem;
+            color: var(--sber-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .stat-value {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--sber-green);
+        }
+        .deals-table { font-size: 0.9rem; }
+        .deals-table th { white-space: nowrap; }
+        .filter-row th {
+            background: #f8fafc;
+            font-weight: normal;
+            padding: 0.35rem 0.25rem;
+            vertical-align: middle;
+        }
+        .filter-row .form-select,
+        .filter-row .form-control {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.35rem;
+            min-width: 4.5rem;
+        }
+        .export-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .search-input-group {
+            display: flex;
+            align-items: stretch;
+            gap: 0.75rem;
+        }
+        .search-input-group .form-control {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+        .search-input-group .btn-search {
+            white-space: nowrap;
+            align-self: stretch;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            padding-left: 1.25rem;
+            padding-right: 1.25rem;
+        }
+        @media (max-width: 576px) {
+            .search-input-group {
+                flex-direction: column;
+            }
+            .search-input-group .btn-search {
+                width: 100%;
+            }
+        }
+        .search-loading {
+            display: none;
+            align-items: center;
+            gap: 1.25rem;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #fff 0%, #f5faf7 100%);
+            border: 1px solid var(--sber-border);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 24px rgba(30, 42, 58, 0.06);
+        }
+        .search-loading.active { display: flex; }
+        .loader-gif {
+            width: 88px;
+            height: 88px;
+            flex-shrink: 0;
+            border-radius: 14px;
+            object-fit: contain;
+            background: #fff;
+        }
+        .search-loading-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .search-loading-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--sber-text);
+            margin: 0 0 0.25rem;
+        }
+        .search-loading-text {
+            color: var(--sber-muted);
+            font-size: 0.9rem;
+            margin: 0 0 0.65rem;
+        }
+        .loader-progress {
+            height: 4px;
+            background: var(--sber-border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .loader-progress-bar {
+            height: 100%;
+            width: 35%;
+            background: linear-gradient(90deg, var(--sber-green), #3dd15a);
+            border-radius: 4px;
+            animation: loader-slide 1.4s ease-in-out infinite;
+        }
+        @keyframes loader-slide {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(320%); }
+        }
+    </style>
+</head>
+<body>
+    <header class="hero">
+        <div class="container">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <p class="small mb-1 opacity-75">СберБизнес Помощник · сопровождение 2.0</p>
+                    <h1 class="h3 mb-0"><i class="fa-solid fa-handshake me-2 text-success"></i>Данные о сделках с недвижимостью</h1>
+                </div>
+                <a href="/" class="btn btn-outline-light btn-sm">← СберБизнес Помощник</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container py-4">
+        <section class="card-panel p-4 mb-4">
+            <form id="searchForm">
+                <label for="quarterInput" class="form-label fw-semibold">Кадастровый квартал</label>
+                <div class="search-input-group">
+                    <input type="text" class="form-control form-control-lg" id="quarterInput"
+                           placeholder="77:05:0001005" required>
+                    <button type="submit" class="btn btn-sber btn-lg btn-search" id="searchBtn">
+                        <i class="fa-solid fa-magnifying-glass me-2"></i>Найти сделки
+                    </button>
+                </div>
+                <div class="form-text mt-2">Формат: XX:XX:XXXXXXX. Можно вставить полный кадастровый номер — возьмём квартал автоматически.</div>
+            </form>
+        </section>
+
+        <div id="searchLoading" class="search-loading" aria-live="polite" aria-busy="false">
+            <img
+                class="loader-gif"
+                id="searchLoaderGif"
+                src="/assets/loading-sbercat.gif"
+                width="88"
+                height="88"
+                alt="Сберкот ищет сделки"
+                onerror="this.onerror=null;this.src='https://gifs.obs.ru-moscow-1.hc.sbercloud.ru/f61fbd71aa1b7d2456a24782a6af8553657c341a6d7e02d28f23205097d4b44b.gif'"
+            >
+            <div class="search-loading-body">
+                <p class="search-loading-title">Ищем сделки по кварталу</p>
+                <p class="search-loading-text mb-0" id="searchLoadingText">Сканируем датасеты Росреестра…</p>
+                <div class="loader-progress" aria-hidden="true">
+                    <div class="loader-progress-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="alertBox"></div>
+        <div id="results" class="d-none"></div>
+    </main>
+
+    <script>
+        const API_BASE = (() => {
+            try {
+                if (location.protocol === "http:" || location.protocol === "https:") return location.origin;
+            } catch (_) { /* ignore */ }
+            return "http://localhost:8787";
+        })();
+
+        const CATEGORY_ORDER = [
+            { id: "land", label: "Земельные участки" },
+            { id: "house", label: "Жилые дома" },
+            { id: "nonres", label: "Нежилые здания/помещения" },
+            { id: "flat", label: "Квартиры" },
+            { id: "parking", label: "Машиноместа" }
+        ];
+
+        const TABLE_COLUMNS = [
+            { key: "periodShortLabel", title: "Дата" },
+            { key: "quarter_cad_number", title: "Кадастровый квартал" },
+            { key: "city", title: "Город" },
+            { key: "street", title: "Улица" },
+            { key: "year_build", title: "Год постройки", align: "end" },
+            { key: "realestateTypeLabel", title: "Тип объекта" },
+            { key: "purposeLabel", title: "Вид объекта", format: "purpose" },
+            { key: "area", title: "Площадь", align: "end", format: "number" },
+            { key: "deal_price", title: "Цена сделки", align: "end", format: "money" },
+            { key: "pricePerSqm", title: "₽/м²", align: "end", format: "money" },
+            { key: "doc_type", title: "Тип документа" }
+        ];
+
+        const EXPORT_COLUMNS = TABLE_COLUMNS;
+
+        let searchState = {
+            quarterCadNumber: "",
+            allDeals: [],
+            meta: {},
+            filters: {}
+        };
+
+        const LOADING_MESSAGES = [
+            "Сканируем датасеты Росреестра…",
+            "Отбираем записи по кадастровому кварталу…",
+            "Проверяем сделки и договоры аренды…",
+            "Группируем данные по периодам…",
+            "Формируем сводку…"
+        ];
+        let loadingMessageTimer = null;
+        let loadingMessageIndex = 0;
+
+        function showSearchLoading() {
+            const box = document.getElementById("searchLoading");
+            const text = document.getElementById("searchLoadingText");
+            loadingMessageIndex = 0;
+            text.textContent = LOADING_MESSAGES[0];
+            box.classList.add("active");
+            box.setAttribute("aria-busy", "true");
+            clearInterval(loadingMessageTimer);
+            loadingMessageTimer = setInterval(() => {
+                loadingMessageIndex = (loadingMessageIndex + 1) % LOADING_MESSAGES.length;
+                text.textContent = LOADING_MESSAGES[loadingMessageIndex];
+            }, 2200);
+        }
+
+        function hideSearchLoading() {
+            const box = document.getElementById("searchLoading");
+            clearInterval(loadingMessageTimer);
+            loadingMessageTimer = null;
+            box.classList.remove("active");
+            box.setAttribute("aria-busy", "false");
+        }
+
+        function escapeHtml(s) {
+            return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+            })[c]);
+        }
+
+        function formatMoney(n) {
+            if (n == null || !Number.isFinite(n)) return "—";
+            return Number(n).toLocaleString("ru-RU") + " ₽";
+        }
+
+        function formatMoneyPlain(n) {
+            if (n == null || !Number.isFinite(n)) return "";
+            return Number(n);
+        }
+
+        function formatDate(value) {
+            if (!value) return "—";
+            const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+            return String(value);
+        }
+
+        function formatDatePlain(value) {
+            if (!value) return "";
+            const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (m) return `${m[3]}.${m[2]}.${m[1]}`;
+            return String(value);
+        }
+
+        function objectKindLabel(d) {
+            return d.purposeLabel || d.categoryLabel || "";
+        }
+
+        function periodDisplay(d) {
+            if (d.periodShortLabel) return d.periodShortLabel;
+            const m = String(d.periodLabel || "").match(/^(\d)\s+квартал\s+(\d{4})/);
+            if (m) return `${m[1]} кв ${m[2]}`;
+            return d.periodLabel || "—";
+        }
+
+        function formatDealCell(d, col) {
+            if (col.key === "periodShortLabel") {
+                return escapeHtml(periodDisplay(d));
+            }
+            switch (col.format) {
+                case "date":
+                    return formatDate(d[col.key]);
+                case "purpose":
+                    return escapeHtml(objectKindLabel(d) || "—");
+                case "money":
+                    return formatMoney(d[col.key]);
+                case "number":
+                    return d[col.key] != null ? escapeHtml(d[col.key]) : "—";
+                default:
+                    return escapeHtml(d[col.key] || "—");
+            }
+        }
+
+        function exportDealValue(d, col) {
+            if (col.key === "periodShortLabel") {
+                const v = periodDisplay(d);
+                return v === "—" ? "" : v;
+            }
+            switch (col.format) {
+                case "date":
+                    return formatDatePlain(d[col.key]);
+                case "purpose":
+                    return objectKindLabel(d);
+                case "money":
+                    return formatMoneyPlain(d[col.key]);
+                case "number":
+                    return d[col.key] ?? "";
+                default:
+                    return d[col.key] || "";
+            }
+        }
+
+        function statsForDeals(deals) {
+            const prices = deals.map((d) => d.deal_price).filter((p) => p != null && p > 0);
+            const sum = prices.reduce((a, b) => a + b, 0);
+            const withArea = deals.filter((d) => d.deal_price > 0 && d.area > 0);
+            const totalArea = withArea.reduce((a, d) => a + d.area, 0);
+            const totalPriceForArea = withArea.reduce((a, d) => a + d.deal_price, 0);
+            const pricePerSqmAvg = totalArea > 0 ? Math.round(totalPriceForArea / totalArea) : null;
+            return {
+                count: deals.length,
+                priceMin: prices.length ? Math.min(...prices) : null,
+                priceMax: prices.length ? Math.max(...prices) : null,
+                priceAvg: prices.length ? Math.round(sum / prices.length) : null,
+                priceSum: prices.length ? Math.round(sum) : null,
+                pricePerSqmAvg
+            };
+        }
+
+        function buildClientStats(deals) {
+            const byCategory = {};
+            for (const cat of CATEGORY_ORDER) {
+                byCategory[cat.id] = {
+                    label: cat.label,
+                    ...statsForDeals(deals.filter((d) => d.categoryId === cat.id))
+                };
+            }
+            const overall = statsForDeals(deals);
+            return {
+                total: overall.count,
+                priceMin: overall.priceMin,
+                priceMax: overall.priceMax,
+                priceAvg: overall.priceAvg,
+                priceSum: overall.priceSum,
+                pricePerSqmAvg: overall.pricePerSqmAvg,
+                byCategory
+            };
+        }
+
+        function uniqueValues(deals, key) {
+            return [...new Set(deals.map((d) => d[key]).filter(Boolean))].sort((a, b) =>
+                String(a).localeCompare(String(b), "ru")
+            );
+        }
+
+        function getFilteredDeals() {
+            const f = searchState.filters;
+            return searchState.allDeals.filter((d) => {
+                if (f.period && periodDisplay(d) !== f.period) return false;
+                if (f.city && d.city !== f.city) return false;
+                if (f.docType && d.doc_type !== f.docType) return false;
+                if (f.objectType && d.realestateTypeLabel !== f.objectType) return false;
+                if (f.purposeLabel && objectKindLabel(d) !== f.purposeLabel) return false;
+                if (f.street) {
+                    const street = String(d.street || "").toLowerCase();
+                    if (!street.includes(f.street.toLowerCase())) return false;
+                }
+                if (f.yearBuildMin !== "" && f.yearBuildMin != null) {
+                    const year = d.year_build != null ? Number(d.year_build) : NaN;
+                    if (!Number.isFinite(year) || year < Number(f.yearBuildMin)) return false;
+                }
+                if (f.yearBuildMax !== "" && f.yearBuildMax != null) {
+                    const year = d.year_build != null ? Number(d.year_build) : NaN;
+                    if (!Number.isFinite(year) || year > Number(f.yearBuildMax)) return false;
+                }
+                if (f.areaMin !== "" && f.areaMin != null) {
+                    if (d.area == null || d.area < Number(f.areaMin)) return false;
+                }
+                if (f.areaMax !== "" && f.areaMax != null) {
+                    if (d.area == null || d.area > Number(f.areaMax)) return false;
+                }
+                if (f.priceMin !== "" && f.priceMin != null) {
+                    if (d.deal_price == null || d.deal_price < Number(f.priceMin)) return false;
+                }
+                if (f.priceMax !== "" && f.priceMax != null) {
+                    if (d.deal_price == null || d.deal_price > Number(f.priceMax)) return false;
+                }
+                return true;
+            });
+        }
+
+        function renderCategoryCard(cat) {
+            if (!cat?.count) return "";
+            return `<div class="col-md-6 col-xl-4">
+                <div class="border rounded-3 p-3 h-100 bg-light">
+                    <div class="fw-semibold mb-2">${escapeHtml(cat.label)}</div>
+                    <div class="small text-muted mb-1">Записей: <strong class="text-dark">${cat.count}</strong></div>
+                    <div class="small text-muted mb-1">Средняя сумма: <strong class="text-dark">${formatMoney(cat.priceAvg)}</strong></div>
+                    <div class="small text-muted mb-1">Средняя ₽/м²: <strong class="text-dark">${formatMoney(cat.pricePerSqmAvg)}</strong></div>
+                    <div class="small text-muted">Мин. / макс.: ${formatMoney(cat.priceMin)} / ${formatMoney(cat.priceMax)}</div>
+                </div>
+            </div>`;
+        }
+
+        function renderStats(stats, filteredCount, totalCount) {
+            const categories = Object.values(stats.byCategory || {}).filter((c) => c.count > 0);
+            const categoryHtml = categories.length
+                ? `<div class="row g-3 mb-3">${categories.map(renderCategoryCard).join("")}</div>`
+                : `<p class="text-muted small mb-3">Нет данных по категориям.</p>`;
+
+            const filterNote =
+                filteredCount < totalCount
+                    ? `<p class="small text-muted mb-0 mt-2">В сводке: ${filteredCount} из ${totalCount} записей (с учётом фильтров).</p>`
+                    : "";
+
+            return `<section class="card-panel p-4 mb-4" id="statsBlock">
+                <h2 class="h5 mb-3">Сводка по кварталу</h2>
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-md-3">
+                        <div class="info-label">Записей</div>
+                        <div class="stat-value">${stats.total}</div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="info-label">Средняя сумма</div>
+                        <div class="stat-value">${formatMoney(stats.priceAvg)}</div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="info-label">Средняя ₽/м²</div>
+                        <div class="stat-value">${formatMoney(stats.pricePerSqmAvg)}</div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="info-label">Мин. / макс.</div>
+                        <div class="fw-semibold">${formatMoney(stats.priceMin)} / ${formatMoney(stats.priceMax)}</div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="info-label">Сумма</div>
+                        <div class="fw-semibold">${formatMoney(stats.priceSum)}</div>
+                    </div>
+                </div>
+                <div class="info-label mb-2">По типам объектов</div>
+                ${categoryHtml}
+                ${filterNote}
+            </section>`;
+        }
+
+        function selectFilter(id, options, current, allLabel) {
+            const opts = [`<option value="">${escapeHtml(allLabel)}</option>`]
+                .concat(options.map((o) => `<option value="${escapeHtml(o)}"${current === o ? " selected" : ""}>${escapeHtml(o)}</option>`))
+                .join("");
+            return `<select class="form-select form-select-sm" data-filter="${id}" aria-label="Фильтр">${opts}</select>`;
+        }
+
+        function inputFilter(id, placeholder, current, type = "text") {
+            return `<input type="${type}" class="form-control form-control-sm" data-filter="${id}" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(current || "")}" aria-label="Фильтр">`;
+        }
+
+        function uniquePurposeLabels(deals) {
+            return [...new Set(deals.map((d) => objectKindLabel(d)).filter(Boolean))].sort((a, b) =>
+                String(a).localeCompare(String(b), "ru")
+            );
+        }
+
+        function uniquePeriods(deals) {
+            return [...new Set(deals.map((d) => periodDisplay(d)).filter((v) => v && v !== "—"))].sort((a, b) => {
+                const parse = (s) => {
+                    const m = String(s).match(/^(\d)\s+кв\s+(\d{4})$/);
+                    return m ? Number(m[2]) * 10 + Number(m[1]) : 0;
+                };
+                return parse(b) - parse(a);
+            });
+        }
+
+        function selectFilterOptions(id, options, current, allLabel) {
+            const opts = [`<option value="">${escapeHtml(allLabel)}</option>`]
+                .concat(
+                    options.map((o) => {
+                        const value = typeof o === "object" ? o.value : o;
+                        const label = typeof o === "object" ? o.label : o;
+                        return `<option value="${escapeHtml(value)}"${current === value ? " selected" : ""}>${escapeHtml(label)}</option>`;
+                    })
+                )
+                .join("");
+            return `<select class="form-select form-select-sm" data-filter="${id}" aria-label="Фильтр">${opts}</select>`;
+        }
+
+        function renderDealsTable(deals) {
+            const all = searchState.allDeals;
+            const f = searchState.filters;
+            const colCount = TABLE_COLUMNS.length;
+
+            const filterRow = `
+                <tr class="filter-row">
+                    <th>${selectFilter("period", uniquePeriods(all), f.period, "Все")}</th>
+                    <th class="text-center align-middle">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="resetFiltersBtn" title="Сбросить фильтры">
+                            <i class="fa-solid fa-rotate-left"></i>
+                        </button>
+                    </th>
+                    <th>${selectFilter("city", uniqueValues(all, "city"), f.city, "Все")}</th>
+                    <th>${inputFilter("street", "Улица…", f.street)}</th>
+                    <th>
+                        <div class="d-flex flex-column gap-1">
+                            ${inputFilter("yearBuildMin", "от", f.yearBuildMin, "number")}
+                            ${inputFilter("yearBuildMax", "до", f.yearBuildMax, "number")}
+                        </div>
+                    </th>
+                    <th>${selectFilter("objectType", uniqueValues(all, "realestateTypeLabel"), f.objectType, "Все")}</th>
+                    <th>${selectFilter("purposeLabel", uniquePurposeLabels(all), f.purposeLabel, "Все")}</th>
+                    <th>
+                        <div class="d-flex flex-column gap-1">
+                            ${inputFilter("areaMin", "от", f.areaMin, "number")}
+                            ${inputFilter("areaMax", "до", f.areaMax, "number")}
+                        </div>
+                    </th>
+                    <th>
+                        <div class="d-flex flex-column gap-1">
+                            ${inputFilter("priceMin", "₽ от", f.priceMin, "number")}
+                            ${inputFilter("priceMax", "₽ до", f.priceMax, "number")}
+                        </div>
+                    </th>
+                    <th></th>
+                    <th>${selectFilter("docType", uniqueValues(all, "doc_type"), f.docType, "Все")}</th>
+                </tr>`;
+
+            const headerRow = TABLE_COLUMNS.map((col) => {
+                const align = col.align === "end" ? " text-end" : "";
+                return `<th class="${align.trim()}">${escapeHtml(col.title)}</th>`;
+            }).join("");
+
+            const rows = deals.map((d) => {
+                const cells = TABLE_COLUMNS.map((col) => {
+                    const align = col.align === "end" ? " text-end" : "";
+                    const extra = col.key === "deal_price" ? " fw-semibold" : col.key === "pricePerSqm" ? " text-muted" : "";
+                    return `<td class="${(align + extra).trim()}">${formatDealCell(d, col)}</td>`;
+                }).join("");
+                return `<tr>${cells}</tr>`;
+            }).join("");
+
+            const emptyRow = deals.length
+                ? ""
+                : `<tr><td colspan="${colCount}" class="text-muted text-center py-4">Нет записей по выбранным фильтрам</td></tr>`;
+
+            return `<section class="card-panel p-4" id="tableBlock">
+                <div class="export-bar mb-3">
+                    <h2 class="h5 mb-0">Сделки и аренда <span class="text-muted fs-6 fw-normal">(${deals.length})</span></h2>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-success" id="exportExcelBtn">
+                            <i class="fa-solid fa-file-excel me-1"></i>Excel
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover deals-table mb-0" id="dealsTable">
+                        <thead class="table-light">
+                            <tr>${headerRow}</tr>
+                            ${filterRow}
+                        </thead>
+                        <tbody>${rows}${emptyRow}</tbody>
+                    </table>
+                </div>
+            </section>`;
+        }
+
+        function bindFilterHandlers() {
+            document.querySelectorAll("[data-filter]").forEach((el) => {
+                el.addEventListener("input", () => {
+                    searchState.filters[el.dataset.filter] = el.value;
+                    refreshResultsView();
+                });
+                el.addEventListener("change", () => {
+                    searchState.filters[el.dataset.filter] = el.value;
+                    refreshResultsView();
+                });
+            });
+            const resetBtn = document.getElementById("resetFiltersBtn");
+            if (resetBtn) {
+                resetBtn.addEventListener("click", () => {
+                    searchState.filters = {};
+                    refreshResultsView();
+                });
+            }
+            document.getElementById("exportExcelBtn")?.addEventListener("click", exportExcel);
+        }
+
+        function refreshResultsView() {
+            const filtered = getFilteredDeals();
+            const stats = buildClientStats(filtered);
+            const statsEl = document.getElementById("statsBlock");
+            const tableEl = document.getElementById("tableBlock");
+            if (statsEl) {
+                statsEl.outerHTML = renderStats(stats, filtered.length, searchState.allDeals.length);
+            }
+            if (tableEl) {
+                tableEl.outerHTML = renderDealsTable(filtered);
+            }
+            bindFilterHandlers();
+        }
+
+        function dealsToRows(deals) {
+            return deals.map((d) => {
+                const row = {};
+                for (const col of EXPORT_COLUMNS) {
+                    row[col.title] = exportDealValue(d, col);
+                }
+                return row;
+            });
+        }
+
+        function exportExcel() {
+            if (typeof XLSX === "undefined") {
+                alert("Библиотека Excel не загружена");
+                return;
+            }
+            const deals = getFilteredDeals();
+            if (!deals.length) {
+                alert("Нет данных для экспорта");
+                return;
+            }
+            const rows = dealsToRows(deals);
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Сделки");
+            const safeQuarter = searchState.quarterCadNumber.replace(/:/g, "-");
+            XLSX.writeFile(wb, `sdelki_${safeQuarter}.xlsx`);
+        }
+
+        function showResults(data) {
+            searchState = {
+                quarterCadNumber: data.quarterCadNumber,
+                allDeals: data.deals || [],
+                meta: data.meta || {},
+                filters: {}
+            };
+
+            const filtered = getFilteredDeals();
+            const stats = buildClientStats(filtered);
+            const results = document.getElementById("results");
+            let note = `<p class="text-muted mb-3">Кадастровый квартал: <strong>${escapeHtml(data.quarterCadNumber)}</strong></p>`;
+            if (data.meta?.truncated) {
+                note += `<div class="alert alert-warning py-2 small">Показаны первые ${data.meta.shown} из ${data.meta.totalInQuarter} записей. Для полной выгрузки увеличьте лимит на сервере.</div>`;
+            }
+            results.innerHTML = note + renderStats(stats, filtered.length, searchState.allDeals.length) + renderDealsTable(filtered);
+            results.classList.remove("d-none");
+            bindFilterHandlers();
+        }
+
+        document.getElementById("searchForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const quarter = document.getElementById("quarterInput").value.trim();
+            const alertBox = document.getElementById("alertBox");
+            const results = document.getElementById("results");
+            const btn = document.getElementById("searchBtn");
+
+            alertBox.innerHTML = "";
+            results.classList.add("d-none");
+            btn.disabled = true;
+            showSearchLoading();
+
+            try {
+                const res = await fetch(`${API_BASE}/api/deals/search`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ quarterCadNumber: quarter, limit: 10000 })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+                if (!data.found) {
+                    alertBox.innerHTML = `<div class="alert alert-info">${escapeHtml(data.message || "Сделки не найдены")}</div>`;
+                    return;
+                }
+
+                showResults(data);
+            } catch (err) {
+                alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.message)}</div>`;
+            } finally {
+                hideSearchLoading();
+                btn.disabled = false;
+            }
+        });
+
+        const params = new URLSearchParams(location.search);
+        if (params.get("quarter")) {
+            document.getElementById("quarterInput").value = params.get("quarter");
+        }
+    </script>
+</body>
+</html>

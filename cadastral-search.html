@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Поиск информации по кадастровому номеру — СберБизнес Помощник</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.cdnfonts.com/css/sb-sans-interface" rel="stylesheet">
+    <style>
+        :root {
+            --sber-green: #21A038;
+            --sber-blue: #0098F8;
+            --sber-bg: #F0F4F8;
+            --sber-card: #FFFFFF;
+            --sber-text: #1E2A3A;
+            --sber-muted: #617188;
+            --sber-border: #E2EAF2;
+            --radius: 20px;
+        }
+        body {
+            font-family: 'SB Sans Interface', system-ui, sans-serif;
+            background: var(--sber-bg);
+            color: var(--sber-text);
+            min-height: 100vh;
+        }
+        .hero {
+            background: linear-gradient(135deg, #1E2A3A 0%, #243447 100%);
+            color: #fff;
+            border-bottom: 3px solid var(--sber-green);
+            padding: 2rem 0 2.5rem;
+        }
+        .card-panel {
+            background: var(--sber-card);
+            border: 1px solid var(--sber-border);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 24px rgba(30, 42, 58, 0.06);
+        }
+        .btn-sber {
+            background: var(--sber-green);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+        }
+        .btn-sber:hover { background: #1B8A32; color: #fff; }
+        .source-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 0.25rem 0.55rem;
+            border-radius: 8px;
+        }
+        .source-cian { background: #0563f5; color: #fff; }
+        .source-avito { background: #00aaff; color: #00334d; }
+        .source-domclick { background: #21A038; color: #fff; }
+        .source-kadbase { background: #2d6a1f; color: #fff; }
+        .source-2gis { background: #19aa1e; color: #fff; }
+        .source-yandex { background: #fc3f1d; color: #fff; }
+        .verify-ok { color: var(--sber-green); font-weight: 600; }
+        .verify-warn { color: #c47a00; font-weight: 600; }
+        .verify-bad { color: #c0392b; font-weight: 600; }
+        .compare-row.match { background: #f0faf3; }
+        .compare-row.mismatch { background: #fff8f0; }
+        .listing-card { overflow: hidden; }
+        .photo-strip {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.25rem;
+        }
+        .photo-strip img {
+            width: 120px;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 10px;
+            flex-shrink: 0;
+            border: 1px solid var(--sber-border);
+        }
+        .info-label {
+            font-size: 0.8rem;
+            color: var(--sber-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .price-tag {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--sber-green);
+        }
+        .relevance {
+            font-size: 0.85rem;
+            color: var(--sber-muted);
+        }
+        .search-status {
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: #fff;
+            border: 1px solid var(--sber-border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            color: var(--sber-muted);
+            font-size: 0.95rem;
+        }
+        .search-status.active { display: flex; }
+        .source-pending {
+            opacity: 0.55;
+            font-size: 0.85rem;
+        }
+        .source-done { color: var(--sber-green); font-weight: 600; }
+        .panorama-block {
+            margin-top: 1.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--sber-border);
+        }
+        .panorama-photo {
+            width: 100%;
+            max-width: 650px;
+            height: auto;
+            border-radius: 14px;
+            border: 1px solid var(--sber-border);
+            display: block;
+        }
+        .boundary-map {
+            max-width: 360px;
+            border-radius: 14px;
+            border: 1px solid var(--sber-border);
+            overflow: hidden;
+            background: #f4f8f4;
+        }
+        .boundary-map svg {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+        .related-kn-list {
+            margin: 0;
+            padding-left: 1.1rem;
+        }
+        .panorama-fallback img {
+            width: 100%;
+            max-width: 650px;
+            height: auto;
+            border-radius: 14px;
+            border: 1px solid var(--sber-border);
+        }
+    </style>
+</head>
+<body>
+    <header class="hero">
+        <div class="container">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <p class="small mb-1 opacity-75">СберБизнес Помощник · сопровождение 2.0</p>
+                    <h1 class="h3 mb-1"><i class="fa-solid fa-map-location-dot me-2 text-success"></i>Поиск информации по кадастровому номеру</h1>
+                    <p class="mb-0 opacity-75">Росреестр (НСПД), kadbase.ru, фото 2ГИС и объявления Авито, Циан, Домклик</p>
+                </div>
+                <a href="/" class="btn btn-outline-light btn-sm">← СберБизнес Помощник</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container py-4">
+        <section class="card-panel p-4 mb-4">
+            <form id="searchForm" class="row g-3 align-items-end">
+                <div class="col-lg-8">
+                    <label for="cadastralInput" class="form-label fw-semibold">Кадастровый номер</label>
+                    <input type="text" class="form-control form-control-lg" id="cadastralInput"
+                           placeholder="77:05:0001005:19" required pattern="[\d:]+">
+                    <div class="form-text">Формат: XX:XX:XXXXXXX:XXXX</div>
+                </div>
+                <div class="col-lg-4">
+                    <button type="submit" class="btn btn-sber w-100 btn-lg" id="searchBtn">
+                        <i class="fa-solid fa-magnifying-glass me-2"></i>Найти
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <div id="alertBox"></div>
+        <div id="searchStatus" class="search-status">
+            <div class="spinner-border spinner-border-sm text-success"></div>
+            <span id="searchStatusText">Ищем данные…</span>
+        </div>
+        <div id="results" class="d-none">
+            <section class="card-panel p-4 mb-4" id="rosreestrBlock"></section>
+            <section class="card-panel p-4 mb-4 d-none" id="kadbaseBlock"></section>
+            <section class="card-panel p-4 mb-4 d-none" id="panoramaBlock"></section>
+            <section class="mb-3 d-flex flex-wrap gap-2" id="linksBlock"></section>
+            <section id="listingsBlock"></section>
+        </div>
+    </main>
+
+    <script>
+        const API_BASE = (() => {
+            try {
+                if (location.protocol === "http:" || location.protocol === "https:") return location.origin;
+            } catch (_) { /* ignore */ }
+            return "http://localhost:8787";
+        })();
+
+        const form = document.getElementById("searchForm");
+        const searchStatus = document.getElementById("searchStatus");
+        const searchStatusText = document.getElementById("searchStatusText");
+        const results = document.getElementById("results");
+        const alertBox = document.getElementById("alertBox");
+
+        const SOURCE_LABELS = { cian: "Циан", avito: "Авито", domclick: "Домклик" };
+        const SOURCE_PROGRESS = { rosreestr: "Росреестр", kadbase: "kadbase.ru", panorama: "Фото 2ГИС", avito: "Авито", domclick: "Домклик", cian: "Циан" };
+        let progressState = {};
+        let kadbaseRendered = false;
+
+        function showAlert(type, message) {
+            alertBox.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        }
+
+        if (location.protocol === "file:") {
+            showAlert("warning", "Откройте страницу через сервер: <a href=\"http://localhost:8787/cadastral\">http://localhost:8787/cadastral</a> (запустите <code>node gigachat-proxy.mjs</code> в папке проекта).");
+        }
+
+        function escapeHtml(s) {
+            return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+                "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+            })[c]);
+        }
+
+        function renderRosreestr(data) {
+            const rr = data.rosreestr;
+            const obj = rr.object;
+            const nspd = rr.nspd;
+            if (!rr.found || !obj) {
+                return `<h2 class="h5 mb-3">Росреестр (НСПД)</h2>
+                    <p class="text-danger mb-0">${escapeHtml(rr.message || "Объект не найден")}</p>`;
+            }
+            const rows = [
+                ["Адрес", obj.address],
+                ["Тип объекта", obj.objectType || obj.category],
+                ["Площадь", obj.area != null ? `${obj.area} ${obj.areaUnit || ""}` : null],
+                ["Кадастровая стоимость", obj.cadastralValue != null ? Number(obj.cadastralValue).toLocaleString("ru-RU") + " ₽" : null],
+                ["Кадастровый квартал", obj.quarterCadNumber],
+                ["Форма собственности", obj.ownershipType],
+                ["Дата постановки на учёт", obj.registrationDate],
+                ["Разрешённое использование", obj.permittedUse],
+                ["Статус", obj.status]
+            ].filter(([, v]) => v);
+
+            const boundaryHtml = nspd?.boundaryPreview?.svg
+                ? `<div class="col-md-5 col-lg-4">
+                    <div class="info-label mb-2">Границы на карте НСПД</div>
+                    <div class="boundary-map mb-2">${nspd.boundaryPreview.svg}</div>
+                    ${nspd.mapUrl ? `<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(nspd.mapUrl)}" target="_blank" rel="noopener">Открыть на nspd.gov.ru</a>` : ""}
+                   </div>`
+                : "";
+
+            const related = (nspd?.relatedObjects || []).filter((r) => r.cadastralNumber !== data.cadastralNumber);
+            const relatedHtml = related.length
+                ? `<div class="mt-4">
+                    <div class="info-label mb-2">Связанные объекты (НСПД)</div>
+                    <ul class="related-kn-list small mb-0">${related.map((r) =>
+                        `<li><strong>${escapeHtml(r.cadastralNumber)}</strong>${r.group ? ` <span class="text-muted">— ${escapeHtml(r.group)}</span>` : ""}</li>`
+                    ).join("")}</ul>
+                   </div>`
+                : "";
+
+            return `<h2 class="h5 mb-3"><i class="fa-solid fa-landmark me-2 text-success"></i>Данные из Росреестра</h2>
+                <p class="text-muted mb-3">Кадастровый номер: <strong>${escapeHtml(data.cadastralNumber)}</strong></p>
+                <div class="row g-3 align-items-start">
+                    <div class="${boundaryHtml ? "col-md-7 col-lg-8" : "col-12"}">
+                        <div class="row g-3">${rows.map(([label, value]) => `
+                            <div class="col-md-6">
+                                <div class="info-label">${escapeHtml(label)}</div>
+                                <div>${escapeHtml(value)}</div>
+                            </div>`).join("")}
+                        </div>
+                        ${relatedHtml}
+                    </div>
+                    ${boundaryHtml}
+                </div>`;
+        }
+
+        function renderPanorama(panorama) {
+            if (!panorama) {
+                return `<div class="panorama-block">
+                    <div class="info-label mb-2">Фото объекта</div>
+                    <p class="text-muted small mb-0">Координаты объекта недоступны — фото получить нельзя.</p>
+                </div>`;
+            }
+
+            const is2gis = panorama.imageSource?.startsWith("2gis");
+            const sourceBadge = panorama.imageSource
+                ? `<span class="source-badge source-${is2gis ? "2gis" : "yandex"} me-2">${escapeHtml(panorama.sourceLabel || (is2gis ? "2ГИС" : "Яндекс"))}</span>`
+                : "";
+
+            const imageSrc = panorama.imageUrl
+                ? `${escapeHtml(panorama.imageUrl.startsWith("/") ? API_BASE + panorama.imageUrl : panorama.imageUrl)}?t=${Date.now()}`
+                : null;
+            const openUrl = panorama.dgisUrl || panorama.mapsUrl || panorama.imageUrl;
+            const photoHtml = imageSrc
+                ? `<a href="${escapeHtml(openUrl || "#")}" target="_blank" rel="noopener">
+                    <img class="panorama-photo mb-2" src="${imageSrc}" alt="Фото объекта">
+                   </a>`
+                : `<p class="text-muted small mb-2">${escapeHtml(panorama.error || "Фото не получено")}</p>`;
+
+            const coords = panorama.lat != null && panorama.lon != null
+                ? ` (${Number(panorama.lat).toFixed(5)}, ${Number(panorama.lon).toFixed(5)})`
+                : "";
+
+            const caption = is2gis
+                ? (panorama.imageSource === "2gis-photo"
+                    ? "Фото здания из 2ГИС"
+                    : "Карта 2ГИС — объект на местности")
+                : "Панорама Яндекс Карт (запасной вариант)";
+
+            const links = [];
+            if (panorama.dgisUrl) {
+                links.push(`<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(panorama.dgisUrl)}" target="_blank" rel="noopener">Открыть в 2ГИС</a>`);
+            }
+            if (panorama.mapsUrl && !is2gis) {
+                links.push(`<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(panorama.mapsUrl)}" target="_blank" rel="noopener">Яндекс Карты</a>`);
+            }
+
+            return `<div class="panorama-block">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <div class="info-label mb-0"><i class="fa-solid fa-camera me-1"></i>Фото объекта ${sourceBadge}</div>
+                    <div class="d-flex flex-wrap gap-2">${links.join("")}</div>
+                </div>
+                ${photoHtml}
+                <p class="text-muted small mb-2">${escapeHtml(caption)}${coords}${panorama.screenshotCached ? " · из кэша" : ""}${panorama.fallbackNote ? ` · ${escapeHtml(panorama.fallbackNote)}` : ""}</p>
+                ${panorama.staticMapUrl && !is2gis ? `<div class="panorama-fallback">
+                    <div class="info-label mb-1">Карта</div>
+                    <a href="${escapeHtml(panorama.mapsUrl || "#")}" target="_blank" rel="noopener">
+                        <img src="${escapeHtml(panorama.staticMapUrl)}" alt="Местоположение на карте" loading="lazy">
+                    </a>
+                </div>` : ""}
+            </div>`;
+        }
+
+        function formatRightsStatus(text) {
+            if (!text) return { cls: "text-muted", label: "нет данных" };
+            const lower = text.toLowerCase();
+            if (lower.includes("не обнаруж")) return { cls: "verify-ok", label: text };
+            return { cls: "verify-warn", label: text };
+        }
+
+        function renderEncumbranceTable(title, records, totalCount) {
+            if (!records?.length && !(totalCount > 0)) return "";
+            const rows = records.length
+                ? records.map((rec, i) => `<tr>
+                    <td>${i + 1}</td>
+                    <td>${escapeHtml(rec.kind || (rec.detailsHidden ? "скрыто на kadbase.ru" : "—"))}</td>
+                    <td>${escapeHtml(rec.number || (rec.detailsHidden ? "скрыто" : "—"))}</td>
+                    <td>${escapeHtml(rec.datePartial || "—")}</td>
+                </tr>`).join("")
+                : `<tr><td colspan="4" class="text-muted small">Записи есть (${totalCount}), но детали доступны только в платной версии kadbase.ru</td></tr>`;
+
+            return `<div class="mt-3">
+                <div class="info-label mb-2">${escapeHtml(title)}${totalCount != null ? ` · найдено ${totalCount}` : ""}</div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>#</th><th>Вид</th><th>Номер записи</th><th>Дата</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            </div>`;
+        }
+
+        function renderKadbase(data) {
+            const kb = data.kadbase;
+            const comparison = data.comparison;
+            const block = document.getElementById("kadbaseBlock");
+            block.classList.remove("d-none");
+            kadbaseRendered = true;
+
+            if (!kb?.found) {
+                const manualUrl = kb?.searchUrl || "https://kadbase.ru/search/";
+                block.innerHTML = `<h2 class="h5 mb-3"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Проверка в ИАС «База N» (kadbase.ru)</h2>
+                    <p class="${kb?.accessLimited ? "text-warning" : "text-danger"} mb-2">${escapeHtml(kb?.message || "Объект не найден")}</p>
+                    ${kb?.accessLimited ? `<p class="text-muted small mb-2">Сайт kadbase.ru ограничивает частые автоматические запросы. Откройте поиск вручную и введите кадастровый номер.</p>` : ""}
+                    <a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(manualUrl)}" target="_blank" rel="noopener">
+                        <span class="source-badge source-kadbase me-1">kadbase.ru</span> Открыть поиск
+                    </a>`;
+                return;
+            }
+
+            const rights = formatRightsStatus(kb.rights);
+            const restrictions = formatRightsStatus(kb.restrictions);
+            const encumbrancesHtml =
+                renderEncumbranceTable("Обременения и ограничения (ЕГРН)", kb.restrictionRecords, kb.restrictionsCount) +
+                renderEncumbranceTable("Зарегистрированные права", kb.rightsRecords, kb.rightsCount);
+
+            const rows = [
+                ["Адрес", kb.address],
+                ["Тип объекта", kb.objectType],
+                ["Статус", kb.status],
+                ["Площадь", kb.area != null ? `${kb.area} ${kb.areaUnit || ""}` : null],
+                ["Кадастровая стоимость", kb.cadastralValue != null ? Number(kb.cadastralValue).toLocaleString("ru-RU") + " ₽" : null],
+                ["Категория земель", kb.landCategory],
+                ["Разрешённое использование", kb.permittedUse],
+                ["Границы", kb.boundaries],
+                ["Обновлено в базе", kb.updatedAt]
+            ].filter(([, v]) => v);
+
+            const comparisonHtml = comparison?.checks?.length
+                ? `<div class="mt-4 pt-3 border-top">
+                    <div class="info-label mb-2">Сверка НСПД и kadbase.ru</div>
+                    <p class="small mb-2 ${comparison.status === "ok" ? "verify-ok" : comparison.status === "warning" ? "verify-warn" : "text-muted"}">${escapeHtml(comparison.summary)}</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Поле</th><th>НСПД</th><th>kadbase.ru</th><th></th></tr></thead>
+                            <tbody>${comparison.checks.map((c) => `
+                                <tr class="compare-row ${c.match ? "match" : "mismatch"}">
+                                    <td>${escapeHtml(c.label)}</td>
+                                    <td class="small">${escapeHtml(String(c.rosreestr ?? "—"))}</td>
+                                    <td class="small">${escapeHtml(String(c.kadbase ?? "—"))}</td>
+                                    <td class="text-end">${c.match ? '<i class="fa-solid fa-check verify-ok"></i>' : '<i class="fa-solid fa-triangle-exclamation verify-warn"></i>'}</td>
+                                </tr>`).join("")}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`
+                : "";
+
+            block.innerHTML = `<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                    <h2 class="h5 mb-0"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Проверка в ИАС «База N» (kadbase.ru)</h2>
+                    ${kb.objectUrl ? `<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(kb.objectUrl)}" target="_blank" rel="noopener">Открыть на kadbase.ru</a>` : ""}
+                </div>
+                <p class="text-muted small mb-3">Проверка прав и ограничений${kb.checkedAt ? ` · данные на ${escapeHtml(kb.checkedAt)}` : ""}${kb.loadedWithoutSearch ? " · получено без поиска kadbase" : ""}</p>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="info-label">Зарегистрированные права</div>
+                        <div class="${rights.cls}">${escapeHtml(rights.label)}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Зарегистрированные ограничения (обременения)</div>
+                        <div class="${restrictions.cls}">${escapeHtml(restrictions.label)}</div>
+                    </div>
+                </div>
+                ${encumbrancesHtml}
+                ${kb.zouit ? `<div class="alert alert-warning py-2 small mt-3 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i><strong>ЗОУИТ:</strong> ${escapeHtml(kb.zouit)} — зоны с особыми условиями использования территории (см. также на kadbase.ru).</div>` : ""}
+                <div class="row g-3 mt-1">${rows.map(([label, value]) => `
+                    <div class="col-md-6">
+                        <div class="info-label">${escapeHtml(label)}</div>
+                        <div>${escapeHtml(value)}</div>
+                    </div>`).join("")}
+                </div>
+                ${comparisonHtml}
+                <p class="text-muted small mt-3 mb-0">Справочные данные kadbase.ru не являются официальной выпиской из ЕГРН. Вид обременения, номер записи и правообладатель на сайте часто скрыты без платного доступа — показываем всё, что доступно в открытой части.</p>`;
+        }
+
+        function renderLinks(links) {
+            return [
+                ["kadbase.ru", links.kadbase || "https://kadbase.ru/search/", "kadbase"],
+                ["Авито", links.avito, "avito"],
+                ["Циан", links.cian, "cian"],
+                ["Домклик", links.domclick, "domclick"]
+            ].map(([label, url, cls]) =>
+                `<a class="btn btn-outline-secondary btn-sm" href="${escapeHtml(url)}" target="_blank" rel="noopener">
+                    <span class="source-badge source-${cls} me-1">${label}</span> Открыть поиск
+                </a>`
+            ).join("");
+        }
+
+        function renderSourceUnavailable(notice, searchLinks, id = "") {
+            if (!notice) return "";
+            const label = SOURCE_LABELS[notice.source] || notice.source;
+            const linkUrl = searchLinks?.[notice.source];
+            const linkBtn = linkUrl
+                ? `<a class="btn btn-sm btn-outline-secondary ms-2" href="${escapeHtml(linkUrl)}" target="_blank" rel="noopener">Открыть поиск на ${escapeHtml(label)}</a>`
+                : "";
+            const idAttr = id ? ` id="${escapeHtml(id)}"` : "";
+            return `<div class="alert alert-info py-2 small mb-3"${idAttr} data-source-unavailable="${escapeHtml(notice.source)}">
+                <i class="fa-solid fa-circle-info me-1"></i>
+                <strong>${escapeHtml(label)}:</strong> ${escapeHtml(notice.message)}${linkBtn}
+            </div>`;
+        }
+
+        function renderListing(item) {
+            const photos = (item.photos || []).slice(0, 6);
+            const photoHtml = photos.length
+                ? `<div class="photo-strip mt-3">${photos.map((u) =>
+                    `<a href="${escapeHtml(u)}" target="_blank" rel="noopener"><img src="${escapeHtml(u)}" alt="фото" loading="lazy"></a>`
+                ).join("")}</div>`
+                : `<p class="text-muted small mt-2 mb-0">Фотографии не найдены</p>`;
+
+            const relevance = item.relevance?.reasons?.length
+                ? `<div class="relevance mt-2"><i class="fa-solid fa-bullseye me-1"></i>${escapeHtml(item.relevance.reasons.join(", "))}</div>`
+                : "";
+            const streetBadge =
+                item.matchedBy === "street"
+                    ? `<span class="badge bg-info-subtle text-dark ms-1">на той же улице</span>`
+                    : "";
+
+            return `<article class="card-panel listing-card p-4 mb-3">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                    <div>
+                        <span class="source-badge source-${escapeHtml(item.source)}">${escapeHtml(SOURCE_LABELS[item.source] || item.source)}</span>${streetBadge}
+                        <h3 class="h6 mt-2 mb-1">${escapeHtml(item.title)}</h3>
+                        ${item.address ? `<p class="text-muted small mb-0"><i class="fa-solid fa-location-dot me-1"></i>${escapeHtml(item.address)}</p>` : ""}
+                    </div>
+                    <div class="text-end">
+                        <div class="price-tag">${escapeHtml(item.priceFormatted || "Цена не указана")}</div>
+                        ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mt-2">Открыть объявление</a>` : ""}
+                    </div>
+                </div>
+                ${item.description ? `<p class="mt-3 mb-0" style="white-space:pre-wrap">${escapeHtml(item.description)}</p>` : ""}
+                ${photoHtml}
+                ${relevance}
+            </article>`;
+        }
+
+        function renderListingsHeader(stats, note) {
+            const meta = note ? `<div class="alert alert-info">${escapeHtml(note)}</div>` : "";
+            const statsHtml = stats
+                ? `<p class="text-muted small" id="listingsStats">Найдено объявлений: ${stats.matched || 0}
+                (Циан: ${stats.bySource?.cian || 0}, Авито: ${stats.bySource?.avito || 0}, Домклик: ${stats.bySource?.domclick || 0})</p>`
+                : `<p class="text-muted small" id="listingsStats">Ищем объявления…</p>`;
+            return meta + statsHtml;
+        }
+
+        function updateProgress() {
+            const parts = Object.entries(SOURCE_PROGRESS).map(([key, label]) => {
+                const state = progressState[key];
+                if (state === "done") return `<span class="source-done">${label} ✓</span>`;
+                if (state === "pending") return `<span class="source-pending">${label}…</span>`;
+                return "";
+            }).filter(Boolean);
+            searchStatusText.innerHTML = parts.join(" · ") || "Ищем данные…";
+        }
+
+        function showPanoramaLoading() {
+            const block = document.getElementById("panoramaBlock");
+            block.classList.remove("d-none");
+            block.innerHTML = `<div class="info-label mb-2"><i class="fa-solid fa-camera me-1"></i>Фото объекта (2ГИС)</div>
+                <div class="d-flex align-items-center gap-2 text-muted"><div class="spinner-border spinner-border-sm text-success"></div>Получаем фото из 2ГИС…</div>`;
+        }
+
+        async function consumeSearchStream(response) {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            const state = { listings: [], errors: [], sourceNotices: [], searchLinks: null, stats: null, meta: {} };
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || "";
+
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    const chunk = JSON.parse(line);
+                    await handleStreamChunk(chunk, state);
+                }
+            }
+            if (buffer.trim()) {
+                const chunk = JSON.parse(buffer);
+                await handleStreamChunk(chunk, state);
+            }
+            return state;
+        }
+
+        async function handleStreamChunk(chunk, state) {
+            if (chunk.event === "error") throw new Error(chunk.error || "Ошибка поиска");
+
+            if (chunk.event === "rosreestr") {
+                progressState.rosreestr = "done";
+                ["kadbase", "panorama", "avito", "domclick", "cian"].forEach((k) => { progressState[k] = "pending"; });
+                updateProgress();
+                results.classList.remove("d-none");
+                document.getElementById("rosreestrBlock").innerHTML = renderRosreestr(chunk.data);
+                document.getElementById("kadbaseBlock").classList.add("d-none");
+                document.getElementById("kadbaseBlock").innerHTML = `<div class="info-label mb-2"><i class="fa-solid fa-shield-halved me-1"></i>ИАС «База N» (kadbase.ru)</div>
+                    <div class="d-flex align-items-center gap-2 text-muted"><div class="spinner-border spinner-border-sm text-success"></div>Проверяем объект в kadbase.ru…</div>`;
+                document.getElementById("kadbaseBlock").classList.remove("d-none");
+                state.searchLinks = chunk.data.searchLinks;
+                document.getElementById("linksBlock").innerHTML = renderLinks(chunk.data.searchLinks);
+                document.getElementById("listingsBlock").innerHTML = renderListingsHeader(null) +
+                    `<div class="card-panel p-4 text-center text-muted" id="listingsPlaceholder">
+                        <div class="spinner-border spinner-border-sm text-success mb-2"></div>
+                        <p class="mb-0 small">Ожидаем объявления с площадок…</p>
+                    </div>`;
+                showPanoramaLoading();
+            }
+
+            if (chunk.event === "kadbase") {
+                progressState.kadbase = "done";
+                updateProgress();
+                renderKadbase(chunk.data);
+            }
+
+            if (chunk.event === "panorama") {
+                progressState.panorama = "done";
+                updateProgress();
+                const block = document.getElementById("panoramaBlock");
+                block.classList.remove("d-none");
+                block.innerHTML = renderPanorama(chunk.data.panorama);
+            }
+
+            if (chunk.event === "listings") {
+                progressState[chunk.data.source] = "done";
+                updateProgress();
+                state.listings.push(...chunk.data.listings);
+                state.errors.push(...(chunk.data.errors || []));
+                if (chunk.data.unavailable) {
+                    state.sourceNotices.push(chunk.data.unavailable);
+                }
+                state.stats = chunk.data.stats;
+                const placeholder = document.getElementById("listingsPlaceholder");
+                if (placeholder) placeholder.remove();
+                const header = document.getElementById("listingsStats");
+                if (header) {
+                    header.outerHTML = renderListingsHeader(state.stats, state.meta.note);
+                }
+                const container = document.getElementById("listingsBlock");
+                if (chunk.data.unavailable) {
+                    const noticeId = `unavailable-${chunk.data.source}`;
+                    if (!document.getElementById(noticeId)) {
+                        container.insertAdjacentHTML("beforeend",
+                            renderSourceUnavailable(chunk.data.unavailable, state.searchLinks, noticeId));
+                    }
+                }
+                for (const item of chunk.data.listings) {
+                    container.insertAdjacentHTML("beforeend", renderListing(item));
+                }
+                if (!chunk.data.listings.length && chunk.data.errors?.length && !chunk.data.unavailable) {
+                    container.insertAdjacentHTML("beforeend",
+                        `<div class="alert alert-warning py-2 small">${escapeHtml(SOURCE_LABELS[chunk.data.source] || chunk.data.source)}: ${chunk.data.errors.map(escapeHtml).join("; ")}</div>`);
+                }
+            }
+
+            if (chunk.event === "done") {
+                state.errors.push(...(chunk.data.errors || []));
+                state.stats = chunk.data.stats;
+                state.meta = chunk.data.meta || {};
+                for (const notice of chunk.data.meta?.sourceNotices || []) {
+                    if (!state.sourceNotices.some((n) => n.source === notice.source)) {
+                        state.sourceNotices.push(notice);
+                    }
+                }
+                ["kadbase", "panorama", "avito", "domclick", "cian"].forEach((k) => {
+                    if (progressState[k] === "pending") progressState[k] = "done";
+                });
+                updateProgress();
+                if (!kadbaseRendered) {
+                    renderKadbase({
+                        kadbase: {
+                            found: false,
+                            message: "Проверка kadbase.ru недоступна. Перезапустите сервер: node gigachat-proxy.mjs"
+                        }
+                    });
+                }
+                const placeholder = document.getElementById("listingsPlaceholder");
+                if (placeholder) placeholder.remove();
+                const header = document.getElementById("listingsStats");
+                if (header) {
+                    header.outerHTML = renderListingsHeader(state.stats, state.meta.note);
+                }
+                if (!state.listings.length) {
+                    document.getElementById("listingsBlock").insertAdjacentHTML("beforeend",
+                        `<div class="card-panel p-4 text-center text-muted">
+                            <i class="fa-regular fa-folder-open fa-2x mb-3"></i>
+                            <p class="mb-2">Объявления о продаже не найдены на Авито, Циан и Домклик.</p>
+                            <p class="small mb-0">Используйте ссылки поиска выше.</p>
+                        </div>`);
+                }
+                const partialErrors = [...new Set(state.errors)].filter((err) => {
+                    const lower = String(err).toLowerCase();
+                    if (lower.startsWith("авито")) {
+                        return !state.sourceNotices.some((n) => n.source === "avito");
+                    }
+                    return true;
+                });
+                if (partialErrors.length) {
+                    showAlert("warning", "<strong>Частичные ошибки:</strong><br>" + partialErrors.map(escapeHtml).join("<br>"));
+                }
+            }
+        }
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const cadastralNumber = document.getElementById("cadastralInput").value.trim();
+            if (!cadastralNumber) return;
+
+            alertBox.innerHTML = "";
+            progressState = {};
+            kadbaseRendered = false;
+            searchStatus.classList.add("active");
+            results.classList.add("d-none");
+            document.getElementById("kadbaseBlock").classList.add("d-none");
+            document.getElementById("kadbaseBlock").innerHTML = "";
+            document.getElementById("panoramaBlock").classList.add("d-none");
+            document.getElementById("panoramaBlock").innerHTML = "";
+            document.getElementById("searchBtn").disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/cadastral/search/stream`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ cadastralNumber })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || `HTTP ${res.status}`);
+                }
+                await consumeSearchStream(res);
+            } catch (err) {
+                showAlert("danger", escapeHtml(err.message || "Ошибка поиска"));
+            } finally {
+                searchStatus.classList.remove("active");
+                document.getElementById("searchBtn").disabled = false;
+            }
+        });
+
+        const params = new URLSearchParams(location.search);
+        if (params.get("kn")) {
+            document.getElementById("cadastralInput").value = params.get("kn");
+        }
+    </script>
+</body>
+</html>
