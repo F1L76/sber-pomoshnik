@@ -16,7 +16,7 @@ import { fileURLToPath } from "url";
 import { searchByCadastralNumber, streamCadastralSearch } from "./lib/cadastral-search.mjs";
 import { getPanoramaCachePath } from "./lib/yandex-panorama-screenshot.mjs";
 import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
-import { searchDealsByQuarter, getDealsDatasetInfo } from "./lib/deals-lookup.mjs";
+import { searchDealsByQuarter, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
@@ -433,8 +433,10 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
             res.end(JSON.stringify(result));
         } catch (e) {
-            res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-            res.end(JSON.stringify({ error: e.message || String(e) }));
+            const msg = e.message || String(e);
+            const status = /памят|memory|heap|timeout/i.test(msg) ? 503 : 400;
+            res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ error: msg }));
         }
         return;
     }
@@ -488,6 +490,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, HOST, () => {
     console.log(`GigaChat proxy: http://${HOST}:${PORT}`);
     console.log(`Откройте: http://localhost:${PORT}/ (локально) или URL вашего сервера`);
+    warmupDealsIndexes();
     if (!process.env.GIGACHAT_CREDENTIALS) {
         console.warn("⚠ Создайте .env из .env.example и укажите GIGACHAT_CREDENTIALS");
     }
