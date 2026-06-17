@@ -1,0 +1,19 @@
+[Unit]
+Description=СберБизнес Помощник (Node.js)
+After=network.target
+
+[Service]
+Type=simple
+User=sber-app
+Group=sber-app
+WorkingDirectory=/var/www/sber-pomoshnik
+Environment=NODE_ENV=production
+EnvironmentFile=-/var/www/sber-pomoshnik/.env
+ExecStart=/usr/bin/node /var/www/sber-pomoshnik/gigachat-proxy.mjs
+Restart=on-failure
+RestartSec=5
+# Playwright / долгий поиск сделок
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

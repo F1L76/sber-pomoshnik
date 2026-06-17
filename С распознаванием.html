@@ -493,7 +493,7 @@
                             <div id="conclusionsList">—</div>
                             <div class="upload-area mt-4">
                             <div class="small fw-semibold mb-2"><i class="fas fa-cloud-arrow-up me-1 text-success" aria-hidden="true"></i>Загрузить заключение и перечень залога</div>
-                            <p class="small text-muted mb-3">Нужны оба файла: PDF — пересказ и риски (GigaChat); XLSX — перечень объектов.</p>
+                            <p class="small text-muted mb-3">Нужны оба файла: PDF — заключение; XLSX — перечень объектов. Преобразование без GigaChat (конвертер zalog-converter).</p>
                             <div class="mb-3">
                                 <label class="form-label small mb-1" for="pdfUpload">Файл заключения (PDF)</label>
                                 <input type="file" id="pdfUpload" class="form-control form-control-sm" accept=".pdf,application/pdf">
@@ -503,7 +503,7 @@
                                 <input type="file" id="xlsxUpload" class="form-control form-control-sm" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
                             </div>
                             <button type="button" id="importConclusionBtn" class="btn btn-success rounded-pill w-100 py-2 fw-semibold">
-                                <i class="fas fa-microchip me-1" aria-hidden="true"></i>Импортировать (AI‑распознавание)
+                                <i class="fas fa-wand-magic-sparkles me-1" aria-hidden="true"></i>Импортировать заключение
                             </button>
                             <div id="importStatus" class="small text-muted mt-3"></div>
                         </div>
@@ -1259,7 +1259,7 @@ ${excerpt.slice(0, 22000)}`;
         </tr>`).join("");
         return `<div class="mb-4">
             <h3 class="h6 fw-bold mb-3"><i class="fas fa-triangle-exclamation me-2 text-warning" aria-hidden="true"></i>Риски</h3>
-            <p class="small text-muted mb-2">${c.summary ? "Пересказ подготовлен GigaChat." : "Риски по заключению (демо)."}</p>
+            <p class="small text-muted mb-2">${c.summary ? "Пересказ и риски извлечены конвертером (без GigaChat)." : "Риски по заключению."}</p>
             <div class="table-responsive-custom">
                 <table class="table table-bordered conclusion-risks-table mb-0">
                     <thead><tr><th>Идентификатор</th><th>Риск</th><th>Минимизация</th><th class="text-end">Действие</th></tr></thead>
@@ -1277,6 +1277,70 @@ ${excerpt.slice(0, 22000)}`;
         openModuleModal("techChanges");
     }
 
+    function mapZalogConverterObject(obj) {
+        const cost = Number(obj.cost) || 0;
+        const discount = Number(obj.discount) || 0;
+        const collateral = Number(obj.collateral_value);
+        return {
+            conditional: obj.conditional || "",
+            klassifikator: obj.klassifikator || "",
+            klassifikatorRaw: obj.klassifikator_raw || obj.classifier_name || "",
+            classifierName: obj.classifier_name || "",
+            name: obj.name || "",
+            identifier: obj.identifier || "",
+            qualityCategory: obj.quality_category || "Стандарт",
+            valuationType: obj.valuation_type || (cost > 0 ? "Рыночная" : "Льготная"),
+            cost,
+            collateralValue: Number.isFinite(collateral) ? collateral : cost,
+            discount,
+            costType: obj.cost_type || (cost > 0 ? "рыночная" : "льготная"),
+            bankMarketPrice: Number(obj.bank_market_price) || cost * 1.05,
+            liquidity: obj.liquidity || ""
+        };
+    }
+
+    function buildConclusionFromConverter(payload, clientInn) {
+        const c = payload.data?.conclusion || {};
+        const objects = (payload.data?.objects || []).map(mapZalogConverterObject);
+        let date = String(c.conclusion_date || "").trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            date = new Date().toISOString().slice(0, 10);
+        }
+        const conclusionNumber = String(c.conclusion_number || "").trim() || fallbackConclusionNumberFromFile("");
+        return {
+            id: conclusionNumber,
+            date,
+            clientName: String(c.client_name || "").trim(),
+            inn: String(c.borrower_inn || clientInn || "").trim(),
+            summary: String(c.summary || "").trim(),
+            validityDate: String(c.validity_date || "").trim(),
+            creditTerm: String(c.credit_term || "").trim(),
+            referenceText: String(c.reference_text || "").trim(),
+            risks: (c.risks || []).map((r) => ({
+                identifier: String(r.identifier || "—").trim(),
+                risk: String(r.risk || "—").trim(),
+                minimization: String(r.minimization || "—").trim(),
+                riskNumber: String(r.risk_number || "").trim()
+            })),
+            materials: buildConclusionMaterials(conclusionNumber),
+            objects,
+            reportHtml: payload.html || ""
+        };
+    }
+
+    async function convertConclusionViaApi(pdfFile, xlsxFile) {
+        const base = (typeof GIGACHAT_API_BASE !== "undefined" ? GIGACHAT_API_BASE : "") || "";
+        const formData = new FormData();
+        formData.append("pdf", pdfFile);
+        formData.append("xlsx", xlsxFile);
+        const res = await fetch(`${base}/api/zalog/convert`, { method: "POST", body: formData });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            throw new Error(payload.error || `Ошибка конвертера (HTTP ${res.status})`);
+        }
+        return payload;
+    }
+
     async function runAIImport() {
         if (!currentClientData) {
             alert("Сначала загрузите клиента по ИНН");
@@ -1288,51 +1352,24 @@ ${excerpt.slice(0, 22000)}`;
             alert("Загрузите оба файла: PDF заключение и XLSX перечень залога");
             return;
         }
-        importStatusDiv.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Импорт: XLSX + анализ PDF через GigaChat…</span>';
+        importStatusDiv.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Конвертер: PDF + XLSX…</span>';
 
         try {
-            const objectsList = await parseXlsxObjects(xlsxFile);
-            const pdfAnalysis = await analyzePdfConclusion(pdfFile, currentClientInn);
-
-            let conclusionNumber = pdfAnalysis.conclusionNumber || fallbackConclusionNumberFromFile(pdfFile.name);
-            let conclusionDate = pdfAnalysis.conclusionDate || new Date().toISOString().slice(0, 10);
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(conclusionDate)) {
-                conclusionDate = new Date().toISOString().slice(0, 10);
+            const payload = await convertConclusionViaApi(pdfFile, xlsxFile);
+            const newConclusion = buildConclusionFromConverter(payload, currentClientInn);
+            if (!newConclusion.id || newConclusion.id === "ASZ") {
+                newConclusion.id = fallbackConclusionNumberFromFile(pdfFile.name);
             }
-
-            const newConclusion = {
-                id: conclusionNumber,
-                date: conclusionDate,
-                clientName: pdfAnalysis.clientName || "",
-                inn: pdfAnalysis.borrowerInn || currentClientInn || "",
-                summary: pdfAnalysis.summary || "",
-                risks: pdfAnalysis.risks || [],
-                materials: buildConclusionMaterials(conclusionNumber),
-                objects: objectsList.map(obj => ({
-                    conditional: obj.conditional,
-                    klassifikator: obj.klassifikator,
-                    klassifikatorRaw: obj.klassifikatorRaw,
-                    name: obj.name,
-                    identifier: obj.identifier,
-                    qualityCategory: obj.qualityCategory,
-                    valuationType: obj.valuationType,
-                    cost: obj.cost,
-                    collateralValue: obj.collateralValue,
-                    discount: obj.discount,
-                    costType: obj.costType,
-                    bankMarketPrice: obj.bankMarketPrice || obj.cost
-                }))
-            };
             currentClientData.conclusions.push(newConclusion);
             updateInfoPanel();
-            importStatusDiv.innerHTML = `<span class="text-success fw-medium"><i class="fas fa-circle-check me-1" aria-hidden="true"></i>Заключение ${newConclusion.id} импортировано.</span><br>
-                <span class="text-success small">XLSX: ${objectsList.length} объектов · PDF: пересказ и ${newConclusion.risks.length} рисков</span>`;
+            importStatusDiv.innerHTML = `<span class="text-success fw-medium"><i class="fas fa-circle-check me-1" aria-hidden="true"></i>Заключение ${escapeHtml(newConclusion.id)} импортировано.</span><br>
+                <span class="text-success small">Объектов: ${newConclusion.objects.length} · Рисков: ${newConclusion.risks.length}</span>`;
             document.getElementById("pdfUpload").value = "";
             document.getElementById("xlsxUpload").value = "";
             setTimeout(() => { importStatusDiv.innerHTML = ""; }, 6000);
         } catch (err) {
             console.error(err);
-            importStatusDiv.innerHTML = `<span class="text-danger"><i class="fas fa-circle-xmark me-1" aria-hidden="true"></i>${err && err.message ? err.message : "Ошибка распознавания"}</span>`;
+            importStatusDiv.innerHTML = `<span class="text-danger"><i class="fas fa-circle-xmark me-1" aria-hidden="true"></i>${err && err.message ? escapeHtml(err.message) : "Ошибка конвертации"}</span>`;
         }
     }
 
@@ -1456,6 +1493,12 @@ ${excerpt.slice(0, 22000)}`;
         const summaryHtml = conclusion.summary
             ? `<div class="mock-ai mb-4"><h3 class="h6 fw-bold mb-2"><i class="fas fa-align-left me-2 text-success" aria-hidden="true"></i>Краткий пересказ</h3><p class="mb-0 small">${escapeHtml(conclusion.summary).replace(/\n/g, "<br>")}</p></div>`
             : "";
+        const reportSection = conclusion.reportHtml
+            ? `<div class="mb-4 pt-2 border-top">
+                <h3 class="h6 fw-bold mb-2"><i class="fas fa-file-lines me-2 text-success" aria-hidden="true"></i>Сводный отчёт (конвертер)</h3>
+                <iframe class="w-100 border rounded conclusion-report-frame" style="min-height:480px" title="Сводный отчёт по заключению"></iframe>
+               </div>`
+            : "";
         modalBody.innerHTML = `
             ${renderConclusionInfoBlock(conclusion)}
             ${summaryHtml}
@@ -1479,8 +1522,13 @@ ${excerpt.slice(0, 22000)}`;
                     <tbody>${tableRows}</tbody>
                 </table>
             </div>
+            ${reportSection}
             ${renderConclusionMaterialsBlock(conclusion)}
         `;
+        const reportFrame = modalBody.querySelector(".conclusion-report-frame");
+        if (reportFrame && conclusion.reportHtml) {
+            reportFrame.srcdoc = conclusion.reportHtml;
+        }
         const modalEl = document.getElementById("conclusionDetailModal");
         modalEl.dataset.openConclusionId = conclusionId;
         const delBtn = document.getElementById("conclusionDetailDeleteBtn");
@@ -1544,6 +1592,7 @@ ${excerpt.slice(0, 22000)}`;
         { id: "cost", name: "Не согласен со стоимостью", icon: "fas fa-hand-holding-usd", modal: "#costModal", desc: "Арбитраж стоимости, верификация рынком" },
         { id: "where", name: "Где заявка?", icon: "fas fa-search-location", modal: "#whereModal", desc: "Статусы: осмотр, обременения, оценка" },
         { id: "cadastral", name: "Поиск информации по кадастровому номеру", icon: "fas fa-map-location-dot", href: "/cadastral", desc: "Росреестр (НСПД), kadbase.ru, фото 2ГИС и объявления Авито, Циан, Домклик" },
+        { id: "zalog", name: "Конвертер заключения", icon: "fas fa-file-import", href: "/zalog", desc: "PDF + XLSX → сводный отчёт без GigaChat" },
         { id: "deals", name: "Данные о сделках с недвижимостью", icon: "fas fa-handshake", href: "/deals", desc: "Продажа по кадастровому кварталу" },
         { id: "express", name: "Экспресс оценка", icon: "fas fa-bolt", modal: "#expressModal", desc: "Оценка по минимальным параметрам (демо)" },
         { id: "memorandum", name: "Служебная записка", icon: "fas fa-pen-alt", modal: "#memorandumModal", desc: "AI-подготовка СЗ по документу-основанию" },

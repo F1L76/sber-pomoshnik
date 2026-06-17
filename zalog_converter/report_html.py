@@ -1,0 +1,213 @@
+"""HTML-отчёт в стиле прототипа «Сопровождение 2.0»."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from .pdf_extract import ConclusionData, ConclusionRisk
+from .sber_styles import SBER_REPORT_CSS, SBER_REPORT_HEAD_LINKS
+from .name_format import format_classifier_display
+from .utils import calc_collateral_from_discount, escape_html, format_money
+from .xlsx_extract import CollateralObject
+
+REPORT_SCHEMA_VERSION = 3  # 3 = авто-ширина столбцов перечня
+
+
+def render_conclusion_info_block(conclusion: ConclusionData) -> str:
+    client_name = conclusion.client_name or "—"
+    inn = conclusion.borrower_inn or "—"
+    number = conclusion.conclusion_number or "—"
+    date = conclusion.conclusion_date or "—"
+    validity = conclusion.validity_date or "—"
+    credit_term = conclusion.credit_term or "—"
+    return f"""<div class="info-card report-block conclusion-info-block">
+  <h3 class="section-title"><i class="fas fa-file-contract me-2 text-success" aria-hidden="true"></i>Информация по заключению</h3>
+  <dl class="row g-2 mb-0">
+    <div class="col-12"><dt>Наименование клиента</dt><dd class="mb-0">{escape_html(client_name)}</dd></div>
+    <div class="col-sm-6"><dt>ИНН</dt><dd class="mb-0">{escape_html(inn)}</dd></div>
+    <div class="col-sm-6"><dt>Номер заключения</dt><dd class="mb-0">{escape_html(number)}</dd></div>
+    <div class="col-sm-6"><dt>Дата заключения</dt><dd class="mb-0">{escape_html(date)}</dd></div>
+    <div class="col-sm-6"><dt>Срок действия заключения</dt><dd class="mb-0">{escape_html(validity)}</dd></div>
+    <div class="col-sm-6"><dt>Срок кредита</dt><dd class="mb-0">{escape_html(credit_term)}</dd></div>
+  </dl>
+</div>"""
+
+
+def render_summary_block(conclusion: ConclusionData) -> str:
+    if not conclusion.summary:
+        return ""
+    return f"""<div class="info-card report-block summary-block">
+  <h3 class="section-title"><i class="fas fa-align-left me-2 text-success" aria-hidden="true"></i>Краткий пересказ</h3>
+  <div class="mock-ai">
+    <p class="mb-0 small">{escape_html(conclusion.summary)}</p>
+  </div>
+  <p class="hint">Сформировано по шаблону из извлечённых полей PDF (без GigaChat).</p>
+</div>"""
+
+
+def render_reference_block(conclusion: ConclusionData) -> str:
+    text = (conclusion.reference_text or "").strip()
+    if not text:
+        return ""
+    return f"""<div class="info-card report-block reference-block">
+  <h3 class="section-title"><i class="fas fa-book me-2 text-success" aria-hidden="true"></i>Справочная информация</h3>
+  <div class="reference-plain mb-0">{escape_html(text)}</div>
+</div>"""
+
+
+def render_risks_block(conclusion: ConclusionData) -> str:
+    risks = conclusion.risks or []
+    if not risks:
+        return """<div class="info-card report-block risks-block">
+  <h3 class="section-title"><i class="fas fa-triangle-exclamation me-2 text-warning" aria-hidden="true"></i>Риски</h3>
+  <p class="muted mb-0">В заключении риски не выявлены или не распознаны из PDF автоматически.</p>
+</div>"""
+
+    rows = []
+    for risk in risks:
+        rows.append(
+            "<tr>"
+            f"<td>{escape_html(risk.identifier)}</td>"
+            f"<td>{escape_html(risk.risk)}</td>"
+            f"<td>{escape_html(risk.minimization)}</td>"
+            "</tr>"
+        )
+    return f"""<div class="info-card report-block risks-block">
+  <h3 class="section-title"><i class="fas fa-triangle-exclamation me-2 text-warning" aria-hidden="true"></i>Риски</h3>
+  <p class="hint">Из таблицы PDF ({len(risks)}); минимизация — по справочнику рисков.</p>
+  <div class="table-responsive-custom">
+    <table class="table table-bordered table-striped table-details risks-table mb-0">
+      <thead>
+        <tr>
+          <th>Объект</th>
+          <th>Риск</th>
+          <th>Минимизация</th>
+        </tr>
+      </thead>
+      <tbody>{"".join(rows)}</tbody>
+    </table>
+  </div>
+</div>"""
+
+
+def render_objects_block(objects: list[CollateralObject]) -> str:
+    rows: list[str] = []
+    total_estimated = 0.0
+    total_collateral = 0.0
+
+    for index, obj in enumerate(objects):
+        conditional = obj.conditional or f"Obj-{index + 1}"
+        klass = obj.classifier_name or format_classifier_display(obj.klassifikator_raw, obj.klassifikator)
+        cost_num = float(obj.cost or 0)
+        discount = float(obj.discount if obj.discount is not None else 40)
+        coll_num = calc_collateral_from_discount(cost_num, discount)
+        if obj.collateral_value and obj.collateral_value > 0:
+            coll_num = float(obj.collateral_value)
+        total_estimated += cost_num
+        total_collateral += coll_num
+
+        rows.append(
+            "<tr>"
+            f'<td class="col-tight">{escape_html(conditional)}</td>'
+            f'<td class="col-text">{escape_html(klass)}</td>'
+            f'<td class="col-text col-name">{escape_html(obj.name)}</td>'
+            f'<td class="col-text">{escape_html(obj.identifier or "—")}</td>'
+            f'<td class="col-tight">{escape_html(obj.quality_category)}</td>'
+            f'<td class="col-tight">{escape_html(obj.valuation_type)}</td>'
+            f'<td class="text-end col-tight">{format_money(cost_num)} ₽</td>'
+            f'<td class="text-end col-tight">{format_money(coll_num)} ₽</td>'
+            f'<td class="text-end col-tight">{discount:.1f}%</td>'
+            f'<td class="col-tight">{escape_html(obj.liquidity or "—")}</td>'
+            "</tr>"
+        )
+
+    return f"""<div class="info-card report-block objects-block">
+  <h3 class="section-title"><i class="fas fa-list me-2 text-success" aria-hidden="true"></i>Перечень объектов залога</h3>
+  <p class="hint"><span class="badge-sber">XLSX: {len(objects)} объект(ов)</span></p>
+  <div class="table-responsive-custom">
+    <table class="table table-bordered table-striped table-details table-hover objects-table mb-0">
+      <thead>
+        <tr>
+          <th class="col-tight">Условное обозначение</th>
+          <th class="col-text">Классификатор</th>
+          <th class="col-text col-name">Наименование</th>
+          <th class="col-text">Идентификатор</th>
+          <th class="col-tight">Категория качества</th>
+          <th class="col-tight">Вид стоимости</th>
+          <th class="text-end col-tight">Оценочная стоимость без НДС</th>
+          <th class="text-end col-tight">Залоговая стоимость без НДС</th>
+          <th class="text-end col-tight">Дисконт без НДС</th>
+          <th class="col-tight">Ликвидность</th>
+        </tr>
+      </thead>
+      <tbody>{"".join(rows)}</tbody>
+      <tfoot>
+        <tr class="totals-row">
+          <td colspan="6" class="text-end"><strong>Итого</strong></td>
+          <td class="text-end"><strong>{format_money(total_estimated)} ₽</strong></td>
+          <td class="text-end"><strong>{format_money(total_collateral)} ₽</strong></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>"""
+
+
+def render_notes_block(notes: list[str]) -> str:
+    if not notes:
+        return ""
+    items = "".join(f"<li>{escape_html(note)}</li>" for note in notes)
+    return f"""<div class="info-card report-block notes-block">
+  <h3 class="section-title"><i class="fas fa-circle-info me-2 text-warning" aria-hidden="true"></i>Примечания к распознаванию</h3>
+  <ul class="mb-0 ps-3 text-warning-emphasis">{items}</ul>
+</div>"""
+
+
+def render_full_report(
+    conclusion: ConclusionData,
+    objects: list[CollateralObject],
+    *,
+    title: str = "Краткая форма залогового заключения — сводный отчёт",
+    standalone: bool = True,
+) -> str:
+    body = "\n".join(
+        [
+            render_conclusion_info_block(conclusion),
+            render_summary_block(conclusion),
+            render_reference_block(conclusion),
+            render_risks_block(conclusion),
+            render_objects_block(objects),
+            render_notes_block(conclusion.extraction_notes),
+        ]
+    )
+
+    if not standalone:
+        return body
+
+    return f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{escape_html(title)}</title>
+  {SBER_REPORT_HEAD_LINKS}
+  <style>{SBER_REPORT_CSS}</style>
+</head>
+<body>
+  <div class="report-page">
+    <header class="report-hero d-flex align-items-center gap-3">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <circle cx="20" cy="20" r="18" fill="#21A038" stroke="white" stroke-width="1.5"/>
+        <path d="M12 20L18 26L28 14" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div>
+        <h1>{escape_html(title)}</h1>
+        <p><i class="fas fa-file-pdf me-1" aria-hidden="true"></i>PDF + <i class="fas fa-file-excel me-1" aria-hidden="true"></i>XLSX → единый отчёт · Сопровождение 2.0</p>
+      </div>
+    </header>
+    {body}
+  </div>
+</body>
+</html>"""

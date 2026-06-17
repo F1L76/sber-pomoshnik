@@ -13,7 +13,15 @@
 
 ---
 
-## Вариант 2. Render.com — ссылка для всех, без команд Linux (рекомендуем)
+## Вариант 2. Beget VPS — Россия, без таймаута 30 с, автообновление с GitHub
+
+Подробно: **[RAZVERNYVANIE-BEGET.md](./RAZVERNYVANIE-BEGET.md)**
+
+Кратко: VPS на [beget.com/ru/vps](https://beget.com/ru/vps) (4 ГБ RAM), один раз `bootstrap.sh`, секреты в GitHub Actions → при каждом `git push` сайт обновляется сам.
+
+---
+
+## Вариант 3. Render.com — ссылка для всех, без команд Linux
 
 Нужны: аккаунт GitHub, аккаунт [render.com](https://render.com), ключ GigaChat.
 
@@ -54,7 +62,7 @@
 
 ---
 
-## Вариант 3. Yandex Cloud (если снова попробуете)
+## Вариант 4. Yandex Cloud (если снова попробуете)
 
 Ошибка **`Permission denied (publickey)`** значит: сервер **не пустил** — ключ SSH не совпал.
 
@@ -100,7 +108,8 @@
 Напишите, какой вариант хотите:
 
 1. **Только Mac** (ярлык)  
-2. **Render** (помогу по шагам с GitHub)  
-3. **Yandex** (создать ВМ заново с ключом)
+2. **Beget VPS** (см. RAZVERNYVANIE-BEGET.md)  
+3. **Render** (помогу по шагам с GitHub)  
+4. **Yandex** (создать ВМ заново с ключом)
 
 Можно прислать **скрин** ошибки из Терминала или из консоли Yandex.

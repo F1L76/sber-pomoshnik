@@ -19,6 +19,7 @@ import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
 import { searchDealsByQuarter, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
 import { isSqliteReady } from "./lib/deals-sqlite.mjs";
 import { createDealsJob, getDealsJob } from "./lib/deals-jobs.mjs";
+import { convertZalogMultipart, getZalogConverterHealth } from "./lib/zalog-convert.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
@@ -400,6 +401,38 @@ const server = http.createServer(async (req, res) => {
             return;
         }
         fs.createReadStream(file).pipe(res);
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/zalog/health") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(getZalogConverterHealth()));
+        return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/zalog/convert") {
+        try {
+            const result = await convertZalogMultipart(req);
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(result));
+        } catch (e) {
+            const msg = e.message || String(e);
+            const status = /загрузите|пустой|multipart|больше/i.test(msg) ? 400 : 500;
+            res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, error: msg }));
+        }
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/zalog") {
+        serveStatic(req, res, path.join(__dirname, "zalog-converter", "index.html"));
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/zalog/")) {
+        const rel = url.pathname.slice("/zalog/".length).replace(/\.\./g, "");
+        const file = path.join(__dirname, "zalog-converter", rel);
+        serveStatic(req, res, file);
         return;
     }
 
