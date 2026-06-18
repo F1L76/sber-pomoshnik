@@ -22,11 +22,25 @@ const uploadPanelShell = document.getElementById("uploadPanelShell");
 const resultsSection = document.getElementById("resultsSection");
 const btnRevealUpload = document.getElementById("btnRevealUpload");
 const siteNav = document.getElementById("siteNav");
+const serverStatusEl = document.getElementById("serverStatus");
 
 const ANIM_MS = 520;
 
 let lastHtml = "";
 let expandCooldown = false;
+let serverReady = false;
+
+function setServerStatus(message, kind) {
+  if (!serverStatusEl) return;
+  serverStatusEl.className = `alert py-2 px-3 small mb-3 alert-${kind || "secondary"}`;
+  serverStatusEl.innerHTML = message;
+}
+
+function updateConvertButtonState() {
+  if (!btnConvert) return;
+  const hasFiles = pdfUpload?.files?.[0] && xlsxUpload?.files?.[0];
+  btnConvert.disabled = !serverReady || !hasFiles;
+}
 
 function setStatus(message, kind) {
   statusEl.hidden = false;
@@ -210,8 +224,15 @@ btnConvert.addEventListener("click", () => {
     setStatus("Загрузите оба файла: PDF заключение и XLSX перечень залога", "error");
     return;
   }
+  if (!serverReady) {
+    setStatus("Сервер ещё не готов. Подождите, пока индикатор станет зелёным.", "error");
+    return;
+  }
   convertFiles(pdfFile, xlsxFile);
 });
+
+pdfUpload?.addEventListener("change", updateConvertButtonState);
+xlsxUpload?.addEventListener("change", updateConvertButtonState);
 
 btnRevealUpload.addEventListener("click", expandUploadPanel);
 
@@ -220,7 +241,40 @@ window.addEventListener("resize", () => {
   fitReportFrame();
 });
 measureLayout();
-ZalogApiClient.wakeZalogServer(API_BASE, { maxAttempts: 15, delayMs: 3000 }).catch(() => {});
+updateConvertButtonState();
+
+async function initServerConnection() {
+  if (typeof ZalogApiClient === "undefined") {
+    setServerStatus('<i class="fas fa-circle-xmark me-1 text-danger" aria-hidden="true"></i>Не загружен клиент API. Обновите страницу (Ctrl+Shift+R).', "danger");
+    return;
+  }
+  ZalogApiClient.startKeepAlive(API_BASE, () => {});
+  setServerStatus('<i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Сервер просыпается (Render)… подождите до 2 мин', "warning");
+  btnConvert.disabled = true;
+  try {
+    await ZalogApiClient.wakeZalogServer(API_BASE, {
+      maxAttempts: 50,
+      delayMs: 2000,
+      onProgress(attempt, max) {
+        setServerStatus(
+          `<i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Сервер просыпается… ${attempt}/${max}`,
+          "warning",
+        );
+      },
+    });
+    serverReady = true;
+    setServerStatus('<i class="fas fa-circle-check me-1 text-success" aria-hidden="true"></i>Сервер готов. Можно конвертировать.', "success");
+  } catch (e) {
+    serverReady = false;
+    setServerStatus(
+      `<i class="fas fa-circle-xmark me-1 text-danger" aria-hidden="true"></i>${e.message || "Сервер недоступен"}`,
+      "danger",
+    );
+  }
+  updateConvertButtonState();
+}
+
+initServerConnection();
 
 btnClear.addEventListener("click", () => {
   pdfUpload.value = "";

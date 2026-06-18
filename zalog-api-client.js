@@ -1,9 +1,13 @@
 /**
- * Клиент API конвертера: пробуждение Render и асинхронная конвертация (202 + poll).
+ * Клиент API конвертера: keep-alive, пробуждение Render, async + JSON fallback.
  */
 (function (global) {
-    const VERSION = 3;
+    const VERSION = 4;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    let keepAliveWs = null;
+    let keepAliveTimer = null;
+    let serverReady = false;
 
     function withCacheBust(url) {
         const sep = url.includes("?") ? "&" : "?";
@@ -39,6 +43,39 @@
         return status === 502 || status === 503 || status === 504;
     }
 
+    function wsUrl(apiBase) {
+        const u = new URL(apiBase || location.origin);
+        u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+        u.pathname = "/api/zalog/ws";
+        u.search = "";
+        return u.toString();
+    }
+
+    function startKeepAlive(apiBase, onStatus) {
+        const base = apiBase || location.origin;
+        if (keepAliveTimer) clearInterval(keepAliveTimer);
+        keepAliveTimer = setInterval(() => {
+            fetchNoCache(`${base}/api/zalog/ping`, { timeoutMs: 30_000 }).catch(() => {});
+        }, 4 * 60 * 1000);
+
+        if (typeof WebSocket === "undefined") return;
+        try {
+            if (keepAliveWs) keepAliveWs.close();
+        } catch {
+            /* ignore */
+        }
+        keepAliveWs = new WebSocket(wsUrl(base));
+        keepAliveWs.onopen = () => onStatus?.("ws-open");
+        keepAliveWs.onclose = () => {
+            onStatus?.("ws-closed");
+            setTimeout(() => startKeepAlive(base, onStatus), 5000);
+        };
+        keepAliveWs.onerror = () => onStatus?.("ws-error");
+        setInterval(() => {
+            if (keepAliveWs?.readyState === 1) keepAliveWs.send("ping");
+        }, 4 * 60 * 1000);
+    }
+
     async function pingZalogServer(apiBase) {
         const res = await fetchNoCache(`${apiBase}/api/zalog/ping`, { timeoutMs: 60_000 });
         return res.ok;
@@ -46,7 +83,7 @@
 
     async function wakeZalogServer(apiBase, options) {
         const opts = options || {};
-        const maxAttempts = opts.maxAttempts ?? 45;
+        const maxAttempts = opts.maxAttempts ?? 50;
         const delayMs = opts.delayMs ?? 2000;
         const onProgress = opts.onProgress;
 
@@ -61,10 +98,13 @@
                     if (data.pythonDepsOk === false) {
                         throw new Error(
                             data.pythonDepsError ||
-                                "Python-модули конвертера не установлены на сервере. Подождите 1–2 минуты после деплоя."
+                                "Python-модули конвертера не установлены на сервере."
                         );
                     }
-                    if (data.ok) return data;
+                    if (data.ok) {
+                        serverReady = true;
+                        return data;
+                    }
                 } else if (!isRetryableHttp(res.status) && res.status >= 400) {
                     throw new Error(`Сервер ответил HTTP ${res.status}`);
                 }
@@ -74,9 +114,21 @@
             if (onProgress) onProgress(attempt, maxAttempts, lastStatus);
             if (attempt < maxAttempts) await sleep(delayMs);
         }
+        serverReady = false;
         throw new Error(
-            "Сервер Render не проснулся за 90 секунд. Обновите страницу (Ctrl+Shift+R) и повторите через минуту."
+            "Сервер Render не проснулся. Обновите страницу (Ctrl+Shift+R) и подождите 1–2 минуты."
         );
+    }
+
+    async function fileToBase64(file) {
+        const buf = await file.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        }
+        return btoa(binary);
     }
 
     async function pollZalogJob(apiBase, jobId, options) {
@@ -107,68 +159,94 @@
             if (job.status === "error") throw new Error(job.error || "Ошибка конвертации");
             if (onProgress) onProgress(attempt, maxAttempts, job.status);
         }
-        throw new Error("Конвертация заняла слишком много времени. Попробуйте ещё раз.");
+        throw new Error("Конвертация заняла слишком много времени.");
+    }
+
+    async function submitConvertJob(apiBase, pdfFile, xlsxFile, useJson) {
+        if (useJson) {
+            const res = await fetchNoCache(`${apiBase}/api/zalog/convert/json`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    pdfBase64: await fileToBase64(pdfFile),
+                    xlsxBase64: await fileToBase64(xlsxFile)
+                }),
+                timeoutMs: 300_000
+            });
+            return res;
+        }
+        const formData = new FormData();
+        formData.append("pdf", pdfFile);
+        formData.append("xlsx", xlsxFile);
+        return fetchNoCache(`${apiBase}/api/zalog/convert`, {
+            method: "POST",
+            body: formData,
+            timeoutMs: 300_000
+        });
+    }
+
+    async function parseConvertResponse(res) {
+        const raw = await res.text();
+        let payload = {};
+        try {
+            payload = raw ? JSON.parse(raw) : {};
+        } catch {
+            if (isRetryableHttp(res.status)) {
+                return { retry: true, error: new Error(`HTTP ${res.status}`) };
+            }
+            throw new Error(`Ошибка сервера (HTTP ${res.status})`);
+        }
+        if (!res.ok) {
+            if (isRetryableHttp(res.status)) {
+                return { retry: true, error: new Error(payload.error || `HTTP ${res.status}`) };
+            }
+            throw new Error(payload.error || `Ошибка конвертера (HTTP ${res.status})`);
+        }
+        return { retry: false, payload };
     }
 
     async function postZalogConvert(apiBase, pdfFile, xlsxFile, options) {
         const opts = options || {};
-        const maxAttempts = opts.maxAttempts ?? 6;
-        const retryDelayMs = opts.retryDelayMs ?? 10_000;
+        const maxAttempts = opts.maxAttempts ?? 8;
+        const retryDelayMs = opts.retryDelayMs ?? 8000;
         const onRetry = opts.onRetry;
         const onProgress = opts.onProgress;
 
         let lastErr;
+        let useJson = false;
+
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             if (attempt > 1) {
-                if (onRetry) onRetry(attempt, maxAttempts);
+                if (onRetry) onRetry(attempt, maxAttempts, useJson ? "json" : "multipart");
                 await sleep(retryDelayMs);
             }
 
             try {
                 if (onProgress) onProgress(attempt, maxAttempts, null, null, "wake");
                 await wakeZalogServer(apiBase, {
-                    maxAttempts: attempt === 1 ? 45 : 25,
+                    maxAttempts: 50,
                     delayMs: 2000,
                     onProgress(wakeTry, wakeMax, status) {
                         if (onProgress) onProgress(attempt, maxAttempts, wakeTry, wakeMax, "wake", status);
                     }
                 });
-                await sleep(1000);
+                await sleep(800);
 
-                const formData = new FormData();
-                formData.append("pdf", pdfFile);
-                formData.append("xlsx", xlsxFile);
+                if (onProgress) onProgress(attempt, maxAttempts, null, null, useJson ? "upload-json" : "upload");
+                const res = await submitConvertJob(apiBase, pdfFile, xlsxFile, useJson);
+                const parsed = await parseConvertResponse(res);
 
-                if (onProgress) onProgress(attempt, maxAttempts, null, null, "upload");
-                const res = await fetchNoCache(`${apiBase}/api/zalog/convert`, {
-                    method: "POST",
-                    body: formData,
-                    timeoutMs: 180_000
-                });
-                const raw = await res.text();
-                let payload = {};
-                try {
-                    payload = raw ? JSON.parse(raw) : {};
-                } catch {
-                    if (isRetryableHttp(res.status) && attempt < maxAttempts) {
-                        lastErr = new Error(`Сервер Render не готов (HTTP ${res.status})`);
-                        continue;
+                if (parsed.retry) {
+                    lastErr = parsed.error;
+                    if (!useJson && isRetryableHttp(res.status)) {
+                        useJson = true;
+                        if (onProgress) onProgress(attempt, maxAttempts, null, null, "retry-json");
                     }
-                    throw new Error(
-                        isRetryableHttp(res.status)
-                            ? "Сервер Render не ответил. Подождите минуту и повторите."
-                            : `Ошибка загрузки файлов (HTTP ${res.status})`
-                    );
+                    if (attempt < maxAttempts) continue;
+                    throw lastErr;
                 }
 
-                if (!res.ok) {
-                    if (isRetryableHttp(res.status) && attempt < maxAttempts) {
-                        lastErr = new Error(payload.error || `HTTP ${res.status}`);
-                        continue;
-                    }
-                    throw new Error(payload.error || `Ошибка конвертера (HTTP ${res.status})`);
-                }
-
+                const payload = parsed.payload;
                 if (res.status === 202 || payload.async) {
                     if (!payload.jobId) throw new Error("Сервер не вернул идентификатор задачи");
                     if (onProgress) onProgress(attempt, maxAttempts, null, null, "processing");
@@ -178,14 +256,14 @@
                         }
                     });
                 }
-
                 return payload;
             } catch (e) {
                 lastErr = e;
                 const msg = String(e.message || e);
                 const retryable =
                     e.name === "AbortError" ||
-                    /503|502|504|проснулся|Render|network|fetch/i.test(msg);
+                    /503|502|504|проснулся|Render|network|fetch|HTTP 5/i.test(msg);
+                if (!useJson && retryable) useJson = true;
                 if (attempt < maxAttempts && retryable) continue;
                 throw e;
             }
@@ -193,5 +271,18 @@
         throw lastErr || new Error("Не удалось выполнить конвертацию");
     }
 
-    global.ZalogApiClient = { VERSION, wakeZalogServer, postZalogConvert, pingZalogServer, pollZalogJob, sleep };
+    function isServerReady() {
+        return serverReady;
+    }
+
+    global.ZalogApiClient = {
+        VERSION,
+        wakeZalogServer,
+        postZalogConvert,
+        pingZalogServer,
+        pollZalogJob,
+        startKeepAlive,
+        isServerReady,
+        sleep
+    };
 })(typeof globalThis !== "undefined" ? globalThis : window);

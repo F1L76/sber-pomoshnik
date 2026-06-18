@@ -13,13 +13,14 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
+import { WebSocketServer } from "ws";
 import { searchByCadastralNumber, streamCadastralSearch } from "./lib/cadastral-search.mjs";
 import { getPanoramaCachePath } from "./lib/yandex-panorama-screenshot.mjs";
 import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
 import { searchDealsByQuarter, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
 import { isSqliteReady } from "./lib/deals-sqlite.mjs";
 import { createDealsJob, getDealsJob } from "./lib/deals-jobs.mjs";
-import { getZalogConverterHealth, probeZalogPythonDeps, ensureZalogPythonDeps, readZalogUpload } from "./lib/zalog-convert.mjs";
+import { getZalogConverterHealth, probeZalogPythonDeps, probeZalogPythonDepsCached, ensureZalogPythonDeps, readZalogUpload } from "./lib/zalog-convert.mjs";
 import { createZalogConvertJob, getZalogConvertJob } from "./lib/zalog-jobs.mjs";
 import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigachat-config.mjs";
 
@@ -249,8 +250,40 @@ function serveStatic(req, res, filePath) {
         return;
     }
     const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
+    const headers = { "Content-Type": MIME[ext] || "application/octet-stream" };
+    if (/\.(html?|js|mjs)$/i.test(ext)) {
+        headers["Cache-Control"] = "no-store, no-cache, must-revalidate";
+        headers.Pragma = "no-cache";
+    }
+    res.writeHead(200, headers);
     fs.createReadStream(filePath).pipe(res);
+}
+
+async function startZalogConvertJob(res, pdfBytes, xlsxBytes) {
+    const probe = await probeZalogPythonDepsCached();
+    if (!probe.ok) {
+        res.writeHead(503, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(
+            JSON.stringify({
+                ok: false,
+                code: "PYTHON_DEPS_MISSING",
+                error:
+                    probe.error ||
+                    "Не установлены Python-зависимости конвертера. Подождите минуту после деплоя."
+            })
+        );
+        return;
+    }
+    const jobId = createZalogConvertJob(pdfBytes, xlsxBytes);
+    res.writeHead(202, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+    res.end(
+        JSON.stringify({
+            ok: true,
+            async: true,
+            jobId,
+            message: "Конвертация запущена. Ожидайте результат."
+        })
+    );
 }
 
 function readBody(req) {
@@ -473,33 +506,30 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    if (req.method === "POST" && url.pathname === "/api/zalog/convert") {
+    if (req.method === "POST" && url.pathname === "/api/zalog/convert/json") {
         try {
-            const probe = await probeZalogPythonDeps();
-            if (!probe.ok) {
-                res.writeHead(503, { "Content-Type": "application/json; charset=utf-8" });
-                res.end(
-                    JSON.stringify({
-                        ok: false,
-                        code: "PYTHON_DEPS_MISSING",
-                        error:
-                            probe.error ||
-                            "Не установлены Python-зависимости конвертера (pdfplumber, openpyxl). Подождите минуту после деплоя или обратитесь к администратору."
-                    })
-                );
+            const raw = await readBody(req);
+            const body = JSON.parse(raw || "{}");
+            const pdfBytes = Buffer.from(String(body.pdfBase64 || ""), "base64");
+            const xlsxBytes = Buffer.from(String(body.xlsxBase64 || ""), "base64");
+            if (!pdfBytes.length || !xlsxBytes.length) {
+                res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ ok: false, error: "Загрузите оба файла: PDF и XLSX (base64)" }));
                 return;
             }
+            await startZalogConvertJob(res, pdfBytes, xlsxBytes);
+        } catch (e) {
+            const msg = e.message || String(e);
+            res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, error: msg }));
+        }
+        return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/zalog/convert") {
+        try {
             const { pdfBytes, xlsxBytes } = await readZalogUpload(req);
-            const jobId = createZalogConvertJob(pdfBytes, xlsxBytes);
-            res.writeHead(202, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
-            res.end(
-                JSON.stringify({
-                    ok: true,
-                    async: true,
-                    jobId,
-                    message: "Конвертация запущена. Ожидайте результат."
-                })
-            );
+            await startZalogConvertJob(res, pdfBytes, xlsxBytes);
         } catch (e) {
             const msg = e.message || String(e);
             const status = /загрузите|пустой|multipart|больше/i.test(msg) ? 400 : 500;
@@ -654,6 +684,37 @@ const server = http.createServer(async (req, res) => {
 
     res.writeHead(404);
     res.end("Not found");
+});
+
+const wss = new WebSocketServer({ noServer: true });
+server.on("upgrade", (request, socket, head) => {
+    try {
+        const host = request.headers.host || `localhost:${PORT}`;
+        const { pathname } = new URL(request.url, `http://${host}`);
+        if (pathname === "/api/zalog/ws") {
+            wss.handleUpgrade(request, socket, head, (ws) => {
+                wss.emit("connection", ws, request);
+            });
+            return;
+        }
+    } catch {
+        /* ignore */
+    }
+    socket.destroy();
+});
+wss.on("connection", (ws) => {
+    try {
+        ws.send(JSON.stringify({ ok: true, type: "ready" }));
+    } catch {
+        /* ignore */
+    }
+    ws.on("message", () => {
+        try {
+            ws.send(JSON.stringify({ ok: true, type: "pong", ts: Date.now() }));
+        } catch {
+            /* ignore */
+        }
+    });
 });
 
 (async () => {
