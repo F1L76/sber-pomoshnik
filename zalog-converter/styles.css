@@ -13,7 +13,7 @@
   --radius-lg: 20px;
   --radius-xl: 28px;
   --nav-offset: 64px;
-  --upload-panel-h: 420px;
+  --upload-panel-h: 3200px;
   --upload-main-gap: 1.25rem;
 }
 
@@ -112,8 +112,12 @@ body.has-results-focus main.app-main {
 
 .upload-clip {
   overflow: hidden;
-  max-height: var(--upload-panel-h, 2000px);
+  max-height: var(--upload-panel-h, 3200px);
   transition: max-height 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.upload-clip:not(.is-collapsed) {
+  overflow: visible;
 }
 
 .upload-clip.is-collapsed {
@@ -165,7 +169,7 @@ body.has-results-focus main.app-main {
   background: linear-gradient(180deg, #F9FDFB 0%, #F4FAF6 100%);
   border-radius: 18px;
   border: 1.5px dashed rgba(33, 160, 56, 0.45);
-  padding: 1rem 1.1rem;
+  padding: 1rem 1.1rem 1.25rem;
 }
 
 .panel-title {
@@ -222,9 +226,16 @@ body.has-results-focus main.app-main {
 
 .actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
   gap: 0.5rem;
   margin-top: 1rem;
+}
+
+.actions .btn-primary,
+.actions .btn-outline-sber {
+  width: 100%;
+  justify-content: center;
 }
 
 .status {

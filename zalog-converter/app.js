@@ -34,9 +34,13 @@ function setServerStatus(phase, options) {
   if (!serverStatusEl) return;
   if (typeof ConverterStatusUI !== "undefined") {
     ConverterStatusUI.setElement(serverStatusEl, phase, options || {});
-    return;
+  } else {
+    serverStatusEl.textContent = options?.text || phase;
   }
-  serverStatusEl.textContent = options?.text || phase;
+  requestAnimationFrame(() => {
+    measureLayout();
+    window.setTimeout(measureLayout, 80);
+  });
 }
 
 function setStatus(phase, options) {
@@ -250,6 +254,11 @@ window.addEventListener("resize", () => {
 });
 measureLayout();
 updateConvertButtonState();
+
+if (uploadPanelShell && typeof ResizeObserver !== "undefined") {
+  const uploadPanelObserver = new ResizeObserver(() => measureLayout());
+  uploadPanelObserver.observe(uploadPanelShell);
+}
 
 async function initServerConnection() {
   if (typeof ZalogApiClient === "undefined") {
