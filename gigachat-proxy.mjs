@@ -19,7 +19,8 @@ import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
 import { searchDealsByQuarter, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
 import { isSqliteReady } from "./lib/deals-sqlite.mjs";
 import { createDealsJob, getDealsJob } from "./lib/deals-jobs.mjs";
-import { convertZalogMultipart, getZalogConverterHealth } from "./lib/zalog-convert.mjs";
+import { convertZalogMultipart, getZalogConverterHealth, probeZalogPythonDeps } from "./lib/zalog-convert.mjs";
+import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigachat-config.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
@@ -273,8 +274,29 @@ const server = http.createServer(async (req, res) => {
 
     const url = new URL(req.url, `http://localhost:${PORT}`);
 
+    if (req.method === "GET" && url.pathname === "/api/gigachat/config") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(getGigaChatPublicConfig()));
+        return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/gigachat/health") {
-        const hasCreds = Boolean(process.env.GIGACHAT_CREDENTIALS);
+        const cfg = getGigaChatPublicConfig();
+        if (!cfg.serverEnabled) {
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(
+                JSON.stringify({
+                    ok: false,
+                    enabled: false,
+                    serverEnabled: false,
+                    hasCreds: cfg.hasCredentials,
+                    error: "GigaChat отключён на сервере (GIGACHAT_ENABLED=false)",
+                    model: cfg.model
+                })
+            );
+            return;
+        }
+        const hasCreds = cfg.hasCredentials;
         let ok = false;
         let error = null;
         if (hasCreds) {
@@ -288,7 +310,16 @@ const server = http.createServer(async (req, res) => {
             error = "Нет GIGACHAT_CREDENTIALS в .env";
         }
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ ok, hasCreds, error, model: process.env.GIGACHAT_MODEL || "GigaChat" }));
+        res.end(
+            JSON.stringify({
+                ok,
+                enabled: true,
+                serverEnabled: true,
+                hasCreds,
+                error,
+                model: cfg.model
+            })
+        );
         return;
     }
 
@@ -405,13 +436,28 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === "GET" && url.pathname === "/api/zalog/health") {
+        const base = getZalogConverterHealth();
+        const probe = await probeZalogPythonDeps();
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify(getZalogConverterHealth()));
+        res.end(
+            JSON.stringify({
+                ...base,
+                ok: base.ok && probe.ok,
+                pythonDepsOk: probe.ok,
+                pythonDepsError: probe.ok ? null : probe.error
+            })
+        );
         return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/zalog/convert") {
         try {
+            const probe = await probeZalogPythonDeps();
+            if (!probe.ok) {
+                res.writeHead(503, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ ok: false, error: probe.error }));
+                return;
+            }
             const result = await convertZalogMultipart(req);
             res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
             res.end(JSON.stringify(result));
@@ -522,6 +568,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "POST" && url.pathname === "/api/gigachat/chat") {
         try {
+            if (!isGigaChatEnabledOnServer()) {
+                res.writeHead(403, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ error: "GigaChat отключён на сервере (GIGACHAT_ENABLED=false)" }));
+                return;
+            }
             const raw = await readBody(req);
             const body = JSON.parse(raw || "{}");
             const systemPrompt = body.systemPrompt || "Ты AI-ассистент СберБизнес Помощник по сопровождению залогов и экспертизы. Отвечай кратко и по делу на русском языке.";

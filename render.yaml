@@ -5,7 +5,7 @@ services:
     runtime: node
     plan: free
     # Импорт SQLite ~6 GB; на free tier может не хватить RAM — тогда поиск идёт по CSV
-    buildCommand: (python3 -m pip install -r requirements-zalog.txt || echo "zalog python deps skipped") && (node scripts/import-deals-sqlite.mjs || echo "deals sqlite import skipped")
+    buildCommand: npm run zalog:install && (node scripts/import-deals-sqlite.mjs || echo "deals sqlite import skipped")
     startCommand: npm start
     envVars:
       - key: GIGACHAT_SCOPE
@@ -16,6 +16,8 @@ services:
         value: "22"
       - key: GIGACHAT_CREDENTIALS
         sync: false
+      - key: GIGACHAT_ENABLED
+        value: "true"
       - key: LANGFLOW_API_KEY
         sync: false
       - key: LANGFLOW_RUN_URL

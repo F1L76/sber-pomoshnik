@@ -8,6 +8,9 @@ import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent.parent
+_PYDEPS = _ROOT / "python-deps"
+if _PYDEPS.is_dir():
+    sys.path.insert(0, str(_PYDEPS))
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 

@@ -103,6 +103,22 @@
             height: 0.5rem;
             flex-shrink: 0;
         }
+        .gigachat-toggle-wrap {
+            padding: 0.15rem 0.5rem 0.15rem 0.65rem;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .gigachat-toggle-wrap .form-check-input {
+            cursor: pointer;
+            margin-top: 0.2rem;
+        }
+        .gigachat-toggle-wrap .form-check-label {
+            color: rgba(255, 255, 255, 0.92);
+            cursor: pointer;
+            user-select: none;
+            font-size: 0.8rem;
+        }
         @media (max-width: 576px) {
             .nav-tagline {
                 display: none;
@@ -438,7 +454,11 @@
             <span>СберБизнес Помощник</span>
         </span>
         <span class="d-flex align-items-center gap-2 flex-wrap">
-            <button type="button" class="btn btn-sm rounded-pill gigachat-status-btn d-inline-flex align-items-center gap-2 px-3 py-1" id="gigachatStatusBtn" title="Нажмите, чтобы проверить соединение с GigaChat">
+            <div class="form-check form-switch gigachat-toggle-wrap mb-0 d-flex align-items-center gap-2" title="Включить или выключить запросы к GigaChat в этом браузере">
+                <input class="form-check-input" type="checkbox" role="switch" id="gigaChatToggle" checked>
+                <label class="form-check-label" for="gigaChatToggle">GigaChat</label>
+            </div>
+            <button type="button" class="btn btn-sm rounded-pill gigachat-status-btn d-inline-flex align-items-center gap-2 px-3 py-1" id="gigachatStatusBtn" title="Статус GigaChat">
                 <span class="rounded-circle gigachat-status-dot bg-secondary" id="gigachatStatusDot" aria-hidden="true"></span>
                 <span id="gigachatStatusBadge" class="fw-semibold">Проверка…</span>
                 <i class="fas fa-arrows-rotate fa-xs opacity-75" aria-hidden="true"></i>
@@ -775,12 +795,58 @@
 
     const GIGACHAT_SYSTEM = "Ты AI-ассистент «СберБизнес Помощник» — платформы сопровождения залогов и экспертизы в банке. Отвечай профессионально, структурированно, на русском языке. Не выдумывай номера документов и суммы, если их нет во входных данных.";
 
+    const GIGACHAT_STORAGE_KEY = "sber-pomoshnik:gigachat-enabled";
+
+    let gigaChatServerEnabled = true;
+    let gigaChatUserEnabled = localStorage.getItem(GIGACHAT_STORAGE_KEY) !== "false";
     let gigaChatOnline = false;
+
+    function isGigaChatActive() {
+        return gigaChatServerEnabled && gigaChatUserEnabled;
+    }
+
+    function applyGigaChatToggleUi() {
+        const toggle = document.getElementById("gigaChatToggle");
+        const active = isGigaChatActive();
+        if (toggle) {
+            toggle.checked = gigaChatUserEnabled && gigaChatServerEnabled;
+            toggle.disabled = !gigaChatServerEnabled;
+            toggle.title = gigaChatServerEnabled
+                ? "Включить или выключить GigaChat в этом браузере"
+                : "GigaChat отключён администратором на сервере";
+        }
+        document.body.classList.toggle("gigachat-disabled", !active);
+    }
+
+    async function loadGigaChatConfig() {
+        try {
+            const res = await fetch(`${GIGACHAT_API_BASE}/api/gigachat/config`, { cache: "no-store" });
+            const data = await res.json();
+            gigaChatServerEnabled = data.serverEnabled !== false;
+        } catch (_) {
+            gigaChatServerEnabled = true;
+        }
+        applyGigaChatToggleUi();
+    }
 
     async function checkGigaChatHealth() {
         const btn = document.getElementById("gigachatStatusBtn");
         const dot = document.getElementById("gigachatStatusDot");
         const label = document.getElementById("gigachatStatusBadge");
+        if (!isGigaChatActive()) {
+            gigaChatOnline = false;
+            if (label) {
+                label.textContent = gigaChatServerEnabled ? "GigaChat · выкл" : "GigaChat · заблокирован";
+            }
+            if (dot) dot.className = "rounded-circle gigachat-status-dot bg-secondary";
+            if (btn) {
+                btn.title = gigaChatServerEnabled
+                    ? "Включите переключатель GigaChat слева"
+                    : "На сервере GIGACHAT_ENABLED=false";
+                btn.disabled = false;
+            }
+            return;
+        }
         if (label) {
             label.innerHTML = '<i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Проверка…';
         }
@@ -791,6 +857,11 @@
         try {
             const res = await fetch(`${GIGACHAT_API_BASE}/api/gigachat/health`, { cache: "no-store" });
             const data = await res.json();
+            if (data.serverEnabled === false) {
+                gigaChatServerEnabled = false;
+                applyGigaChatToggleUi();
+                return checkGigaChatHealth();
+            }
             gigaChatOnline = !!data.ok;
             if (label) {
                 label.textContent = gigaChatOnline ? "GigaChat · онлайн" : "GigaChat · ошибка ключа";
@@ -819,6 +890,11 @@
     }
 
     async function askGigaChat(userPrompt, systemPrompt, options) {
+        if (!isGigaChatActive()) {
+            throw new Error(gigaChatServerEnabled
+                ? "GigaChat выключен. Включите переключатель в верхней панели."
+                : "GigaChat отключён на сервере.");
+        }
         const res = await fetch(`${GIGACHAT_API_BASE}/api/gigachat/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1259,7 +1335,7 @@ ${excerpt.slice(0, 22000)}`;
         </tr>`).join("");
         return `<div class="mb-4">
             <h3 class="h6 fw-bold mb-3"><i class="fas fa-triangle-exclamation me-2 text-warning" aria-hidden="true"></i>Риски</h3>
-            <p class="small text-muted mb-2">${c.summary ? "Пересказ и риски извлечены конвертером (без GigaChat)." : "Риски по заключению."}</p>
+            <p class="small text-muted mb-2">${c.summary ? (isGigaChatActive() ? "Пересказ может быть уточнён GigaChat; риски — из конвертера." : "Пересказ и риски извлечены конвертером (без GigaChat).") : "Риски по заключению."}</p>
             <div class="table-responsive-custom">
                 <table class="table table-bordered conclusion-risks-table mb-0">
                     <thead><tr><th>Идентификатор</th><th>Риск</th><th>Минимизация</th><th class="text-end">Действие</th></tr></thead>
@@ -1360,10 +1436,23 @@ ${excerpt.slice(0, 22000)}`;
             if (!newConclusion.id || newConclusion.id === "ASZ") {
                 newConclusion.id = fallbackConclusionNumberFromFile(pdfFile.name);
             }
+            if (isGigaChatActive() && gigaChatOnline && newConclusion.summary) {
+                importStatusDiv.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>GigaChat улучшает пересказ…</span>';
+                try {
+                    const polished = await askGigaChat(
+                        `Перепиши краткий пересказ залогового заключения простым языком (4–6 предложений), без канцелярита. Сохрани факты.\n\nТекст:\n${newConclusion.summary}`,
+                        GIGACHAT_SYSTEM,
+                        { temperature: 0.2, max_tokens: 1024 }
+                    );
+                    if (polished?.trim()) newConclusion.summary = polished.trim();
+                } catch (aiErr) {
+                    console.warn("GigaChat polish skipped:", aiErr);
+                }
+            }
             currentClientData.conclusions.push(newConclusion);
             updateInfoPanel();
             importStatusDiv.innerHTML = `<span class="text-success fw-medium"><i class="fas fa-circle-check me-1" aria-hidden="true"></i>Заключение ${escapeHtml(newConclusion.id)} импортировано.</span><br>
-                <span class="text-success small">Объектов: ${newConclusion.objects.length} · Рисков: ${newConclusion.risks.length}</span>`;
+                <span class="text-success small">Объектов: ${newConclusion.objects.length} · Рисков: ${newConclusion.risks.length}${isGigaChatActive() && gigaChatOnline ? " · пересказ уточнён GigaChat" : ""}</span>`;
             document.getElementById("pdfUpload").value = "";
             document.getElementById("xlsxUpload").value = "";
             setTimeout(() => { importStatusDiv.innerHTML = ""; }, 6000);
@@ -1796,26 +1885,60 @@ ${excerpt.slice(0, 22000)}`;
             </div>`;
         const recognizeBtn = document.getElementById("recognizeRiskBtn");
         if (recognizeBtn) {
-            recognizeBtn.addEventListener("click", () => {
+            recognizeBtn.addEventListener("click", async () => {
                 const txt = document.getElementById("sxzText").value.trim();
                 const out = document.getElementById("riskResult");
                 if (!txt) {
                     out.innerHTML = '<span class="text-warning">Введите текст.</span>';
                     return;
                 }
+                if (isGigaChatActive()) {
+                    out.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1"></i>GigaChat анализирует…</span>';
+                    try {
+                        const answer = await askGigaChat(
+                            "Выдели риски из текста СЗЗ по залогу. Кратко, по пунктам.\n\n" + txt.slice(0, 12000),
+                            GIGACHAT_SYSTEM,
+                            { temperature: 0.2, max_tokens: 2048 }
+                        );
+                        out.innerHTML = `<i class="fas fa-robot me-2 text-success" aria-hidden="true"></i><strong>GigaChat:</strong> ${escapeHtml(answer).replace(/\n/g, "<br>")}`;
+                        return;
+                    } catch (e) {
+                        out.innerHTML = `<span class="text-warning">${escapeHtml(e.message)}</span>`;
+                        return;
+                    }
+                }
                 const risk = txt.toLowerCase().includes("ипотек")
                     ? "Обременение ипотекой. Рекомендуется проверка закладной."
-                    : "Риски не выявлены.";
+                    : "Риски не выявлены (демо — включите GigaChat для AI-анализа).";
                 out.innerHTML = `<i class="fas fa-magnifying-glass me-2 text-success" aria-hidden="true"></i><strong>Результат:</strong> ${risk}`;
             });
         }
         const summaryBtn = document.getElementById("makeSummaryBtn");
         if (summaryBtn) {
-            summaryBtn.addEventListener("click", () => {
+            summaryBtn.addEventListener("click", async () => {
                 const txt = document.getElementById("sxzSummaryText").value.trim();
                 const out = document.getElementById("summaryResult");
+                if (!txt) {
+                    out.innerHTML = '<span class="text-warning">Введите текст для резюмирования.</span>';
+                    return;
+                }
+                if (isGigaChatActive()) {
+                    out.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1"></i>GigaChat формирует резюме…</span>';
+                    try {
+                        const answer = await askGigaChat(
+                            "Сформируй краткое резюме СЗЗ (3–5 предложений) для сопровождения залогов.\n\n" + txt.slice(0, 12000),
+                            GIGACHAT_SYSTEM,
+                            { temperature: 0.25, max_tokens: 1024 }
+                        );
+                        out.innerHTML = `<i class="fas fa-robot me-2 text-success" aria-hidden="true"></i>${escapeHtml(answer).replace(/\n/g, "<br>")}`;
+                        return;
+                    } catch (e) {
+                        out.innerHTML = `<span class="text-warning">${escapeHtml(e.message)}</span>`;
+                        return;
+                    }
+                }
                 out.innerHTML = txt
-                    ? '<i class="fas fa-file-lines me-2 text-success" aria-hidden="true"></i>Краткое резюме: СЗЗ в порядке, залоговые риски отсутствуют (демо).'
+                    ? '<i class="fas fa-file-lines me-2 text-success" aria-hidden="true"></i>Краткое резюме: СЗЗ в порядке, залоговые риски отсутствуют (демо — включите GigaChat).'
                     : '<span class="text-warning">Введите текст для резюмирования.</span>';
             });
         }
@@ -2323,10 +2446,17 @@ ${excerpt.slice(0, 22000)}`;
 
     initPriorityBossConfirm();
 
+    document.getElementById("gigaChatToggle")?.addEventListener("change", (e) => {
+        gigaChatUserEnabled = !!e.target.checked;
+        localStorage.setItem(GIGACHAT_STORAGE_KEY, gigaChatUserEnabled ? "true" : "false");
+        applyGigaChatToggleUi();
+        checkGigaChatHealth();
+    });
+
     document.getElementById("gigachatStatusBtn")?.addEventListener("click", () => {
         checkGigaChatHealth();
     });
-    checkGigaChatHealth();
+    loadGigaChatConfig().then(() => checkGigaChatHealth());
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") checkGigaChatHealth();
     });
