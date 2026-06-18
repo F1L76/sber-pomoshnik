@@ -7,6 +7,7 @@ services:
     # Импорт SQLite ~6 GB; на free tier может не хватить RAM — тогда поиск идёт по CSV
     buildCommand: npm run zalog:install && (node scripts/import-deals-sqlite.mjs || echo "deals sqlite import skipped")
     startCommand: npm start
+    healthCheckPath: /api/zalog/health
     envVars:
       - key: GIGACHAT_SCOPE
         value: GIGACHAT_API_PERS

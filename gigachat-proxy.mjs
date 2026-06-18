@@ -19,7 +19,7 @@ import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
 import { searchDealsByQuarter, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
 import { isSqliteReady } from "./lib/deals-sqlite.mjs";
 import { createDealsJob, getDealsJob } from "./lib/deals-jobs.mjs";
-import { convertZalogMultipart, getZalogConverterHealth, probeZalogPythonDeps } from "./lib/zalog-convert.mjs";
+import { convertZalogMultipart, getZalogConverterHealth, probeZalogPythonDeps, ensureZalogPythonDeps } from "./lib/zalog-convert.mjs";
 import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigachat-config.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -455,7 +455,15 @@ const server = http.createServer(async (req, res) => {
             const probe = await probeZalogPythonDeps();
             if (!probe.ok) {
                 res.writeHead(503, { "Content-Type": "application/json; charset=utf-8" });
-                res.end(JSON.stringify({ ok: false, error: probe.error }));
+                res.end(
+                    JSON.stringify({
+                        ok: false,
+                        code: "PYTHON_DEPS_MISSING",
+                        error:
+                            probe.error ||
+                            "Не установлены Python-зависимости конвертера (pdfplumber, openpyxl). Подождите минуту после деплоя или обратитесь к администратору."
+                    })
+                );
                 return;
             }
             const result = await convertZalogMultipart(req);
@@ -617,10 +625,20 @@ const server = http.createServer(async (req, res) => {
     res.end("Not found");
 });
 
-server.listen(PORT, HOST, () => {
+server.listen(PORT, HOST, async () => {
     console.log(`GigaChat proxy: http://${HOST}:${PORT}`);
     console.log(`Откройте: http://localhost:${PORT}/ (локально) или URL вашего сервера`);
     warmupDealsIndexes();
+    try {
+        const zalog = await ensureZalogPythonDeps();
+        if (zalog.ok) {
+            console.log(`✓ Конвертер залогов: Python ${zalog.python}, зависимости OK`);
+        } else {
+            console.warn("⚠ Конвертер залогов: зависимости не готовы —", zalog.error || zalog.installError || "unknown");
+        }
+    } catch (e) {
+        console.warn("⚠ Конвертер залогов: ошибка при установке зависимостей —", e.message || e);
+    }
     if (!process.env.GIGACHAT_CREDENTIALS) {
         console.warn("⚠ Создайте .env из .env.example и укажите GIGACHAT_CREDENTIALS");
     }

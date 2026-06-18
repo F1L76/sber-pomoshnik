@@ -156,11 +156,7 @@ function resetView() {
 }
 
 async function convertFiles(pdfFile, xlsxFile) {
-  const formData = new FormData();
-  formData.append("pdf", pdfFile);
-  formData.append("xlsx", xlsxFile);
-
-  setStatus("Обрабатываем PDF и XLSX…", "loading");
+  setStatus("Проверяем доступность сервера…", "loading");
   emptyState.hidden = true;
   reportFrame.hidden = true;
   resultsToolbar.hidden = false;
@@ -172,14 +168,18 @@ async function convertFiles(pdfFile, xlsxFile) {
   btnConvert.disabled = true;
 
   try {
-    const response = await fetch(`${API_BASE}/api/zalog/convert`, {
-      method: "POST",
-      body: formData,
+    await ZalogApiClient.wakeZalogServer(API_BASE, {
+      onProgress(attempt, max) {
+        setStatus(`Сервер просыпается (Render)… попытка ${attempt}/${max}`, "loading");
+      },
     });
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.error || `HTTP ${response.status}`);
-    }
+    setStatus("Обрабатываем PDF и XLSX…", "loading");
+
+    const payload = await ZalogApiClient.postZalogConvert(API_BASE, pdfFile, xlsxFile, {
+      onRetry(attempt, max) {
+        setStatus(`Повтор конвертации (${attempt}/${max})…`, "loading");
+      },
+    });
 
     const conclusion = payload.data?.conclusion || {};
     const objectCount = payload.data?.object_count || 0;
@@ -217,6 +217,7 @@ window.addEventListener("resize", () => {
   fitReportFrame();
 });
 measureLayout();
+ZalogApiClient.wakeZalogServer(API_BASE, { maxAttempts: 8, delayMs: 2500 }).catch(() => {});
 
 btnClear.addEventListener("click", () => {
   pdfUpload.value = "";
