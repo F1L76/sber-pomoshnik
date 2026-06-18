@@ -266,8 +266,12 @@ body.has-results-focus main.app-main {
 
 .converter-busy-cat {
   flex-shrink: 0;
-  border-radius: 12px;
+  width: 140px;
+  height: 140px;
+  border-radius: 0;
   object-fit: contain;
+  background: transparent;
+  mix-blend-mode: darken;
   animation: converter-cat-bob 1.8s ease-in-out infinite;
 }
 

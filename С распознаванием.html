@@ -416,8 +416,12 @@
         }
         .converter-busy-cat {
             flex-shrink: 0;
-            border-radius: 12px;
+            width: 140px;
+            height: 140px;
+            border-radius: 0;
             object-fit: contain;
+            background: transparent;
+            mix-blend-mode: darken;
             animation: converter-cat-bob 1.8s ease-in-out infinite;
         }
         .converter-busy-icon {
@@ -448,6 +452,7 @@
             min-height: 0;
             padding: 0.75rem 1rem;
             flex: 1 1 auto;
+            overflow-x: hidden;
         }
         .conclusion-detail-modal .conclusion-report-frame {
             flex: 1 1 auto;
@@ -456,6 +461,7 @@
             border: none !important;
             border-radius: 8px;
             background: #fff;
+            overflow-x: hidden;
         }
         .conclusion-detail-modal .conclusion-materials-block {
             flex-shrink: 0;
@@ -779,7 +785,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-<script src="/converter-status-ui.js?v=2"></script>
+<script src="/converter-status-ui.js?v=5"></script>
 <script src="/zalog-api-client.js?v=4"></script>
 <script>
     const mockData = {

@@ -29,11 +29,15 @@ SBER_REPORT_CSS = """
       color: var(--sber-text-dark);
       letter-spacing: -0.015em;
       line-height: 1.5;
+      overflow-x: hidden;
     }
     .report-page {
-      max-width: 1140px;
+      max-width: none;
+      width: 100%;
       margin: 0 auto;
-      padding: 1.5rem 1rem 3rem;
+      padding: 0.65rem 0.75rem 1.25rem;
+      box-sizing: border-box;
+      overflow-x: hidden;
     }
     .report-hero {
       background: linear-gradient(180deg, #1E2A3A 0%, #162030 100%);
@@ -138,41 +142,67 @@ SBER_REPORT_CSS = """
     .objects-table td.text-end {
       text-align: right;
     }
+    .objects-block .info-card,
     .objects-block .table-responsive-custom {
-      overflow-x: auto;
+      width: 100%;
+      max-width: 100%;
+    }
+    .objects-block .table-responsive-custom {
+      overflow-x: visible;
       -webkit-overflow-scrolling: touch;
     }
     .objects-table {
-      width: max-content;
-      min-width: 100%;
-      table-layout: auto;
+      width: 100%;
+      min-width: 0;
+      table-layout: fixed;
     }
     .objects-table th,
     .objects-table td {
-      font-size: 0.78rem;
-      padding: 0.45rem 0.55rem;
-      line-height: 1.3;
+      font-size: 0.7rem;
+      padding: 0.3rem 0.35rem;
+      line-height: 1.2;
       vertical-align: top;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .objects-table th {
-      font-size: 0.74rem;
+      font-size: 0.65rem;
       font-weight: 600;
       white-space: normal;
+      hyphens: auto;
     }
-    .objects-table .col-tight {
-      width: 1%;
+    .objects-table .col-code { width: 4%; }
+    .objects-table .col-classifier { width: 8%; }
+    .objects-table .col-name { width: 28%; min-width: 0; }
+    .objects-table .col-id { width: 11%; }
+    .objects-table .col-quality { width: 7%; }
+    .objects-table .col-valtype { width: 8%; }
+    .objects-table .col-num {
+      width: 10%;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
       white-space: nowrap;
+      overflow-wrap: normal;
+      word-break: normal;
+      font-size: 0.66rem;
+    }
+    .objects-table .col-pct {
+      width: 6%;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .objects-table .col-liq { width: 8%; }
+    .objects-table .col-tight {
+      white-space: normal;
     }
     .objects-table .col-text {
       white-space: normal;
       overflow-wrap: anywhere;
       word-break: break-word;
-      min-width: 5.5rem;
-      max-width: 22rem;
-    }
-    .objects-table .col-name {
-      min-width: 9rem;
-      max-width: 28rem;
+      min-width: 0;
+      max-width: none;
     }
     .report-page.pdf-export {
       max-width: none;

@@ -62,7 +62,7 @@
         const kind = opts.kind || "loading";
         return (
             `<div class="converter-busy converter-busy--${kind}" role="status" aria-live="polite">` +
-            `<img class="converter-busy-cat" src="${CAT_GIF}" alt="" width="72" height="72" decoding="async">` +
+            `<img class="converter-busy-cat" src="${CAT_GIF}" alt="" width="140" height="140" decoding="async">` +
             `<p class="converter-busy-text mb-0">${text}</p>` +
             `</div>`
         );

@@ -108,16 +108,16 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
 
         rows.append(
             "<tr>"
-            f'<td class="col-tight">{escape_html(conditional)}</td>'
-            f'<td class="col-text">{escape_html(klass)}</td>'
-            f'<td class="col-text col-name">{escape_html(obj.name)}</td>'
-            f'<td class="col-text">{escape_html(obj.identifier or "—")}</td>'
-            f'<td class="col-tight">{escape_html(obj.quality_category)}</td>'
-            f'<td class="col-tight">{escape_html(obj.valuation_type)}</td>'
-            f'<td class="text-end col-tight">{format_money(cost_num)} ₽</td>'
-            f'<td class="text-end col-tight">{format_money(coll_num)} ₽</td>'
-            f'<td class="text-end col-tight">{discount:.1f}%</td>'
-            f'<td class="col-tight">{escape_html(obj.liquidity or "—")}</td>'
+            f'<td class="col-code">{escape_html(conditional)}</td>'
+            f'<td class="col-classifier">{escape_html(klass)}</td>'
+            f'<td class="col-name">{escape_html(obj.name)}</td>'
+            f'<td class="col-id">{escape_html(obj.identifier or "—")}</td>'
+            f'<td class="col-quality">{escape_html(obj.quality_category)}</td>'
+            f'<td class="col-valtype">{escape_html(obj.valuation_type)}</td>'
+            f'<td class="text-end col-num">{format_money(cost_num)}&nbsp;₽</td>'
+            f'<td class="text-end col-num">{format_money(coll_num)}&nbsp;₽</td>'
+            f'<td class="text-end col-pct">{discount:.1f}%</td>'
+            f'<td class="col-liq">{escape_html(obj.liquidity or "—")}</td>'
             "</tr>"
         )
 
@@ -126,26 +126,38 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
   <p class="hint"><span class="badge-sber">XLSX: {len(objects)} объект(ов)</span></p>
   <div class="table-responsive-custom">
     <table class="table table-bordered table-striped table-details table-hover objects-table mb-0">
+      <colgroup>
+        <col class="col-code">
+        <col class="col-classifier">
+        <col class="col-name">
+        <col class="col-id">
+        <col class="col-quality">
+        <col class="col-valtype">
+        <col class="col-num">
+        <col class="col-num">
+        <col class="col-pct">
+        <col class="col-liq">
+      </colgroup>
       <thead>
         <tr>
-          <th class="col-tight">Условное обозначение</th>
-          <th class="col-text">Классификатор</th>
-          <th class="col-text col-name">Наименование</th>
-          <th class="col-text">Идентификатор</th>
-          <th class="col-tight">Категория качества</th>
-          <th class="col-tight">Вид стоимости</th>
-          <th class="text-end col-tight">Оценочная стоимость без НДС</th>
-          <th class="text-end col-tight">Залоговая стоимость без НДС</th>
-          <th class="text-end col-tight">Дисконт без НДС</th>
-          <th class="col-tight">Ликвидность</th>
+          <th class="col-code" title="Условное обозначение">Усл.</th>
+          <th class="col-classifier">Класс.</th>
+          <th class="col-name">Наименование</th>
+          <th class="col-id">Идентификатор</th>
+          <th class="col-quality" title="Категория качества">Кат.</th>
+          <th class="col-valtype" title="Вид стоимости">Вид</th>
+          <th class="text-end col-num" title="Оценочная стоимость без НДС">Оцен.</th>
+          <th class="text-end col-num" title="Залоговая стоимость без НДС">Залог.</th>
+          <th class="text-end col-pct" title="Дисконт без НДС">Диск.</th>
+          <th class="col-liq" title="Ликвидность">Ликв.</th>
         </tr>
       </thead>
       <tbody>{"".join(rows)}</tbody>
       <tfoot>
         <tr class="totals-row">
           <td colspan="6" class="text-end"><strong>Итого</strong></td>
-          <td class="text-end"><strong>{format_money(total_estimated)} ₽</strong></td>
-          <td class="text-end"><strong>{format_money(total_collateral)} ₽</strong></td>
+          <td class="text-end col-num"><strong>{format_money(total_estimated)}&nbsp;₽</strong></td>
+          <td class="text-end col-num"><strong>{format_money(total_collateral)}&nbsp;₽</strong></td>
           <td></td>
           <td></td>
         </tr>
