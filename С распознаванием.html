@@ -75,6 +75,26 @@
             font-size: 0.8rem;
             color: rgba(255, 255, 255, 0.65);
             white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .navbar-inner {
+            width: 100%;
+        }
+        .nav-tools {
+            min-width: 0;
+            flex: 0 1 auto;
+            max-width: 100%;
+        }
+        .gigachat-panel {
+            display: inline-flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35rem 0.5rem;
+            padding: 0.25rem 0.5rem;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            max-width: 100%;
         }
         .gigachat-status-btn {
             border: 1px solid rgba(255, 255, 255, 0.28);
@@ -112,6 +132,18 @@
             cursor: pointer;
             user-select: none;
             font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        #gigachatStatusBadge {
+            max-width: 7.5rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        @media (max-width: 991px) {
+            .gigachat-toggle-wrap .form-check-label {
+                display: none;
+            }
         }
         @media (max-width: 576px) {
             .nav-tagline {
@@ -359,6 +391,76 @@
         #importStatus {
             min-height: 1.5rem;
         }
+        #zalogServerStatus {
+            border: none;
+            padding: 0;
+            background: transparent;
+        }
+        .converter-busy {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.85rem 1rem;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #f8fbfe 0%, #f0f6fc 100%);
+            border: 1px solid var(--sber-border);
+        }
+        .converter-busy--warning {
+            background: linear-gradient(135deg, #fffbf0 0%, #fff8e8 100%);
+        }
+        .converter-busy--success {
+            background: linear-gradient(135deg, #f4fbf6 0%, #eaf8ee 100%);
+        }
+        .converter-busy--error {
+            background: linear-gradient(135deg, #fff5f5 0%, #ffeeee 100%);
+        }
+        .converter-busy-cat {
+            flex-shrink: 0;
+            border-radius: 12px;
+            object-fit: contain;
+            animation: converter-cat-bob 1.8s ease-in-out infinite;
+        }
+        .converter-busy-icon {
+            font-size: 1.75rem;
+            flex-shrink: 0;
+            width: 72px;
+            text-align: center;
+        }
+        .converter-busy-text {
+            font-size: 0.9rem;
+            line-height: 1.45;
+            color: var(--sber-text-dark);
+            font-weight: 500;
+        }
+        @keyframes converter-cat-bob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .converter-busy-cat { animation: none; }
+        }
+        .conclusion-detail-modal .modal-content {
+            border-radius: 0;
+        }
+        .conclusion-detail-modal .modal-body {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            padding: 0.75rem 1rem;
+            flex: 1 1 auto;
+        }
+        .conclusion-detail-modal .conclusion-report-frame {
+            flex: 1 1 auto;
+            width: 100%;
+            min-height: calc(100vh - 9rem);
+            border: none !important;
+            border-radius: 8px;
+            background: #fff;
+        }
+        .conclusion-detail-modal .conclusion-materials-block {
+            flex-shrink: 0;
+            margin-top: 0.75rem;
+        }
         .conclusion-info-block {
             background: linear-gradient(180deg, #F8FBFE 0%, #F4F8FB 100%);
             border: 1px solid var(--sber-border);
@@ -439,26 +541,30 @@
 <body>
 
 <nav class="navbar sber-nav sticky-top py-2 py-md-3">
-    <div class="container-fluid px-3 px-md-4 d-flex flex-wrap align-items-center justify-content-between gap-2">
-        <span class="navbar-brand-custom mb-0">
-            <svg class="sber-logo" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <circle cx="20" cy="20" r="18" fill="#21A038" stroke="white" stroke-width="1.5"/>
-                <path d="M12 20L18 26L28 14" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            <span>СберБизнес Помощник</span>
-        </span>
-        <span class="d-flex align-items-center gap-2 flex-wrap">
-            <div class="form-check form-switch gigachat-toggle-wrap mb-0 d-flex align-items-center gap-2" title="Включить или выключить запросы к GigaChat в этом браузере">
-                <input class="form-check-input" type="checkbox" role="switch" id="gigaChatToggle" checked>
-                <label class="form-check-label" for="gigaChatToggle">GigaChat</label>
+    <div class="container-fluid px-3 px-md-4">
+        <div class="navbar-inner d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-between gap-2">
+            <span class="navbar-brand-custom mb-0">
+                <svg class="sber-logo" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <circle cx="20" cy="20" r="18" fill="#21A038" stroke="white" stroke-width="1.5"/>
+                    <path d="M12 20L18 26L28 14" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>СберБизнес Помощник</span>
+            </span>
+            <div class="nav-tools ms-md-auto d-flex flex-wrap align-items-center justify-content-end gap-2">
+                <div class="gigachat-panel">
+                    <div class="form-check form-switch gigachat-toggle-wrap mb-0 d-flex align-items-center gap-2" title="Включить или выключить GigaChat в этом браузере">
+                        <input class="form-check-input" type="checkbox" role="switch" id="gigaChatToggle" checked>
+                        <label class="form-check-label" for="gigaChatToggle">GigaChat</label>
+                    </div>
+                    <button type="button" class="btn btn-sm rounded-pill gigachat-status-btn d-inline-flex align-items-center gap-2 px-3 py-1" id="gigachatStatusBtn" title="Статус GigaChat">
+                        <span class="rounded-circle gigachat-status-dot bg-secondary" id="gigachatStatusDot" aria-hidden="true"></span>
+                        <span id="gigachatStatusBadge" class="fw-semibold">Проверка…</span>
+                        <i class="fas fa-arrows-rotate fa-xs opacity-75" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <span class="nav-tagline d-none d-xl-inline"><i class="fas fa-robot me-1" aria-hidden="true"></i>AI-платформа сопровождения 2.0</span>
             </div>
-            <button type="button" class="btn btn-sm rounded-pill gigachat-status-btn d-inline-flex align-items-center gap-2 px-3 py-1" id="gigachatStatusBtn" title="Статус GigaChat">
-                <span class="rounded-circle gigachat-status-dot bg-secondary" id="gigachatStatusDot" aria-hidden="true"></span>
-                <span id="gigachatStatusBadge" class="fw-semibold">Проверка…</span>
-                <i class="fas fa-arrows-rotate fa-xs opacity-75" aria-hidden="true"></i>
-            </button>
-            <span class="nav-tagline"><i class="fas fa-robot me-1" aria-hidden="true"></i>AI-платформа сопровождения 2.0</span>
-        </span>
+        </div>
     </div>
 </nav>
 
@@ -481,7 +587,7 @@
 
     <div id="infoPanel" class="mt-2 mb-5" style="display: none;">
         <div class="row g-4">
-            <div class="col-lg-6">
+            <div class="col-12">
                 <div class="info-card h-100">
                     <div class="info-card-header p-0 border-0 bg-transparent">
                         <button type="button" class="info-card-header info-card-header-toggle collapsed d-flex align-items-center justify-content-between gap-2 rounded-0" data-bs-toggle="collapse" data-bs-target="#collapseActiveApps" aria-expanded="false" aria-controls="collapseActiveApps" id="toggleActiveApps" title="Скрыть или показать список заявок">
@@ -494,7 +600,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
+            <div class="col-12">
                 <div class="info-card h-100">
                     <div class="info-card-header p-0 border-0 bg-transparent">
                         <button type="button" class="info-card-header info-card-header-toggle collapsed d-flex align-items-center justify-content-between gap-2 rounded-0" data-bs-toggle="collapse" data-bs-target="#collapseConclusions" aria-expanded="false" aria-controls="collapseConclusions" id="toggleConclusions" title="Скрыть или показать заключения и импорт">
@@ -541,15 +647,15 @@
     </div>
 </main>
 
-<div class="modal fade" id="conclusionDetailModal" tabindex="-1" aria-labelledby="conclusionDetailLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content rounded-4 border-0 shadow">
-            <div class="modal-header border-bottom">
+<div class="modal fade conclusion-detail-modal" id="conclusionDetailModal" tabindex="-1" aria-labelledby="conclusionDetailLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom py-2">
                 <h2 class="modal-title h5 text-success mb-0" id="conclusionDetailLabel"><i class="fas fa-file-contract me-2" aria-hidden="true"></i>Детали заключения</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
             </div>
-            <div class="modal-body p-4" id="conclusionDetailBody"></div>
-            <div class="modal-footer border-top bg-light rounded-bottom-4 d-flex flex-wrap gap-2 justify-content-between">
+            <div class="modal-body" id="conclusionDetailBody"></div>
+            <div class="modal-footer border-top bg-light d-flex flex-wrap gap-2 justify-content-between py-2">
                 <button type="button" class="btn btn-outline-danger rounded-pill px-4" id="conclusionDetailDeleteBtn" style="display: none;" title="Удалить это заключение из карточки клиента">
                     <i class="fas fa-trash-alt me-1" aria-hidden="true"></i>Удалить заключение
                 </button>
@@ -673,6 +779,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script src="/converter-status-ui.js?v=2"></script>
 <script src="/zalog-api-client.js?v=4"></script>
 <script>
     const mockData = {
@@ -884,6 +991,17 @@
     const conclusionsListDiv = document.getElementById("conclusionsList");
     const importStatusDiv = document.getElementById("importStatus");
 
+    function setConverterStatus(el, phase, options) {
+        if (!el || typeof ConverterStatusUI === "undefined") return;
+        ConverterStatusUI.setElement(el, phase, options || {});
+    }
+
+    function setConverterProgress(phase) {
+        if (typeof ConverterStatusUI === "undefined") return;
+        const p = ConverterStatusUI.phaseFromProgress(phase);
+        setConverterStatus(importStatusDiv, p, { kind: "loading" });
+    }
+
     async function extractPdfText(file) {
         if (typeof pdfjsLib === "undefined") {
             throw new Error("Библиотека PDF.js не загружена");
@@ -1074,20 +1192,14 @@
         const base = (typeof GIGACHAT_API_BASE !== "undefined" ? GIGACHAT_API_BASE : "") || "";
         return ZalogApiClient.postZalogConvert(base, pdfFile, xlsxFile, {
             onProgress(attempt, max, a, b, phase) {
-                if (phase === "wake" && a && b) {
-                    importStatusDiv.innerHTML = `<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Сервер просыпается… ${a}/${b}</span>`;
-                } else if (phase === "upload" || phase === "upload-json") {
-                    importStatusDiv.innerHTML = phase === "upload-json"
-                        ? '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Загружаем файлы (запасной канал)…</span>'
-                        : '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Загружаем файлы…</span>';
-                } else if (phase === "processing" && a && b) {
-                    importStatusDiv.innerHTML = `<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Конвертация… ${a}/${b}</span>`;
-                } else if (phase === "processing") {
-                    importStatusDiv.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Конвертация на сервере…</span>';
+                if (phase === "retry") {
+                    setConverterStatus(importStatusDiv, "retry", { kind: "loading" });
+                } else if (phase) {
+                    setConverterProgress(phase);
                 }
             },
-            onRetry(attempt, max) {
-                importStatusDiv.innerHTML = `<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Повтор после 503… ${attempt}/${max}</span>`;
+            onRetry() {
+                setConverterStatus(importStatusDiv, "retry", { kind: "loading" });
             }
         });
     }
@@ -1103,7 +1215,7 @@
             alert("Загрузите оба файла: PDF заключение и XLSX перечень залога");
             return;
         }
-        importStatusDiv.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Запуск конвертера…</span>';
+        setConverterStatus(importStatusDiv, "start", { kind: "loading" });
 
         try {
             const payload = await convertConclusionViaApi(pdfFile, xlsxFile);
@@ -1113,14 +1225,17 @@
             }
             currentClientData.conclusions.push(newConclusion);
             updateInfoPanel();
-            importStatusDiv.innerHTML = `<span class="text-success fw-medium"><i class="fas fa-circle-check me-1" aria-hidden="true"></i>Заключение ${escapeHtml(newConclusion.id)} импортировано.</span><br>
-                <span class="text-success small">Объектов: ${newConclusion.objects.length} · Рисков: ${newConclusion.risks.length}</span>`;
+            const successText = `${ConverterStatusUI.pickPhrase("success")} (${escapeHtml(newConclusion.id)})`;
+            setConverterStatus(importStatusDiv, "success", { kind: "success", text: successText });
             document.getElementById("pdfUpload").value = "";
             document.getElementById("xlsxUpload").value = "";
-            setTimeout(() => { importStatusDiv.innerHTML = ""; }, 6000);
+            setTimeout(() => { importStatusDiv.innerHTML = ""; }, 8000);
         } catch (err) {
             console.error(err);
-            importStatusDiv.innerHTML = `<span class="text-danger"><i class="fas fa-circle-xmark me-1" aria-hidden="true"></i>${err && err.message ? escapeHtml(err.message) : "Ошибка конвертации"}</span>`;
+            const msg = typeof ConverterStatusUI !== "undefined"
+                ? ConverterStatusUI.friendlyError(err?.message)
+                : "Ошибка конвертации";
+            setConverterStatus(importStatusDiv, "error", { kind: "error", text: escapeHtml(msg) });
         }
     }
 
@@ -1212,7 +1327,7 @@
 
         if (conclusion.reportHtml) {
             modalBody.innerHTML = `
-                <iframe class="w-100 border rounded conclusion-report-frame" style="min-height:70vh" title="Сводный отчёт по заключению"></iframe>
+                <iframe class="w-100 conclusion-report-frame" title="Сводный отчёт по заключению"></iframe>
                 ${renderConclusionMaterialsBlock(conclusion)}
             `;
             const reportFrame = modalBody.querySelector(".conclusion-report-frame");
@@ -2069,32 +2184,27 @@
         const statusEl = document.getElementById("zalogServerStatus");
         if (typeof ZalogApiClient === "undefined") {
             if (statusEl) {
-                statusEl.className = "alert alert-danger py-2 px-3 small mb-3";
-                statusEl.innerHTML = '<i class="fas fa-circle-xmark me-1" aria-hidden="true"></i>Клиент конвертера не загрузился. Ctrl+Shift+R';
+                setConverterStatus(statusEl, "error", {
+                    kind: "error",
+                    text: "Не удалось загрузить конвертер. Обновите страницу (Ctrl+Shift+R)."
+                });
             }
             return;
         }
         ZalogApiClient.startKeepAlive(GIGACHAT_API_BASE, () => {});
+        setConverterStatus(statusEl, "waiting", { kind: "loading" });
         try {
             await ZalogApiClient.wakeZalogServer(GIGACHAT_API_BASE, {
                 maxAttempts: 50,
                 delayMs: 2000,
-                onProgress(attempt, max) {
-                    if (statusEl) {
-                        statusEl.className = "alert alert-warning py-2 px-3 small mb-3";
-                        statusEl.innerHTML = `<i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Сервер просыпается… ${attempt}/${max}`;
-                    }
+                onProgress() {
+                    setConverterStatus(statusEl, "wake", { kind: "loading" });
                 }
             });
-            if (statusEl) {
-                statusEl.className = "alert alert-success py-2 px-3 small mb-3";
-                statusEl.innerHTML = '<i class="fas fa-circle-check me-1" aria-hidden="true"></i>Сервер готов к импорту';
-            }
+            setConverterStatus(statusEl, "ready", { kind: "success", text: ConverterStatusUI.pickPhrase("ready") });
         } catch (e) {
-            if (statusEl) {
-                statusEl.className = "alert alert-danger py-2 px-3 small mb-3";
-                statusEl.innerHTML = `<i class="fas fa-circle-xmark me-1" aria-hidden="true"></i>${escapeHtml(e.message || "Сервер недоступен")}`;
-            }
+            const msg = ConverterStatusUI.friendlyError(e?.message);
+            setConverterStatus(statusEl, "error", { kind: "error", text: escapeHtml(msg) });
         }
     })();
     document.addEventListener("visibilitychange", () => {

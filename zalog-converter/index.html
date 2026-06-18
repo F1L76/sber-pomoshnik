@@ -31,9 +31,7 @@
           <h2 class="panel-title"><i class="fas fa-cloud-arrow-up me-2 text-success" aria-hidden="true"></i>Загрузить заключение и перечень залога</h2>
           <p class="hint mb-3">Нужны оба файла: PDF — заключение; XLSX — перечень объектов.</p>
 
-          <div id="serverStatus" class="alert alert-secondary py-2 px-3 small mb-3" role="status">
-            <i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Подключаемся к серверу…
-          </div>
+          <div id="serverStatus" class="mb-3" role="status"></div>
 
           <label class="form-label small fw-semibold mb-1" for="pdfUpload">Файл заключения (PDF)</label>
           <input id="pdfUpload" class="form-control form-control-sm mb-3" type="file" accept=".pdf,application/pdf" />
@@ -80,6 +78,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
   <script src="/zalog-api-client.js?v=4"></script>
-  <script src="/zalog/app.js?v=5"></script>
+  <script src="/converter-status-ui.js?v=2"></script>
+  <script src="/zalog/app.js?v=6"></script>
 </body>
 </html>

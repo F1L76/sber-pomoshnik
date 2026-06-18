@@ -30,22 +30,29 @@ let lastHtml = "";
 let expandCooldown = false;
 let serverReady = false;
 
-function setServerStatus(message, kind) {
+function setServerStatus(phase, options) {
   if (!serverStatusEl) return;
-  serverStatusEl.className = `alert py-2 px-3 small mb-3 alert-${kind || "secondary"}`;
-  serverStatusEl.innerHTML = message;
+  if (typeof ConverterStatusUI !== "undefined") {
+    ConverterStatusUI.setElement(serverStatusEl, phase, options || {});
+    return;
+  }
+  serverStatusEl.textContent = options?.text || phase;
+}
+
+function setStatus(phase, options) {
+  statusEl.hidden = false;
+  if (typeof ConverterStatusUI !== "undefined") {
+    ConverterStatusUI.setElement(statusEl, phase, options || {});
+    return;
+  }
+  statusEl.className = `status ${options?.kind || ""}`;
+  statusEl.textContent = options?.text || phase;
 }
 
 function updateConvertButtonState() {
   if (!btnConvert) return;
   const hasFiles = pdfUpload?.files?.[0] && xlsxUpload?.files?.[0];
   btnConvert.disabled = !serverReady || !hasFiles;
-}
-
-function setStatus(message, kind) {
-  statusEl.hidden = false;
-  statusEl.className = `status ${kind || ""}`;
-  statusEl.textContent = message;
 }
 
 function clearStatus() {
@@ -179,22 +186,20 @@ async function convertFiles(pdfFile, xlsxFile) {
   collapseUploadPanel();
   scrollToResults();
   btnConvert.disabled = true;
+  setStatus("start", { kind: "loading" });
 
   try {
     const payload = await ZalogApiClient.postZalogConvert(API_BASE, pdfFile, xlsxFile, {
       onProgress(attempt, max, a, b, phase) {
-        if (phase === "wake" && a && b) {
-          setStatus(`Сервер просыпается… ${a}/${b} (попытка ${attempt}/${max})`, "loading");
-        } else if (phase === "upload") {
-          setStatus("Загружаем PDF и XLSX на сервер…", "loading");
-        } else if (phase === "processing" && a && b) {
-          setStatus(`Конвертация… ${a}/${b}`, "loading");
-        } else if (phase === "processing") {
-          setStatus("Конвертация на сервере…", "loading");
+        if (phase === "retry") {
+          setStatus("retry", { kind: "loading" });
+        } else if (phase) {
+          const p = ConverterStatusUI?.phaseFromProgress(phase) || "processing";
+          setStatus(p, { kind: "loading" });
         }
       },
-      onRetry(attempt, max) {
-        setStatus(`Повтор после 503… ${attempt}/${max}`, "loading");
+      onRetry() {
+        setStatus("retry", { kind: "loading" });
       },
     });
 
@@ -211,7 +216,10 @@ async function convertFiles(pdfFile, xlsxFile) {
     showReport(payload.html, meta);
   } catch (error) {
     resetView();
-    setStatus(error.message || String(error), "error");
+    const msg = typeof ConverterStatusUI !== "undefined"
+      ? ConverterStatusUI.friendlyError(error?.message)
+      : (error.message || String(error));
+    setStatus("error", { kind: "error", text: msg });
   } finally {
     btnConvert.disabled = false;
   }
@@ -221,11 +229,11 @@ btnConvert.addEventListener("click", () => {
   const pdfFile = pdfUpload.files?.[0];
   const xlsxFile = xlsxUpload.files?.[0];
   if (!pdfFile || !xlsxFile) {
-    setStatus("Загрузите оба файла: PDF заключение и XLSX перечень залога", "error");
+    setStatus("error", { kind: "error", text: "Загрузите оба файла: PDF заключение и XLSX перечень залога" });
     return;
   }
   if (!serverReady) {
-    setStatus("Сервер ещё не готов. Подождите, пока индикатор станет зелёным.", "error");
+    setStatus("error", { kind: "error", text: "Подождите — платформа ещё готовится к работе" });
     return;
   }
   convertFiles(pdfFile, xlsxFile);
@@ -245,31 +253,34 @@ updateConvertButtonState();
 
 async function initServerConnection() {
   if (typeof ZalogApiClient === "undefined") {
-    setServerStatus('<i class="fas fa-circle-xmark me-1 text-danger" aria-hidden="true"></i>Не загружен клиент API. Обновите страницу (Ctrl+Shift+R).', "danger");
+    setServerStatus("error", {
+      kind: "error",
+      text: "Не удалось загрузить конвертер. Обновите страницу (Ctrl+Shift+R)."
+    });
     return;
   }
   ZalogApiClient.startKeepAlive(API_BASE, () => {});
-  setServerStatus('<i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Сервер просыпается (Render)… подождите до 2 мин', "warning");
+  setServerStatus("waiting", { kind: "loading" });
   btnConvert.disabled = true;
   try {
     await ZalogApiClient.wakeZalogServer(API_BASE, {
       maxAttempts: 50,
       delayMs: 2000,
-      onProgress(attempt, max) {
-        setServerStatus(
-          `<i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Сервер просыпается… ${attempt}/${max}`,
-          "warning",
-        );
+      onProgress() {
+        setServerStatus("wake", { kind: "loading" });
       },
     });
     serverReady = true;
-    setServerStatus('<i class="fas fa-circle-check me-1 text-success" aria-hidden="true"></i>Сервер готов. Можно конвертировать.', "success");
+    const readyText = typeof ConverterStatusUI !== "undefined"
+      ? ConverterStatusUI.pickPhrase("ready")
+      : "Сервер готов — можно загружать файлы";
+    setServerStatus("ready", { kind: "success", text: readyText });
   } catch (e) {
     serverReady = false;
-    setServerStatus(
-      `<i class="fas fa-circle-xmark me-1 text-danger" aria-hidden="true"></i>${e.message || "Сервер недоступен"}`,
-      "danger",
-    );
+    const msg = typeof ConverterStatusUI !== "undefined"
+      ? ConverterStatusUI.friendlyError(e?.message)
+      : (e.message || "Сервер недоступен");
+    setServerStatus("error", { kind: "error", text: msg });
   }
   updateConvertButtonState();
 }
@@ -297,14 +308,14 @@ async function downloadReportPdf() {
   const doc = reportFrame.contentDocument;
   if (!doc?.body || !lastHtml) return;
   if (typeof html2pdf === "undefined") {
-    setStatus("Не удалось загрузить библиотеку PDF. Проверьте интернет и обновите страницу.", "error");
+    setStatus("error", { kind: "error", text: "Не удалось загрузить библиотеку PDF. Обновите страницу." });
     return;
   }
 
   const target = doc.querySelector(".report-page") || doc.body;
   const hadStatus = !statusEl.hidden;
   btnDownload.disabled = true;
-  setStatus("Формируем PDF…", "loading");
+  setStatus("processing", { kind: "loading", text: "Формируем PDF для скачивания…" });
 
   const savedFrame = {
     width: reportFrame.style.width,
@@ -353,7 +364,7 @@ async function downloadReportPdf() {
       .save();
     if (!hadStatus) clearStatus();
   } catch (error) {
-    setStatus(error.message || "Не удалось сохранить PDF", "error");
+    setStatus("error", { kind: "error", text: error.message || "Не удалось сохранить PDF" });
   } finally {
     target.classList.remove("pdf-export");
     exportStyle?.remove();

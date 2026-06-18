@@ -229,9 +229,69 @@ body.has-results-focus main.app-main {
 
 .status {
   margin: 0.75rem 1rem 0;
-  padding: 0.75rem 0.9rem;
-  border-radius: 14px;
+  padding: 0;
+  border-radius: 0;
   font-size: 0.875rem;
+  background: transparent;
+  border: none;
+}
+
+#serverStatus {
+  padding: 0;
+  background: transparent;
+  border: none;
+}
+
+.converter-busy {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fbfe 0%, #f0f6fc 100%);
+  border: 1px solid var(--sber-border);
+}
+
+.converter-busy--warning {
+  background: linear-gradient(135deg, #fffbf0 0%, #fff8e8 100%);
+}
+
+.converter-busy--success {
+  background: linear-gradient(135deg, #f4fbf6 0%, #eaf8ee 100%);
+}
+
+.converter-busy--error {
+  background: linear-gradient(135deg, #fff5f5 0%, #ffeeee 100%);
+}
+
+.converter-busy-cat {
+  flex-shrink: 0;
+  border-radius: 12px;
+  object-fit: contain;
+  animation: converter-cat-bob 1.8s ease-in-out infinite;
+}
+
+.converter-busy-icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+  width: 72px;
+  text-align: center;
+}
+
+.converter-busy-text {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--sber-text-dark);
+  font-weight: 500;
+}
+
+@keyframes converter-cat-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .converter-busy-cat { animation: none; }
 }
 
 .status.loading {
