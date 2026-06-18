@@ -156,7 +156,6 @@ function resetView() {
 }
 
 async function convertFiles(pdfFile, xlsxFile) {
-  setStatus("Проверяем доступность сервера…", "loading");
   emptyState.hidden = true;
   reportFrame.hidden = true;
   resultsToolbar.hidden = false;
@@ -168,16 +167,16 @@ async function convertFiles(pdfFile, xlsxFile) {
   btnConvert.disabled = true;
 
   try {
-    await ZalogApiClient.wakeZalogServer(API_BASE, {
-      onProgress(attempt, max) {
-        setStatus(`Сервер просыпается (Render)… попытка ${attempt}/${max}`, "loading");
-      },
-    });
-    setStatus("Обрабатываем PDF и XLSX…", "loading");
-
     const payload = await ZalogApiClient.postZalogConvert(API_BASE, pdfFile, xlsxFile, {
+      onProgress(attempt, max, wakeTry, wakeMax) {
+        if (wakeTry && wakeMax) {
+          setStatus(`Сервер просыпается… ${wakeTry}/${wakeMax} (попытка ${attempt}/${max})`, "loading");
+        } else {
+          setStatus(`Конвертация… попытка ${attempt}/${max}`, "loading");
+        }
+      },
       onRetry(attempt, max) {
-        setStatus(`Повтор конвертации (${attempt}/${max})…`, "loading");
+        setStatus(`Повтор после 503… ${attempt}/${max}`, "loading");
       },
     });
 
@@ -217,7 +216,7 @@ window.addEventListener("resize", () => {
   fitReportFrame();
 });
 measureLayout();
-ZalogApiClient.wakeZalogServer(API_BASE, { maxAttempts: 8, delayMs: 2500 }).catch(() => {});
+ZalogApiClient.wakeZalogServer(API_BASE, { maxAttempts: 15, delayMs: 3000 }).catch(() => {});
 
 btnClear.addEventListener("click", () => {
   pdfUpload.value = "";

@@ -435,6 +435,15 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/zalog/ping") {
+        res.writeHead(200, {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "no-store"
+        });
+        res.end(JSON.stringify({ ok: true, ts: Date.now() }));
+        return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/zalog/health") {
         const base = getZalogConverterHealth();
         const probe = await probeZalogPythonDeps();
@@ -625,10 +634,7 @@ const server = http.createServer(async (req, res) => {
     res.end("Not found");
 });
 
-server.listen(PORT, HOST, async () => {
-    console.log(`GigaChat proxy: http://${HOST}:${PORT}`);
-    console.log(`Откройте: http://localhost:${PORT}/ (локально) или URL вашего сервера`);
-    warmupDealsIndexes();
+(async () => {
     try {
         const zalog = await ensureZalogPythonDeps();
         if (zalog.ok) {
@@ -639,10 +645,16 @@ server.listen(PORT, HOST, async () => {
     } catch (e) {
         console.warn("⚠ Конвертер залогов: ошибка при установке зависимостей —", e.message || e);
     }
-    if (!process.env.GIGACHAT_CREDENTIALS) {
-        console.warn("⚠ Создайте .env из .env.example и укажите GIGACHAT_CREDENTIALS");
-    }
-    if (!process.env.LANGFLOW_API_KEY) {
-        console.warn("⚠ Для служебных записок укажите LANGFLOW_API_KEY в .env (AI Gateway / Langflow)");
-    }
-});
+
+    server.listen(PORT, HOST, () => {
+        console.log(`GigaChat proxy: http://${HOST}:${PORT}`);
+        console.log(`Откройте: http://localhost:${PORT}/ (локально) или URL вашего сервера`);
+        warmupDealsIndexes();
+        if (!process.env.GIGACHAT_CREDENTIALS) {
+            console.warn("⚠ Создайте .env из .env.example и укажите GIGACHAT_CREDENTIALS");
+        }
+        if (!process.env.LANGFLOW_API_KEY) {
+            console.warn("⚠ Для служебных записок укажите LANGFLOW_API_KEY в .env (AI Gateway / Langflow)");
+        }
+    });
+})();
