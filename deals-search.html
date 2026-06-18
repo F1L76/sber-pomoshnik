@@ -56,8 +56,52 @@
             font-weight: 700;
             color: var(--sber-green);
         }
-        .deals-table { font-size: 0.9rem; }
-        .deals-table th { white-space: nowrap; }
+        .deals-table {
+            font-size: 0.82rem;
+            table-layout: fixed;
+            width: 100%;
+        }
+        .deals-table th {
+            white-space: normal;
+            vertical-align: bottom;
+            font-size: 0.75rem;
+            line-height: 1.25;
+        }
+        .deals-table td {
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+        .deals-table .col-period { width: 6.5%; }
+        .deals-table .col-quarter { width: 9%; font-variant-numeric: tabular-nums; }
+        .deals-table .col-city { width: 9%; }
+        .deals-table .col-street { width: 14%; }
+        .deals-table .col-year { width: 6%; }
+        .deals-table .col-op { width: 7%; }
+        .deals-table .col-type { width: 8%; }
+        .deals-table .col-purpose { width: 8%; }
+        .deals-table .col-area { width: 6.5%; }
+        .deals-table .col-price { width: 9%; }
+        .deals-table .col-psqm { width: 7%; }
+        .deals-table .col-doc { width: 9.5%; }
+        .deals-table .text-num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .deals-table .text-money {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .deals-table td.text-money--sum {
+            font-weight: 600;
+            color: var(--sber-text);
+        }
+        .deals-table td.text-money--muted {
+            color: var(--sber-muted);
+            font-size: 0.8rem;
+        }
         .filter-row th {
             background: #f8fafc;
             font-weight: normal;
@@ -68,7 +112,15 @@
         .filter-row .form-control {
             font-size: 0.75rem;
             padding: 0.2rem 0.35rem;
-            min-width: 4.5rem;
+            min-width: 0;
+            width: 100%;
+        }
+        .filter-row .filter-hint {
+            display: block;
+            font-size: 0.62rem;
+            color: var(--sber-muted);
+            margin-top: 0.15rem;
+            line-height: 1.2;
         }
         .export-bar {
             display: flex;
@@ -264,24 +316,28 @@
             { id: "land", label: "Земельные участки" },
             { id: "house", label: "Жилые дома" },
             { id: "nonres", label: "Нежилые здания/помещения" },
-            { id: "flat", label: "Квартиры" },
+            { id: "flat", label: "Жилые помещения" },
             { id: "parking", label: "Машиноместа" }
         ];
 
         const TABLE_COLUMNS = [
-            { key: "periodShortLabel", title: "Дата" },
-            { key: "quarter_cad_number", title: "Кадастровый квартал" },
-            { key: "city", title: "Город" },
-            { key: "street", title: "Улица" },
-            { key: "year_build", title: "Год постройки", align: "end" },
-            { key: "operationKind", title: "Операция" },
-            { key: "realestateTypeLabel", title: "Тип объекта" },
-            { key: "purposeLabel", title: "Вид объекта", format: "purpose" },
-            { key: "area", title: "Площадь", align: "end", format: "number" },
-            { key: "deal_price", title: "Сумма", align: "end", format: "money" },
-            { key: "pricePerSqm", title: "₽/м²", align: "end", format: "money" },
-            { key: "doc_type", title: "Тип документа" }
+            { key: "periodShortLabel", title: "Дата", colClass: "col-period" },
+            { key: "quarter_cad_number", title: "Кадастровый квартал", colClass: "col-quarter" },
+            { key: "city", title: "Город", colClass: "col-city" },
+            { key: "street", title: "Улица", colClass: "col-street" },
+            { key: "year_build", title: "Год постройки", colClass: "col-year", align: "end", format: "year" },
+            { key: "operationKind", title: "Операция", colClass: "col-op" },
+            { key: "realestateTypeLabel", title: "Тип объекта", colClass: "col-type" },
+            { key: "purposeLabel", title: "Вид объекта", colClass: "col-purpose", format: "purpose" },
+            { key: "area", title: "Площадь, м²", colClass: "col-area", align: "end", format: "area" },
+            { key: "deal_price", title: "Сумма", colClass: "col-price", align: "end", format: "money" },
+            { key: "pricePerSqm", title: "₽/м²", colClass: "col-psqm", align: "end", format: "moneyMuted" },
+            { key: "doc_type", title: "Тип документа", colClass: "col-doc" }
         ];
+
+        const NUMERIC_FILTERS = new Set(["areaMin", "areaMax", "priceMin", "priceMax"]);
+        const YEAR_BUILD_FILTERS = new Set(["yearBuildMin", "yearBuildMax"]);
+        const TEXT_INPUT_FILTERS = new Set(["street"]);
 
         const EXPORT_COLUMNS = TABLE_COLUMNS;
 
@@ -417,6 +473,24 @@
             return String(value);
         }
 
+        function formatArea(n) {
+            if (n == null || !Number.isFinite(Number(n))) return "—";
+            return Number(n).toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        }
+
+        function formatYearValue(n) {
+            if (n == null || n === "") return "—";
+            const y = Number(n);
+            return Number.isFinite(y) ? String(Math.round(y)) : "—";
+        }
+
+        function parseFilterNumber(value) {
+            const s = String(value ?? "").trim().replace(/\s/g, "").replace(",", ".");
+            if (s === "") return null;
+            const n = Number(s);
+            return Number.isFinite(n) ? n : null;
+        }
+
         function objectKindLabel(d) {
             return d.purposeLabel || d.categoryLabel || "";
         }
@@ -439,6 +513,12 @@
                     return escapeHtml(objectKindLabel(d) || "—");
                 case "money":
                     return formatMoney(d[col.key]);
+                case "moneyMuted":
+                    return formatMoney(d[col.key]);
+                case "area":
+                    return formatArea(d[col.key]);
+                case "year":
+                    return formatYearValue(d[col.key]);
                 case "number":
                     return d[col.key] != null ? escapeHtml(d[col.key]) : "—";
                 default:
@@ -458,7 +538,11 @@
                     return objectKindLabel(d);
                 case "money":
                     return formatMoneyPlain(d[col.key]);
-                case "number":
+                case "moneyMuted":
+                    return formatMoneyPlain(d[col.key]);
+                case "area":
+                    return d[col.key] ?? "";
+                case "year":
                     return d[col.key] ?? "";
                 default:
                     return d[col.key] || "";
@@ -508,23 +592,17 @@
             );
         }
 
-        const YEAR_BUILD_FILTERS = new Set(["yearBuildMin", "yearBuildMax"]);
-
         function isYearBuildFilterReady(value) {
             const s = String(value ?? "").trim();
             return s === "" || /^\d{4}$/.test(s);
         }
 
-        function yearBuildFilterShouldRefresh(prev, next) {
-            const o = String(prev ?? "").trim();
-            const n = String(next ?? "").trim();
-            if (n === "" || /^\d{4}$/.test(n)) return true;
-            if (/^\d{4}$/.test(o) && !/^\d{4}$/.test(n)) return true;
-            return false;
+        function yearBuildInputFilter(id, placeholder, current) {
+            return `<input type="text" inputmode="numeric" maxlength="4" class="form-control form-control-sm" data-filter="${id}" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(current || "")}" aria-label="Фильтр года постройки"><span class="filter-hint">Enter</span>`;
         }
 
-        function yearBuildInputFilter(id, placeholder, current) {
-            return `<input type="text" inputmode="numeric" maxlength="4" class="form-control form-control-sm" data-filter="${id}" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(current || "")}" aria-label="Фильтр года постройки">`;
+        function numericInputFilter(id, placeholder, current) {
+            return `<input type="text" inputmode="decimal" class="form-control form-control-sm" data-filter="${id}" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(current || "")}" aria-label="Числовой фильтр"><span class="filter-hint">Enter</span>`;
         }
 
         function getFilteredDeals() {
@@ -549,16 +627,20 @@
                     if (!Number.isFinite(year) || year > Number(f.yearBuildMax)) return false;
                 }
                 if (f.areaMin !== "" && f.areaMin != null) {
-                    if (d.area == null || d.area < Number(f.areaMin)) return false;
+                    const min = parseFilterNumber(f.areaMin);
+                    if (min != null && (d.area == null || d.area < min)) return false;
                 }
                 if (f.areaMax !== "" && f.areaMax != null) {
-                    if (d.area == null || d.area > Number(f.areaMax)) return false;
+                    const max = parseFilterNumber(f.areaMax);
+                    if (max != null && (d.area == null || d.area > max)) return false;
                 }
                 if (f.priceMin !== "" && f.priceMin != null) {
-                    if (d.deal_price == null || d.deal_price < Number(f.priceMin)) return false;
+                    const min = parseFilterNumber(f.priceMin);
+                    if (min != null && (d.deal_price == null || d.deal_price < min)) return false;
                 }
                 if (f.priceMax !== "" && f.priceMax != null) {
-                    if (d.deal_price == null || d.deal_price > Number(f.priceMax)) return false;
+                    const max = parseFilterNumber(f.priceMax);
+                    if (max != null && (d.deal_price == null || d.deal_price > max)) return false;
                 }
                 return true;
             });
@@ -625,8 +707,8 @@
             return `<select class="form-select form-select-sm" data-filter="${id}" aria-label="Фильтр">${opts}</select>`;
         }
 
-        function inputFilter(id, placeholder, current, type = "text") {
-            return `<input type="${type}" class="form-control form-control-sm" data-filter="${id}" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(current || "")}" aria-label="Фильтр">`;
+        function inputFilter(id, placeholder, current) {
+            return `<input type="text" class="form-control form-control-sm" data-filter="${id}" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(current || "")}" aria-label="Фильтр">`;
         }
 
         function uniquePurposeLabels(deals) {
@@ -684,14 +766,14 @@
                     <th>${selectFilter("purposeLabel", uniquePurposeLabels(all), f.purposeLabel, "Все")}</th>
                     <th>
                         <div class="d-flex flex-column gap-1">
-                            ${inputFilter("areaMin", "от", f.areaMin, "number")}
-                            ${inputFilter("areaMax", "до", f.areaMax, "number")}
+                            ${numericInputFilter("areaMin", "от", f.areaMin)}
+                            ${numericInputFilter("areaMax", "до", f.areaMax)}
                         </div>
                     </th>
                     <th>
                         <div class="d-flex flex-column gap-1">
-                            ${inputFilter("priceMin", "₽ от", f.priceMin, "number")}
-                            ${inputFilter("priceMax", "₽ до", f.priceMax, "number")}
+                            ${numericInputFilter("priceMin", "₽ от", f.priceMin)}
+                            ${numericInputFilter("priceMax", "₽ до", f.priceMax)}
                         </div>
                     </th>
                     <th></th>
@@ -700,14 +782,20 @@
 
             const headerRow = TABLE_COLUMNS.map((col) => {
                 const align = col.align === "end" ? " text-end" : "";
-                return `<th class="${align.trim()}">${escapeHtml(col.title)}</th>`;
+                const colClass = col.colClass ? ` ${col.colClass}` : "";
+                return `<th class="${(colClass + align).trim()}">${escapeHtml(col.title)}</th>`;
             }).join("");
 
             const rows = deals.map((d) => {
                 const cells = TABLE_COLUMNS.map((col) => {
-                    const align = col.align === "end" ? " text-end" : "";
-                    const extra = col.key === "deal_price" ? " fw-semibold" : col.key === "pricePerSqm" ? " text-muted" : "";
-                    return `<td class="${(align + extra).trim()}">${formatDealCell(d, col)}</td>`;
+                    const classes = [col.colClass || ""];
+                    if (col.align === "end") {
+                        if (col.format === "money") classes.push("text-money", "text-money--sum");
+                        else if (col.format === "moneyMuted") classes.push("text-money", "text-money--muted");
+                        else if (col.format === "area" || col.format === "year") classes.push("text-num");
+                        else classes.push("text-end");
+                    }
+                    return `<td class="${classes.filter(Boolean).join(" ")}">${formatDealCell(d, col)}</td>`;
                 }).join("");
                 return `<tr>${cells}</tr>`;
             }).join("");
@@ -739,21 +827,58 @@
 
         function bindFilterHandlers() {
             document.querySelectorAll("[data-filter]").forEach((el) => {
-                const applyFilter = (refresh) => {
-                    const id = el.dataset.filter;
-                    const prev = searchState.filters[id];
-                    const next = el.value.replace(/\D/g, "").slice(0, 4);
-                    if (next !== el.value) el.value = next;
-                    searchState.filters[id] = next;
-                    if (!refresh) return;
+                const id = el.dataset.filter;
+
+                const commitFilter = () => {
+                    let next = el.value;
                     if (YEAR_BUILD_FILTERS.has(id)) {
-                        if (yearBuildFilterShouldRefresh(prev, next)) refreshResultsView();
-                    } else {
-                        refreshResultsView();
+                        next = next.replace(/\D/g, "").slice(0, 4);
+                        if (next !== el.value) el.value = next;
+                    } else if (NUMERIC_FILTERS.has(id)) {
+                        next = next.trim();
                     }
+                    searchState.filters[id] = next;
+                    refreshResultsView();
                 };
-                el.addEventListener("input", () => applyFilter(true));
-                el.addEventListener("change", () => applyFilter(true));
+
+                if (el.tagName === "SELECT") {
+                    el.addEventListener("change", commitFilter);
+                    return;
+                }
+
+                if (TEXT_INPUT_FILTERS.has(id)) {
+                    let debounceTimer;
+                    el.addEventListener("input", () => {
+                        clearTimeout(debounceTimer);
+                        debounceTimer = setTimeout(commitFilter, 450);
+                    });
+                    el.addEventListener("keydown", (e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            clearTimeout(debounceTimer);
+                            commitFilter();
+                        }
+                    });
+                    return;
+                }
+
+                if (NUMERIC_FILTERS.has(id) || YEAR_BUILD_FILTERS.has(id)) {
+                    if (YEAR_BUILD_FILTERS.has(id)) {
+                        el.addEventListener("input", () => {
+                            const digits = el.value.replace(/\D/g, "").slice(0, 4);
+                            if (digits !== el.value) el.value = digits;
+                        });
+                    }
+                    el.addEventListener("keydown", (e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            commitFilter();
+                        }
+                    });
+                    return;
+                }
+
+                el.addEventListener("change", commitFilter);
             });
             const resetBtn = document.getElementById("resetFiltersBtn");
             if (resetBtn) {
