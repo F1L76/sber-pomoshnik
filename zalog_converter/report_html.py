@@ -117,7 +117,7 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
             f'<td class="text-end col-num">{format_money(cost_num)}&nbsp;₽</td>'
             f'<td class="text-end col-num">{format_money(coll_num)}&nbsp;₽</td>'
             f'<td class="text-end col-pct">{discount:.1f}%</td>'
-            f'<td class="col-liq">{escape_html(obj.liquidity or "—")}</td>'
+            f'<td class="text-end col-liq">{escape_html(obj.liquidity or "—")}</td>'
             "</tr>"
         )
 
@@ -149,7 +149,7 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
           <th class="text-end col-num" title="Оценочная стоимость без НДС">Оцен.</th>
           <th class="text-end col-num" title="Залоговая стоимость без НДС">Залог.</th>
           <th class="text-end col-pct" title="Дисконт без НДС">Диск.</th>
-          <th class="col-liq" title="Ликвидность">Ликв.</th>
+          <th class="text-end col-liq" title="Ликвидность">Ликв.</th>
         </tr>
       </thead>
       <tbody>{"".join(rows)}</tbody>

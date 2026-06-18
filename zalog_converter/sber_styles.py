@@ -193,7 +193,10 @@ SBER_REPORT_CSS = """
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
-    .objects-table .col-liq { width: 8%; }
+    .objects-table .col-liq {
+      width: 8%;
+      text-align: right;
+    }
     .objects-table .col-tight {
       white-space: normal;
     }
