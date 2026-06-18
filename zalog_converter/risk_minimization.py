@@ -65,7 +65,7 @@ def enrich_risks_with_minimization(
     index = load_minimization_index(str(path))
     for risk in risks:
         if not risk.risk_number:
-            risk.minimization = "—"
+            # Минимизация уже могла быть извлечена из текста PDF (краткая форма АСЗ)
             continue
         normalized = risk.risk_number.strip().rstrip(".")
         risk.minimization = index.get(normalized) or index.get(f"{normalized}.") or "—"

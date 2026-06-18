@@ -24,6 +24,7 @@ data/deals/.deals-import-manifest.json
 *.ppt
 *.xlsx
 *.xls
+!data/risk_minimization_rag.xlsx
 Краткая*.pdf
 ПЕРЕСКАЗ*
 ПЛАН*
