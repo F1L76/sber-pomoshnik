@@ -670,7 +670,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-<script src="/zalog-api-client.js?v=2"></script>
+<script src="/zalog-api-client.js?v=3"></script>
 <script>
     const mockData = {
         "1234567890": {
@@ -1070,11 +1070,15 @@
     async function convertConclusionViaApi(pdfFile, xlsxFile) {
         const base = (typeof GIGACHAT_API_BASE !== "undefined" ? GIGACHAT_API_BASE : "") || "";
         return ZalogApiClient.postZalogConvert(base, pdfFile, xlsxFile, {
-            onProgress(attempt, max, wakeTry, wakeMax) {
-                if (wakeTry && wakeMax) {
-                    importStatusDiv.innerHTML = `<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Сервер просыпается… ${wakeTry}/${wakeMax} (попытка ${attempt}/${max})</span>`;
-                } else {
-                    importStatusDiv.innerHTML = `<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Конвертация… попытка ${attempt}/${max}</span>`;
+            onProgress(attempt, max, a, b, phase) {
+                if (phase === "wake" && a && b) {
+                    importStatusDiv.innerHTML = `<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Сервер просыпается… ${a}/${b}</span>`;
+                } else if (phase === "upload") {
+                    importStatusDiv.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Загружаем файлы…</span>';
+                } else if (phase === "processing" && a && b) {
+                    importStatusDiv.innerHTML = `<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Конвертация… ${a}/${b}</span>`;
+                } else if (phase === "processing") {
+                    importStatusDiv.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Конвертация на сервере…</span>';
                 }
             },
             onRetry(attempt, max) {

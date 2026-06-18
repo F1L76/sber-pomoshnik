@@ -19,7 +19,8 @@ import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
 import { searchDealsByQuarter, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
 import { isSqliteReady } from "./lib/deals-sqlite.mjs";
 import { createDealsJob, getDealsJob } from "./lib/deals-jobs.mjs";
-import { convertZalogMultipart, getZalogConverterHealth, probeZalogPythonDeps, ensureZalogPythonDeps } from "./lib/zalog-convert.mjs";
+import { getZalogConverterHealth, probeZalogPythonDeps, ensureZalogPythonDeps, readZalogUpload } from "./lib/zalog-convert.mjs";
+import { createZalogConvertJob, getZalogConvertJob } from "./lib/zalog-jobs.mjs";
 import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigachat-config.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -459,6 +460,19 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === "GET" && url.pathname.startsWith("/api/zalog/convert/status/")) {
+        const jobId = decodeURIComponent(url.pathname.slice("/api/zalog/convert/status/".length));
+        const job = getZalogConvertJob(jobId);
+        if (!job) {
+            res.writeHead(404, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+            res.end(JSON.stringify({ error: "Задача не найдена или истекла" }));
+            return;
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify(job));
+        return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/zalog/convert") {
         try {
             const probe = await probeZalogPythonDeps();
@@ -475,9 +489,17 @@ const server = http.createServer(async (req, res) => {
                 );
                 return;
             }
-            const result = await convertZalogMultipart(req);
-            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-            res.end(JSON.stringify(result));
+            const { pdfBytes, xlsxBytes } = await readZalogUpload(req);
+            const jobId = createZalogConvertJob(pdfBytes, xlsxBytes);
+            res.writeHead(202, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+            res.end(
+                JSON.stringify({
+                    ok: true,
+                    async: true,
+                    jobId,
+                    message: "Конвертация запущена. Ожидайте результат."
+                })
+            );
         } catch (e) {
             const msg = e.message || String(e);
             const status = /загрузите|пустой|multipart|больше/i.test(msg) ? 400 : 500;

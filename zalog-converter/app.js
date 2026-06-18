@@ -168,11 +168,15 @@ async function convertFiles(pdfFile, xlsxFile) {
 
   try {
     const payload = await ZalogApiClient.postZalogConvert(API_BASE, pdfFile, xlsxFile, {
-      onProgress(attempt, max, wakeTry, wakeMax) {
-        if (wakeTry && wakeMax) {
-          setStatus(`Сервер просыпается… ${wakeTry}/${wakeMax} (попытка ${attempt}/${max})`, "loading");
-        } else {
-          setStatus(`Конвертация… попытка ${attempt}/${max}`, "loading");
+      onProgress(attempt, max, a, b, phase) {
+        if (phase === "wake" && a && b) {
+          setStatus(`Сервер просыпается… ${a}/${b} (попытка ${attempt}/${max})`, "loading");
+        } else if (phase === "upload") {
+          setStatus("Загружаем PDF и XLSX на сервер…", "loading");
+        } else if (phase === "processing" && a && b) {
+          setStatus(`Конвертация… ${a}/${b}`, "loading");
+        } else if (phase === "processing") {
+          setStatus("Конвертация на сервере…", "loading");
         }
       },
       onRetry(attempt, max) {
