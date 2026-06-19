@@ -172,14 +172,20 @@ SBER_REPORT_CSS = """
       white-space: normal;
       hyphens: auto;
     }
-    .objects-table .col-code { width: 4%; }
-    .objects-table .col-classifier { width: 8%; }
-    .objects-table .col-name { width: 28%; min-width: 0; }
-    .objects-table .col-id { width: 11%; }
-    .objects-table .col-quality { width: 7%; }
-    .objects-table .col-valtype { width: 8%; }
+    .objects-table .col-code { width: 5%; }
+    .objects-table .col-classifier { width: 7%; }
+    .objects-table .col-name {
+      width: 32%;
+      min-width: 0;
+      white-space: pre-wrap;
+      line-height: 1.35;
+      font-size: 0.66rem;
+    }
+    .objects-table .col-id { width: 9%; }
+    .objects-table .col-quality { width: 6%; }
+    .objects-table .col-valtype { width: 6%; }
     .objects-table .col-num {
-      width: 10%;
+      width: 9%;
       text-align: right;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
@@ -194,7 +200,7 @@ SBER_REPORT_CSS = """
       white-space: nowrap;
     }
     .objects-table .col-liq {
-      width: 8%;
+      width: 7%;
       text-align: right;
     }
     .objects-table .col-tight {

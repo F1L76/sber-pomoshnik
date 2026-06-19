@@ -352,6 +352,8 @@ def _parse_simple_format(
         classifier_code = get_classifier_code_3_level(classifier_raw)
         row_segments = collect_row_description_segments(row, col_map)
         estimated_cost = parse_number_cell(_cell(row, col_map["cost"]))
+        valuation_type = "Рыночная" if estimated_cost > 0 else "Льготная"
+        cost_type = "рыночная" if estimated_cost > 0 else "льготная"
         identifier = str(_cell(row, col_map["identifier"]) or "").strip()
         if _is_known_label(identifier):
             identifier = ""
@@ -369,6 +371,8 @@ def _parse_simple_format(
             classifier_code,
             identifier,
             row_segments=row_segments,
+            valuation_type=valuation_type,
+            cost_type=cost_type,
         )
 
         fields = merge_description_fields(raw_name_cell, row_segments or None)
@@ -424,7 +428,8 @@ def _parse_simple_format(
                 raw_name=raw_name_cell or "\t".join(row_segments),
                 identifier=identifier,
                 quality_category=quality,
-                valuation_type="Рыночная" if estimated_cost > 0 else "Льготная",
+                valuation_type=valuation_type,
+                cost_type=cost_type,
                 cost=estimated_cost,
                 collateral_value=collateral_value,
                 discount=discount,

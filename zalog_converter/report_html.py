@@ -140,16 +140,16 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
       </colgroup>
       <thead>
         <tr>
-          <th class="col-code" title="Условное обозначение">Усл.</th>
-          <th class="col-classifier">Класс.</th>
+          <th class="col-code">Условное обозначение</th>
+          <th class="col-classifier">Классификатор</th>
           <th class="col-name">Наименование</th>
           <th class="col-id">Идентификатор</th>
-          <th class="col-quality" title="Категория качества">Кат.</th>
-          <th class="col-valtype" title="Вид стоимости">Вид</th>
-          <th class="text-end col-num" title="Оценочная стоимость без НДС">Оцен.</th>
-          <th class="text-end col-num" title="Залоговая стоимость без НДС">Залог.</th>
-          <th class="text-end col-pct" title="Дисконт без НДС">Диск.</th>
-          <th class="text-end col-liq" title="Ликвидность">Ликв.</th>
+          <th class="col-quality">Категория качества</th>
+          <th class="col-valtype">Вид стоимости</th>
+          <th class="text-end col-num">Оценочная стоимость без НДС</th>
+          <th class="text-end col-num">Залоговая стоимость без НДС</th>
+          <th class="text-end col-pct">Дисконт без НДС</th>
+          <th class="text-end col-liq">Ликвидность</th>
         </tr>
       </thead>
       <tbody>{"".join(rows)}</tbody>

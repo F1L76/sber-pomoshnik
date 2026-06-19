@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .name_format import truncate_land_plot_display_name
+from .name_format import format_object_report_name, truncate_land_plot_display_name
 from .utils import get_classifier_code_3_level, parse_number_cell
 
 _ASZ_HEADER_MARKERS = ("вид обеспечения", "описание обеспечения", "залогодатель")
@@ -334,7 +334,17 @@ def parse_asz_row(row: list[Any], col_map: dict[str, int], row_index: int) -> di
     if classifier_code == "999.99":
         classifier_code = get_classifier_code_3_level(description.split(";")[0])
 
-    name = format_asz_display_name(kind_path, description)
+    valuation_type = "Рыночная" if cost > 0 else "Льготная"
+    cost_type = "рыночная" if cost > 0 else "льготная"
+    name = format_object_report_name(
+        description or kind_path,
+        classifier_raw,
+        classifier_code,
+        identifier,
+        liquidity=liquidity,
+        valuation_type=valuation_type,
+        cost_type=cost_type,
+    )
     identifier = extract_identifier_from_asz_description(description)
     cost = parse_number_cell(_cell(row, col_map["cost"]))
     discount = parse_number_cell(_cell(row, col_map["discount"]))

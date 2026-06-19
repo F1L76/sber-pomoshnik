@@ -375,7 +375,238 @@ def resolve_kind_and_code(
     return kind, code, display_raw
 
 
-def format_object_display_name(
+def _parse_semicolon_fields(text: str) -> dict[str, str]:
+    """Поля «ключ: значение» через «;» (формат ASZ в описании объекта)."""
+    fields: dict[str, str] = {}
+    raw = str(text or "").strip()
+    if not raw:
+        return fields
+    first = raw.split(";")[0].strip()
+    if first and ":" not in first:
+        fields["_title"] = first
+    for part in raw.split(";"):
+        chunk = part.strip()
+        if not chunk:
+            continue
+        if ":" in chunk:
+            key, _, value = chunk.partition(":")
+            key_norm = re.sub(r"\s+", " ", key.strip().lower())
+            value = value.strip()
+            if key_norm and value and value.lower() not in {"н/д", "не указано"}:
+                fields[key_norm] = value
+        elif "_title" not in fields:
+            fields["_title"] = chunk
+    return fields
+
+
+def _merge_report_fields(raw_name: str, row_segments: list[str] | None) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for source in (raw_name, "\t".join(row_segments or [])):
+        if not source:
+            continue
+        for key, value in _parse_semicolon_fields(source).items():
+            fields.setdefault(key, value)
+        for key, value in parse_labeled_fields(source).items():
+            norm = re.sub(r"\s+", " ", key.strip().lower())
+            fields.setdefault(norm, value)
+        for key, value in merge_fields_from_alternating_segments(_split_segments(source)).items():
+            norm = re.sub(r"\s+", " ", key.strip().lower())
+            fields.setdefault(norm, value)
+    return fields
+
+
+def _report_field(fields: dict[str, str], *keys: str) -> str:
+    for key in keys:
+        norm = key.lower()
+        if norm in fields:
+            return str(fields[norm]).strip()
+    for fk, fv in fields.items():
+        if fk.startswith("_"):
+            continue
+        for key in keys:
+            if key.lower() in fk:
+                return str(fv).strip()
+    return ""
+
+
+def _object_type_label(classifier_raw: str, classifier_code: str, fields: dict[str, str]) -> str:
+    display = format_classifier_display(classifier_raw, classifier_code)
+    if display and display != "—":
+        if "/" in display:
+            return display.split("/")[-1].strip()
+        return display
+    kind = fields.get("_title") or fields.get("kind") or _classifier_kind_label(classifier_raw, classifier_code, fields)
+    if kind:
+        return kind[:1].upper() + kind[1:]
+    return "Объект"
+
+
+def _format_exposure_days(fields: dict[str, str], liquidity_cell: str) -> str:
+    expo = _report_field(
+        fields,
+        "срок реализации",
+        "срок реализации в днях",
+        "срок экспозиции",
+        "срок экспозиции в днях",
+    )
+    if expo:
+        expo = re.sub(r"\s+", " ", expo).strip()
+        if not re.search(r"дн\.?", expo, re.I):
+            if re.fullmatch(r"\d+(?:[.,]\d+)?", expo):
+                expo = f"{expo.replace(',', '.')} дн."
+            else:
+                expo = f"{expo} дн."
+        return expo
+    cell = str(liquidity_cell or "").strip()
+    if cell and re.fullmatch(r"\d+(?:[.,]\d+)?", cell):
+        return f"{cell.replace(',', '.')} дн."
+    return ""
+
+
+def _format_liquidity_label(fields: dict[str, str], liquidity_cell: str) -> str:
+    label = _report_field(fields, "ликвидность")
+    if label:
+        return label.lower()
+    cell = str(liquidity_cell or "").strip()
+    if cell and not re.fullmatch(r"\d+(?:[.,]\d+)?", cell):
+        return cell.lower()
+    return ""
+
+
+def _join_label_values(pairs: list[tuple[str, str]]) -> str:
+    parts = [f"{label}: {value}" for label, value in pairs if value]
+    return " | ".join(parts)
+
+
+def format_object_report_name(
+    raw_name: str,
+    classifier_raw: str,
+    classifier_code: str,
+    identifier: str = "",
+    *,
+    row_segments: list[str] | None = None,
+    liquidity: str = "",
+    valuation_type: str = "",
+    cost_type: str = "",
+) -> str:
+    """
+    Многострочное наименование для столбца «Наименование» в перечне залога.
+    """
+    raw = str(raw_name or "").strip()
+    row_segments = row_segments or []
+    combined = raw
+    if row_segments:
+        combined = "\n".join(part for part in (raw, "\t".join(row_segments)) if part).strip()
+
+    fields = _merge_report_fields(raw, row_segments)
+    if not fields and combined:
+        fields = _heuristic_fields(combined, classifier_raw, classifier_code, identifier)
+
+    kind, classifier_code, _ = resolve_kind_and_code(classifier_raw, classifier_code, fields)
+    type_label = _object_type_label(classifier_raw, classifier_code, fields)
+
+    title = fields.get("_title") or _report_field(
+        fields, "описание обеспечения", "description", "kind", "вид обеспечения"
+    )
+    if not title:
+        title = _build_description(fields, combined, kind)
+    if not title:
+        title = _clean_description_text(_pick_description_from_segments(row_segments, kind, identifier))
+    if not title and kind:
+        title = kind[:1].upper() + kind[1:]
+    if not title and combined:
+        title = combined.split(";")[0].strip()[:160]
+
+    cadastral = _report_field(fields, "кадастровый номер", "cadastral") or identifier
+    if cadastral and not re.search(r"\d{2}:\d{2}:", cadastral):
+        if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{11,17}", cadastral.upper()):
+            cadastral = ""
+
+    area = _report_field(fields, "площадь", "area")
+    floor = _report_field(fields, "этаж", "floor")
+
+    line1 = f"[ОБЪЕКТ] {title} ({type_label})" if title else f"[ОБЪЕКТ] ({type_label})"
+
+    if _is_vehicle(classifier_code, kind):
+        line2 = _join_label_values([
+            ("Марка", _report_field(fields, "марка", "brand")),
+            ("Модель", _report_field(fields, "модель", "model")),
+            ("Год выпуска", _report_field(fields, "год выпуска", "year")),
+            ("VIN", _extract_vin(_report_field(fields, "vin", "vin номер") or identifier)),
+        ])
+    else:
+        line2 = _join_label_values([
+            ("Площадь", area),
+            ("Этаж", floor),
+            ("КН", cadastral),
+        ])
+
+    rights = _report_field(fields, "права", "право", "вид права", "форма права", "право собственности")
+    encumbrance = _report_field(fields, "обременения", "обременение") or "нет"
+    line3 = f"[ПРАВА]: {rights or '—'}. Обременения: {encumbrance}."
+
+    liq = _format_liquidity_label(fields, liquidity)
+    expo = _format_exposure_days(fields, liquidity)
+    line5 = _join_label_values([
+        ("Ликвидность", liq),
+        ("Срок реализации", expo),
+    ])
+
+    eval_date = _report_field(fields, "дата оценки")
+    cost_label = (
+        (valuation_type or cost_type or _report_field(fields, "вид стоимости", "стоимость") or "")
+        .strip()
+        .lower()
+    )
+    line6 = _join_label_values([
+        ("Дата оценки", eval_date),
+        ("Стоимость", cost_label),
+    ])
+
+    provision = _report_field(fields, "обеспеченность", "учитываемое обеспечение", "учет обеспеченности")
+    lgd = _report_field(fields, "lgd")
+    vat = _report_field(fields, "ндс", "ндс %", "ставка ндс")
+    account_bits: list[str] = []
+    if provision:
+        account_bits.append(f"обеспеченность - {provision.lower()}")
+    if lgd:
+        account_bits.append(f"LGD - {lgd.lower()}")
+    account_left = ", ".join(account_bits)
+    account_right = f"НДС: {vat}" if vat else ""
+    if account_left and account_right:
+        line7 = f"Учет: {account_left} | {account_right}"
+    elif account_left:
+        line7 = f"Учет: {account_left}"
+    elif account_right:
+        line7 = f"Учет: {account_right}"
+    else:
+        line7 = ""
+
+    lines = [line1]
+    if line2:
+        lines.append(line2)
+    lines.append(line3)
+    lines.append("[ОЦЕНКА / ЗАЛОГ]")
+    if line5:
+        lines.append(line5)
+    if line6:
+        lines.append(line6)
+    if line7:
+        lines.append(line7)
+
+    if len(lines) <= 3 and not line2 and not line5 and not line6:
+        return _format_object_display_name_legacy(
+            raw_name,
+            classifier_raw,
+            classifier_code,
+            identifier,
+            row_segments=row_segments,
+        )
+
+    return "\n".join(lines)
+
+
+def _format_object_display_name_legacy(
     raw_name: str,
     classifier_raw: str,
     classifier_code: str,
@@ -461,3 +692,27 @@ def format_object_display_name(
         return ", ".join(parts)
 
     return combined[:200] + ("…" if len(combined) > 200 else "")
+
+
+def format_object_display_name(
+    raw_name: str,
+    classifier_raw: str,
+    classifier_code: str,
+    identifier: str = "",
+    *,
+    row_segments: list[str] | None = None,
+    liquidity: str = "",
+    valuation_type: str = "",
+    cost_type: str = "",
+) -> str:
+    """Наименование объекта для столбца «Наименование» в перечне."""
+    return format_object_report_name(
+        raw_name,
+        classifier_raw,
+        classifier_code,
+        identifier,
+        row_segments=row_segments,
+        liquidity=liquidity,
+        valuation_type=valuation_type,
+        cost_type=cost_type,
+    )
