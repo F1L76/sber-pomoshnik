@@ -334,6 +334,14 @@ def parse_asz_row(row: list[Any], col_map: dict[str, int], row_index: int) -> di
     if classifier_code == "999.99":
         classifier_code = get_classifier_code_3_level(description.split(";")[0])
 
+    identifier = extract_identifier_from_asz_description(description)
+    cost = parse_number_cell(_cell(row, col_map["cost"]))
+    discount = parse_number_cell(_cell(row, col_map["discount"]))
+    collateral = parse_number_cell(_cell(row, col_map["collateral"]))
+    if collateral <= 0 and cost > 0:
+        collateral = cost
+    quality = str(_cell(row, col_map["quality"]) or "").strip() or "Стандарт"
+    liquidity = extract_liquidity(row, col_map)
     valuation_type = "Рыночная" if cost > 0 else "Льготная"
     cost_type = "рыночная" if cost > 0 else "льготная"
     name = format_object_report_name(
@@ -345,14 +353,6 @@ def parse_asz_row(row: list[Any], col_map: dict[str, int], row_index: int) -> di
         valuation_type=valuation_type,
         cost_type=cost_type,
     )
-    identifier = extract_identifier_from_asz_description(description)
-    cost = parse_number_cell(_cell(row, col_map["cost"]))
-    discount = parse_number_cell(_cell(row, col_map["discount"]))
-    collateral = parse_number_cell(_cell(row, col_map["collateral"]))
-    if collateral <= 0 and cost > 0:
-        collateral = cost
-    quality = str(_cell(row, col_map["quality"]) or "").strip() or "Стандарт"
-    liquidity = extract_liquidity(row, col_map)
 
     return {
         "conditional": conditional,
@@ -362,12 +362,12 @@ def parse_asz_row(row: list[Any], col_map: dict[str, int], row_index: int) -> di
         "raw_name": description or kind_path,
         "identifier": identifier,
         "quality_category": quality,
-        "valuation_type": "Рыночная" if cost > 0 else "Льготная",
+        "valuation_type": valuation_type,
         "cost": cost,
         "collateral_value": collateral,
         "discount": discount,
         "liquidity": liquidity,
-        "cost_type": "рыночная" if cost > 0 else "льготная",
+        "cost_type": cost_type,
         "bank_market_price": round(cost * 1.05, 2) if cost > 0 else 0.0,
         "pledgor": pledgor,
     }
