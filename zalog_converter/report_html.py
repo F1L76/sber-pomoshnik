@@ -10,7 +10,7 @@ from .name_format import format_classifier_display
 from .utils import calc_collateral_from_discount, escape_html, format_money
 from .xlsx_extract import CollateralObject
 
-REPORT_SCHEMA_VERSION = 4  # 4 = фильтры перечня, перенос заголовков и слов в ячейках
+REPORT_SCHEMA_VERSION = 5  # 5 = условное обозначение — текстовый фильтр, без прыжка скролла
 
 
 def _unique_sorted(values: list[str]) -> list[str]:
@@ -45,7 +45,6 @@ def _text_filter(filter_id: str, placeholder: str, hint: str = "") -> str:
 
 
 def _render_objects_filter_row(objects: list[CollateralObject]) -> str:
-    codes = _unique_sorted([o.conditional for o in objects])
     classifiers = _unique_sorted([
         o.classifier_name or format_classifier_display(o.klassifikator_raw, o.klassifikator)
         for o in objects
@@ -55,7 +54,7 @@ def _render_objects_filter_row(objects: list[CollateralObject]) -> str:
     liquidities = _unique_sorted([o.liquidity for o in objects if o.liquidity])
 
     return f"""<tr class="filter-row">
-          <th>{_select_filter("code", codes)}</th>
+          <th>{_text_filter("code", "Поиск…")}</th>
           <th>{_select_filter("classifier", classifiers)}</th>
           <th>{_text_filter("name", "Поиск…")}</th>
           <th>{_text_filter("identifier", "Поиск…")}</th>

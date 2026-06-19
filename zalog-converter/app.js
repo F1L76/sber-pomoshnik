@@ -83,7 +83,8 @@ function measureLayout() {
 function fitReportFrame() {
   const doc = reportFrame.contentDocument;
   if (!doc?.body) return;
-  reportFrame.style.height = "0px";
+  const scrollX = window.scrollX;
+  const scrollY = window.scrollY;
   const height = Math.max(
     doc.documentElement.scrollHeight,
     doc.documentElement.offsetHeight,
@@ -92,6 +93,7 @@ function fitReportFrame() {
     320,
   ) + 32;
   reportFrame.style.height = `${height}px`;
+  window.scrollTo(scrollX, scrollY);
 }
 
 function scheduleReportFrameFit() {

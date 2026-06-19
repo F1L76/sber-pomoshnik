@@ -325,11 +325,36 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
     return Number.isFinite(n) ? n : null;
   }
 
+  function preserveScroll(run) {
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const saved = [];
+    try {
+      if (window.parent && window.parent !== window) {
+        const p = window.parent;
+        saved.push({ el: p, left: p.scrollX, top: p.scrollY, isWin: true });
+        const modalBody = p.document?.querySelector(".modal.show .modal-body");
+        if (modalBody) {
+          saved.push({ el: modalBody, left: modalBody.scrollLeft, top: modalBody.scrollTop, isWin: false });
+        }
+      }
+    } catch (_e) {}
+    run();
+    window.scrollTo(scrollX, scrollY);
+    saved.forEach(({ el, left, top, isWin }) => {
+      try {
+        if (isWin) el.scrollTo(left, top);
+        else { el.scrollLeft = left; el.scrollTop = top; }
+      } catch (_e) {}
+    });
+  }
+
   function applyFilters() {
+    preserveScroll(() => {
     const f = {};
     filters.forEach((el) => { f[el.dataset.objFilter] = el.value.trim(); });
     const fLower = {};
-    ["name", "identifier"].forEach((k) => {
+    ["code", "name", "identifier"].forEach((k) => {
       fLower[k] = (f[k] || "").toLowerCase();
     });
 
@@ -339,7 +364,7 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
 
     tbody.querySelectorAll("tr").forEach((tr) => {
       let show = true;
-      if (f.code && cellText(tr, 0) !== f.code) show = false;
+      if (show && fLower.code && !cellText(tr, 0).toLowerCase().includes(fLower.code)) show = false;
       if (show && f.classifier && cellText(tr, 1) !== f.classifier) show = false;
       if (show && fLower.name && !cellText(tr, 2).toLowerCase().includes(fLower.name)) show = false;
       if (show && fLower.identifier && !cellText(tr, 3).toLowerCase().includes(fLower.identifier)) show = false;
@@ -373,12 +398,17 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
       if (collCell) collCell.textContent = sumColl.toLocaleString("ru-RU") + " ₽";
     }
     if (countEl) countEl.textContent = String(visible);
+    });
   }
 
   filters.forEach((el) => {
     const key = el.dataset.objFilter;
     if (el.tagName === "SELECT") {
       el.addEventListener("change", applyFilters);
+      return;
+    }
+    if (key === "code") {
+      el.addEventListener("input", applyFilters);
       return;
     }
     if (key === "name" || key === "identifier") {
