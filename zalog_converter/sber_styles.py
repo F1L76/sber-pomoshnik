@@ -354,7 +354,7 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
     const f = {};
     filters.forEach((el) => { f[el.dataset.objFilter] = el.value.trim(); });
     const fLower = {};
-    ["code", "name", "identifier"].forEach((k) => {
+    ["code", "name", "identifier", "cost"].forEach((k) => {
       fLower[k] = (f[k] || "").toLowerCase();
     });
 
@@ -374,14 +374,7 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
 
       const est = parseNum(cellText(tr, 6));
       const coll = parseNum(cellText(tr, 7));
-      if (show && f.costMin) {
-        const min = parseNum(f.costMin);
-        if (min != null && (est == null || est < min)) show = false;
-      }
-      if (show && f.costMax) {
-        const max = parseNum(f.costMax);
-        if (max != null && (est == null || est > max)) show = false;
-      }
+      if (show && fLower.cost && !cellText(tr, 6).toLowerCase().includes(fLower.cost)) show = false;
 
       tr.style.display = show ? "" : "none";
       if (show) {
@@ -407,7 +400,7 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
       el.addEventListener("change", applyFilters);
       return;
     }
-    if (key === "code") {
+    if (key === "code" || key === "cost") {
       el.addEventListener("input", applyFilters);
       return;
     }
@@ -416,12 +409,6 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
       el.addEventListener("input", () => {
         clearTimeout(timer);
         timer = setTimeout(applyFilters, 350);
-      });
-      return;
-    }
-    if (key === "costMin" || key === "costMax") {
-      el.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") { e.preventDefault(); applyFilters(); }
       });
       return;
     }

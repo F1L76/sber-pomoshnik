@@ -10,7 +10,7 @@ from .name_format import format_classifier_display
 from .utils import calc_collateral_from_discount, escape_html, format_money
 from .xlsx_extract import CollateralObject
 
-REPORT_SCHEMA_VERSION = 5  # 5 = условное обозначение — текстовый фильтр, без прыжка скролла
+REPORT_SCHEMA_VERSION = 6  # 6 = поиск по стоимости; без дубля классификатора в [ОБЪЕКТ]
 
 
 def _unique_sorted(values: list[str]) -> list[str]:
@@ -60,12 +60,7 @@ def _render_objects_filter_row(objects: list[CollateralObject]) -> str:
           <th>{_text_filter("identifier", "Поиск…")}</th>
           <th>{_select_filter("quality", qualities)}</th>
           <th>{_select_filter("valtype", valtypes)}</th>
-          <th>
-            <div class="d-flex flex-column gap-1">
-              {_text_filter("costMin", "от", "Enter")}
-              {_text_filter("costMax", "до", "Enter")}
-            </div>
-          </th>
+          <th>{_text_filter("cost", "Поиск…")}</th>
           <th></th>
           <th></th>
           <th>

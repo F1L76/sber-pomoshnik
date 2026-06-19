@@ -478,6 +478,45 @@ def _join_label_values(pairs: list[tuple[str, str]]) -> str:
     return " | ".join(parts)
 
 
+def _strip_duplicate_type_paren(
+    title: str,
+    classifier_raw: str,
+    classifier_code: str,
+    valuation_type: str = "",
+    cost_type: str = "",
+    fields: dict[str, str] | None = None,
+) -> str:
+    """Убирает хвост «(классификатор / тип залога)», если он дублирует столбцы таблицы."""
+    text = str(title or "").strip()
+    match = re.search(r"\(([^)]+)\)\s*$", text)
+    if not match:
+        return text
+
+    inner = re.sub(r"\s+", " ", match.group(1)).strip()
+    inner_cf = inner.casefold()
+    candidates: set[str] = set()
+    for value in (
+        _object_type_label(classifier_raw, classifier_code, fields or {}),
+        format_classifier_display(classifier_raw, classifier_code),
+        classifier_raw,
+        valuation_type,
+        cost_type,
+    ):
+        chunk = str(value or "").strip()
+        if chunk and chunk != "—":
+            candidates.add(chunk)
+    for part in str(classifier_raw or "").split("/"):
+        part = part.strip()
+        if part:
+            candidates.add(part)
+
+    for cand in candidates:
+        cand_cf = cand.casefold()
+        if inner_cf == cand_cf or inner_cf in cand_cf or cand_cf in inner_cf:
+            return text[: match.start()].strip()
+    return text
+
+
 def format_object_report_name(
     raw_name: str,
     classifier_raw: str,
@@ -503,7 +542,6 @@ def format_object_report_name(
         fields = _heuristic_fields(combined, classifier_raw, classifier_code, identifier)
 
     kind, classifier_code, _ = resolve_kind_and_code(classifier_raw, classifier_code, fields)
-    type_label = _object_type_label(classifier_raw, classifier_code, fields)
 
     title = fields.get("_title") or _report_field(
         fields, "описание обеспечения", "description", "kind", "вид обеспечения"
@@ -517,6 +555,10 @@ def format_object_report_name(
     if not title and combined:
         title = combined.split(";")[0].strip()[:160]
 
+    title = _strip_duplicate_type_paren(
+        title, classifier_raw, classifier_code, valuation_type, cost_type, fields
+    )
+
     cadastral = _report_field(fields, "кадастровый номер", "cadastral") or identifier
     if cadastral and not re.search(r"\d{2}:\d{2}:", cadastral):
         if not re.fullmatch(r"[A-HJ-NPR-Z0-9]{11,17}", cadastral.upper()):
@@ -525,7 +567,7 @@ def format_object_report_name(
     area = _report_field(fields, "площадь", "area")
     floor = _report_field(fields, "этаж", "floor")
 
-    line1 = f"[ОБЪЕКТ] {title} ({type_label})" if title else f"[ОБЪЕКТ] ({type_label})"
+    line1 = f"[ОБЪЕКТ] {title}" if title else "[ОБЪЕКТ]"
 
     if _is_vehicle(classifier_code, kind):
         line2 = _join_label_values([
