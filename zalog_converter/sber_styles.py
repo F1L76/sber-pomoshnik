@@ -148,60 +148,104 @@ SBER_REPORT_CSS = """
       max-width: 100%;
     }
     .objects-block .table-responsive-custom {
-      overflow-x: visible;
+      overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
     .objects-table {
       width: 100%;
-      min-width: 0;
-      table-layout: fixed;
+      min-width: 1080px;
+      table-layout: auto;
     }
     .objects-table th,
     .objects-table td {
-      font-size: 0.7rem;
-      padding: 0.3rem 0.35rem;
-      line-height: 1.2;
+      font-size: 0.72rem;
+      padding: 0.4rem 0.45rem;
+      line-height: 1.35;
       vertical-align: top;
       white-space: normal;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-    .objects-table th {
-      font-size: 0.65rem;
-      font-weight: 600;
-      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: normal;
       hyphens: auto;
     }
-    .objects-table .col-code { width: 5%; }
-    .objects-table .col-classifier { width: 7%; }
-    .objects-table .col-name {
-      width: 32%;
-      min-width: 0;
-      white-space: pre-wrap;
-      line-height: 1.35;
-      font-size: 0.66rem;
+    .objects-table thead th {
+      font-size: 0.68rem;
+      font-weight: 600;
+      line-height: 1.25;
+      text-align: center;
+      vertical-align: bottom;
+      padding: 0.5rem 0.35rem;
     }
-    .objects-table .col-id { width: 9%; }
-    .objects-table .col-quality { width: 6%; }
-    .objects-table .col-valtype { width: 6%; }
+    .objects-table thead th.text-end {
+      text-align: right;
+    }
+    .objects-table .th-lines {
+      display: inline-block;
+      max-width: 100%;
+      text-align: center;
+    }
+    .objects-table thead th.text-end .th-lines {
+      text-align: right;
+    }
+    .objects-table .filter-row th {
+      background: #f8fafc;
+      font-weight: normal;
+      padding: 0.35rem 0.3rem;
+      vertical-align: middle;
+    }
+    .objects-table .filter-row .form-select,
+    .objects-table .filter-row .form-control {
+      font-size: 0.65rem;
+      padding: 0.2rem 0.3rem;
+      min-width: 0;
+      width: 100%;
+    }
+    .objects-table .filter-row .filter-hint {
+      display: block;
+      font-size: 0.58rem;
+      color: var(--sber-text-muted);
+      margin-top: 0.12rem;
+      line-height: 1.1;
+    }
+    .objects-table .filter-reset-btn {
+      font-size: 0.65rem;
+      padding: 0.2rem 0.35rem;
+      line-height: 1.2;
+    }
+    .objects-table .col-code { min-width: 4.5rem; width: 5%; }
+    .objects-table .col-classifier { min-width: 5.5rem; width: 8%; }
+    .objects-table .col-name {
+      min-width: 14rem;
+      width: 28%;
+      white-space: pre-wrap;
+      line-height: 1.4;
+      font-size: 0.7rem;
+    }
+    .objects-table .col-id { min-width: 6rem; width: 9%; }
+    .objects-table .col-quality { min-width: 4.5rem; width: 7%; }
+    .objects-table .col-valtype { min-width: 4.5rem; width: 7%; }
     .objects-table .col-num {
+      min-width: 5.5rem;
       width: 9%;
       text-align: right;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
       overflow-wrap: normal;
       word-break: normal;
-      font-size: 0.66rem;
+      hyphens: none;
     }
     .objects-table .col-pct {
-      width: 6%;
+      min-width: 3.5rem;
+      width: 5%;
       text-align: right;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
+      hyphens: none;
     }
     .objects-table .col-liq {
-      width: 7%;
+      min-width: 4rem;
+      width: 6%;
       text-align: right;
+      hyphens: none;
     }
     .objects-table .col-tight {
       white-space: normal;
@@ -257,5 +301,107 @@ SBER_REPORT_CSS = """
       body { background: #fff; }
       .report-page { padding: 0; max-width: none; }
       .info-card { box-shadow: none; break-inside: avoid; }
+      .objects-table .filter-row { display: none; }
     }
+"""
+
+SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
+(function () {
+  const table = document.querySelector(".objects-table");
+  if (!table) return;
+  const tbody = table.querySelector("tbody");
+  const tfoot = table.querySelector("tfoot");
+  const countEl = document.getElementById("objectsVisibleCount");
+  const filters = table.querySelectorAll("[data-obj-filter]");
+
+  function cellText(tr, index) {
+    return (tr.cells[index]?.textContent || "").trim();
+  }
+
+  function parseNum(text) {
+    const s = String(text || "").replace(/\\s/g, "").replace(",", ".").replace(/[^\\d.-]/g, "");
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function applyFilters() {
+    const f = {};
+    filters.forEach((el) => { f[el.dataset.objFilter] = el.value.trim(); });
+    const fLower = {};
+    ["name", "identifier"].forEach((k) => {
+      fLower[k] = (f[k] || "").toLowerCase();
+    });
+
+    let visible = 0;
+    let sumEst = 0;
+    let sumColl = 0;
+
+    tbody.querySelectorAll("tr").forEach((tr) => {
+      let show = true;
+      if (f.code && cellText(tr, 0) !== f.code) show = false;
+      if (show && f.classifier && cellText(tr, 1) !== f.classifier) show = false;
+      if (show && fLower.name && !cellText(tr, 2).toLowerCase().includes(fLower.name)) show = false;
+      if (show && fLower.identifier && !cellText(tr, 3).toLowerCase().includes(fLower.identifier)) show = false;
+      if (show && f.quality && cellText(tr, 4) !== f.quality) show = false;
+      if (show && f.valtype && cellText(tr, 5) !== f.valtype) show = false;
+      if (show && f.liquidity && cellText(tr, 9) !== f.liquidity) show = false;
+
+      const est = parseNum(cellText(tr, 6));
+      const coll = parseNum(cellText(tr, 7));
+      if (show && f.costMin) {
+        const min = parseNum(f.costMin);
+        if (min != null && (est == null || est < min)) show = false;
+      }
+      if (show && f.costMax) {
+        const max = parseNum(f.costMax);
+        if (max != null && (est == null || est > max)) show = false;
+      }
+
+      tr.style.display = show ? "" : "none";
+      if (show) {
+        visible += 1;
+        if (est != null) sumEst += est;
+        if (coll != null) sumColl += coll;
+      }
+    });
+
+    if (tfoot) {
+      const estCell = tfoot.querySelector("[data-total-est]");
+      const collCell = tfoot.querySelector("[data-total-coll]");
+      if (estCell) estCell.textContent = sumEst.toLocaleString("ru-RU") + " ₽";
+      if (collCell) collCell.textContent = sumColl.toLocaleString("ru-RU") + " ₽";
+    }
+    if (countEl) countEl.textContent = String(visible);
+  }
+
+  filters.forEach((el) => {
+    const key = el.dataset.objFilter;
+    if (el.tagName === "SELECT") {
+      el.addEventListener("change", applyFilters);
+      return;
+    }
+    if (key === "name" || key === "identifier") {
+      let timer;
+      el.addEventListener("input", () => {
+        clearTimeout(timer);
+        timer = setTimeout(applyFilters, 350);
+      });
+      return;
+    }
+    if (key === "costMin" || key === "costMax") {
+      el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); applyFilters(); }
+      });
+      return;
+    }
+  });
+
+  document.getElementById("objectsFilterReset")?.addEventListener("click", () => {
+    filters.forEach((el) => { el.value = ""; });
+    applyFilters();
+  });
+
+  applyFilters();
+})();
 """

@@ -5,12 +5,79 @@ from __future__ import annotations
 from typing import Any
 
 from .pdf_extract import ConclusionData, ConclusionRisk
-from .sber_styles import SBER_REPORT_CSS, SBER_REPORT_HEAD_LINKS
+from .sber_styles import SBER_OBJECTS_TABLE_FILTER_SCRIPT, SBER_REPORT_CSS, SBER_REPORT_HEAD_LINKS
 from .name_format import format_classifier_display
 from .utils import calc_collateral_from_discount, escape_html, format_money
 from .xlsx_extract import CollateralObject
 
-REPORT_SCHEMA_VERSION = 3  # 3 = авто-ширина столбцов перечня
+REPORT_SCHEMA_VERSION = 4  # 4 = фильтры перечня, перенос заголовков и слов в ячейках
+
+
+def _unique_sorted(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for value in values:
+        text = str(value or "").strip()
+        if not text or text == "—" or text in seen:
+            continue
+        seen.add(text)
+        out.append(text)
+    return sorted(out, key=lambda s: s.casefold())
+
+
+def _select_filter(filter_id: str, options: list[str], all_label: str = "Все") -> str:
+    opts = [f'<option value="">{escape_html(all_label)}</option>']
+    opts.extend(
+        f'<option value="{escape_html(o)}">{escape_html(o)}</option>' for o in options
+    )
+    return (
+        f'<select class="form-select form-select-sm" data-obj-filter="{escape_html(filter_id)}" '
+        f'aria-label="Фильтр">{"".join(opts)}</select>'
+    )
+
+
+def _text_filter(filter_id: str, placeholder: str, hint: str = "") -> str:
+    hint_html = f'<span class="filter-hint">{escape_html(hint)}</span>' if hint else ""
+    return (
+        f'<input type="text" class="form-control form-control-sm" data-obj-filter="{escape_html(filter_id)}" '
+        f'placeholder="{escape_html(placeholder)}" aria-label="Фильтр">{hint_html}'
+    )
+
+
+def _render_objects_filter_row(objects: list[CollateralObject]) -> str:
+    codes = _unique_sorted([o.conditional for o in objects])
+    classifiers = _unique_sorted([
+        o.classifier_name or format_classifier_display(o.klassifikator_raw, o.klassifikator)
+        for o in objects
+    ])
+    qualities = _unique_sorted([o.quality_category for o in objects])
+    valtypes = _unique_sorted([o.valuation_type for o in objects])
+    liquidities = _unique_sorted([o.liquidity for o in objects if o.liquidity])
+
+    return f"""<tr class="filter-row">
+          <th>{_select_filter("code", codes)}</th>
+          <th>{_select_filter("classifier", classifiers)}</th>
+          <th>{_text_filter("name", "Поиск…")}</th>
+          <th>{_text_filter("identifier", "Поиск…")}</th>
+          <th>{_select_filter("quality", qualities)}</th>
+          <th>{_select_filter("valtype", valtypes)}</th>
+          <th>
+            <div class="d-flex flex-column gap-1">
+              {_text_filter("costMin", "от", "Enter")}
+              {_text_filter("costMax", "до", "Enter")}
+            </div>
+          </th>
+          <th></th>
+          <th></th>
+          <th>
+            <div class="d-flex flex-column gap-1 align-items-stretch">
+              {_select_filter("liquidity", liquidities)}
+              <button type="button" class="btn btn-outline-secondary btn-sm filter-reset-btn" id="objectsFilterReset" title="Сбросить фильтры">
+                <i class="fas fa-rotate-left" aria-hidden="true"></i>
+              </button>
+            </div>
+          </th>
+        </tr>"""
 
 
 def render_conclusion_info_block(conclusion: ConclusionData) -> str:
@@ -121,9 +188,12 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
             "</tr>"
         )
 
+    filter_row = _render_objects_filter_row(objects)
+
     return f"""<div class="info-card report-block objects-block">
   <h3 class="section-title"><i class="fas fa-list me-2 text-success" aria-hidden="true"></i>Перечень объектов залога</h3>
-  <p class="hint"><span class="badge-sber">XLSX: {len(objects)} объект(ов)</span></p>
+  <p class="hint"><span class="badge-sber">XLSX: {len(objects)} объект(ов)</span>
+    <span class="ms-2">Показано: <strong id="objectsVisibleCount">{len(objects)}</strong></span></p>
   <div class="table-responsive-custom">
     <table class="table table-bordered table-striped table-details table-hover objects-table mb-0">
       <colgroup>
@@ -140,30 +210,32 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
       </colgroup>
       <thead>
         <tr>
-          <th class="col-code">Условное обозначение</th>
-          <th class="col-classifier">Классификатор</th>
-          <th class="col-name">Наименование</th>
-          <th class="col-id">Идентификатор</th>
-          <th class="col-quality">Категория качества</th>
-          <th class="col-valtype">Вид стоимости</th>
-          <th class="text-end col-num">Оценочная стоимость без НДС</th>
-          <th class="text-end col-num">Залоговая стоимость без НДС</th>
-          <th class="text-end col-pct">Дисконт без НДС</th>
-          <th class="text-end col-liq">Ликвидность</th>
+          <th class="col-code"><span class="th-lines">Условное<br>обозначение</span></th>
+          <th class="col-classifier"><span class="th-lines">Классификатор</span></th>
+          <th class="col-name"><span class="th-lines">Наименование</span></th>
+          <th class="col-id"><span class="th-lines">Идентификатор</span></th>
+          <th class="col-quality"><span class="th-lines">Категория<br>качества</span></th>
+          <th class="col-valtype"><span class="th-lines">Вид<br>стоимости</span></th>
+          <th class="text-end col-num"><span class="th-lines">Оценочная стоимость<br>без НДС</span></th>
+          <th class="text-end col-num"><span class="th-lines">Залоговая стоимость<br>без НДС</span></th>
+          <th class="text-end col-pct"><span class="th-lines">Дисконт<br>без НДС</span></th>
+          <th class="text-end col-liq"><span class="th-lines">Ликвидность</span></th>
         </tr>
+        {filter_row}
       </thead>
       <tbody>{"".join(rows)}</tbody>
       <tfoot>
         <tr class="totals-row">
           <td colspan="6" class="text-end"><strong>Итого</strong></td>
-          <td class="text-end col-num"><strong>{format_money(total_estimated)}&nbsp;₽</strong></td>
-          <td class="text-end col-num"><strong>{format_money(total_collateral)}&nbsp;₽</strong></td>
+          <td class="text-end col-num"><strong data-total-est>{format_money(total_estimated)}&nbsp;₽</strong></td>
+          <td class="text-end col-num"><strong data-total-coll>{format_money(total_collateral)}&nbsp;₽</strong></td>
           <td></td>
           <td></td>
         </tr>
       </tfoot>
     </table>
   </div>
+  <script>{SBER_OBJECTS_TABLE_FILTER_SCRIPT}</script>
 </div>"""
 
 
