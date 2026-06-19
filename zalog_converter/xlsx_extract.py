@@ -433,7 +433,6 @@ def _parse_simple_format(
                 cost=estimated_cost,
                 collateral_value=collateral_value,
                 discount=discount,
-                cost_type="рыночная" if estimated_cost > 0 else "льготная",
                 bank_market_price=round(estimated_cost * 1.05, 2) if estimated_cost > 0 else 0.0,
                 parse_score=score,
             )
