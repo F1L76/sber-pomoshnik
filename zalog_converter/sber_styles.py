@@ -354,7 +354,7 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
     const f = {};
     filters.forEach((el) => { f[el.dataset.objFilter] = el.value.trim(); });
     const fLower = {};
-    ["code", "name", "identifier", "cost"].forEach((k) => {
+    ["code", "name", "identifier"].forEach((k) => {
       fLower[k] = (f[k] || "").toLowerCase();
     });
 
@@ -374,7 +374,14 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
 
       const est = parseNum(cellText(tr, 6));
       const coll = parseNum(cellText(tr, 7));
-      if (show && fLower.cost && !cellText(tr, 6).toLowerCase().includes(fLower.cost)) show = false;
+      if (show && f.costMin) {
+        const min = parseNum(f.costMin);
+        if (min != null && (est == null || est < min)) show = false;
+      }
+      if (show && f.costMax) {
+        const max = parseNum(f.costMax);
+        if (max != null && (est == null || est > max)) show = false;
+      }
 
       tr.style.display = show ? "" : "none";
       if (show) {
@@ -400,7 +407,7 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
       el.addEventListener("change", applyFilters);
       return;
     }
-    if (key === "code" || key === "cost") {
+    if (key === "code" || key === "costMin" || key === "costMax") {
       el.addEventListener("input", applyFilters);
       return;
     }
