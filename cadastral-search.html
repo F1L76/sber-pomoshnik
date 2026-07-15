@@ -869,6 +869,11 @@
         async function handleStreamChunk(chunk, state) {
             if (chunk.event === "error") throw new Error(chunk.error || "Ошибка поиска");
 
+            if (chunk.event === "status" && chunk.data?.message) {
+                searchStatusText.textContent = chunk.data.message;
+                if (chunk.data.phase) setSearchPhrase(chunk.data.phase === "nspd" ? "start" : chunk.data.phase);
+            }
+
             if (chunk.event === "rosreestr") {
                 progressState.rosreestr = "done";
                 ["kadbase", "panorama", "avito", "domclick", "cian"].forEach((k) => { progressState[k] = "pending"; });
