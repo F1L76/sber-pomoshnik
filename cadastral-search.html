@@ -108,6 +108,22 @@
             font-weight: 500;
         }
         .search-status.active { display: flex; }
+        .search-status-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .search-status-phrase {
+            margin: 0 0 0.35rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--sber-text);
+            line-height: 1.35;
+        }
+        .search-status-sources {
+            color: var(--sber-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
         .search-status-cat {
             flex-shrink: 0;
             width: 112px;
@@ -277,7 +293,10 @@
                 decoding="async"
                 onerror="this.onerror=null;this.src='https://media1.tenor.com/m/2YJ8ecS0GBkAAAAC/cat-cats.gif'"
             >
-            <span id="searchStatusText">Ищем данные…</span>
+            <div class="search-status-body">
+                <p id="searchStatusPhrase" class="search-status-phrase">Ищем объект по кадастровому номеру…</p>
+                <div id="searchStatusText" class="search-status-sources">Подключаемся к источникам…</div>
+            </div>
         </div>
         <div id="results" class="d-none">
             <section class="card-panel p-4 mb-4" id="rosreestrBlock"></section>
@@ -298,14 +317,44 @@
 
         const form = document.getElementById("searchForm");
         const searchStatus = document.getElementById("searchStatus");
+        const searchStatusPhrase = document.getElementById("searchStatusPhrase");
         const searchStatusText = document.getElementById("searchStatusText");
         const results = document.getElementById("results");
         const alertBox = document.getElementById("alertBox");
 
         const SOURCE_LABELS = { cian: "Циан", avito: "Авито", domclick: "Домклик" };
         const SOURCE_PROGRESS = { rosreestr: "Росреестр", kadbase: "kadbase.ru", panorama: "2ГИС и Яндекс", avito: "Авито", domclick: "Домклик", cian: "Циан" };
+        const SEARCH_PHRASES = {
+            start: [
+                "Котик уже на разведке — открываем кадастровый номер",
+                "Стартуем поиск: сначала база Росреестра, потом рынок",
+                "Запоминаем номер и собираем всё, что о нём известно"
+            ],
+            rosreestr: [
+                "Спрашиваем НСПД, что за объект скрывается за этим номером",
+                "Читаем карточку Росреестра: адрес, площадь, стоимость",
+                "Сверяем границы и характеристики в публичной карте"
+            ],
+            enrich: [
+                "Проверяем объект в ИАС «База N» — вдруг есть особые отметки",
+                "Ищем фото: 2ГИС и панорамы Яндекс Карт",
+                "Смотрим, как объект выглядит с улицы"
+            ],
+            listings: [
+                "Сканируем объявления на Авито, Циан и Домклик",
+                "Ищем похожие продажи рядом — пригодится для ориентира",
+                "Собираем рыночный контекст вокруг этого адреса"
+            ],
+            waiting: [
+                "Ещё чуть-чуть — источники отвечают не одновременно",
+                "Котик танцует, пока данные доезжают",
+                "Почти собрали полную картину по объекту"
+            ]
+        };
         let progressState = {};
         let kadbaseRendered = false;
+        let phraseTimer = null;
+        let phraseCounters = {};
 
         function showAlert(type, message) {
             alertBox.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
@@ -319,6 +368,42 @@
             return String(s ?? "").replace(/[&<>"']/g, (c) => ({
                 "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
             })[c]);
+        }
+
+        function pickSearchPhrase(phase) {
+            const list = SEARCH_PHRASES[phase] || SEARCH_PHRASES.waiting;
+            const i = (phraseCounters[phase] || 0) % list.length;
+            phraseCounters[phase] = i + 1;
+            return list[i];
+        }
+
+        function currentSearchPhase() {
+            if (!progressState.rosreestr) return "start";
+            if (progressState.rosreestr === "done" && progressState.kadbase !== "done") return "rosreestr";
+            if (progressState.panorama !== "done" || progressState.kadbase !== "done") return "enrich";
+            if ([progressState.avito, progressState.domclick, progressState.cian].some((s) => s === "pending")) {
+                return "listings";
+            }
+            return "waiting";
+        }
+
+        function setSearchPhrase(phase) {
+            if (!searchStatusPhrase) return;
+            searchStatusPhrase.textContent = pickSearchPhrase(phase || currentSearchPhase());
+        }
+
+        function startPhraseRotation() {
+            stopPhraseRotation();
+            phraseCounters = {};
+            setSearchPhrase("start");
+            phraseTimer = setInterval(() => setSearchPhrase(currentSearchPhase()), 3200);
+        }
+
+        function stopPhraseRotation() {
+            if (phraseTimer) {
+                clearInterval(phraseTimer);
+                phraseTimer = null;
+            }
         }
 
         function geometryOuterRing(geometry) {
@@ -744,7 +829,8 @@
                 if (state === "pending") return `<span class="source-pending">${label}…</span>`;
                 return "";
             }).filter(Boolean);
-            searchStatusText.innerHTML = parts.join(" · ") || "Ищем данные…";
+            searchStatusText.innerHTML = parts.join(" · ") || "Подключаемся к источникам…";
+            setSearchPhrase(currentSearchPhase());
         }
 
         function showPanoramaLoading() {
@@ -906,6 +992,8 @@
             progressState = {};
             kadbaseRendered = false;
             searchStatus.classList.add("active");
+            searchStatusText.textContent = "Подключаемся к источникам…";
+            startPhraseRotation();
             results.classList.add("d-none");
             document.getElementById("kadbaseBlock").classList.add("d-none");
             document.getElementById("kadbaseBlock").innerHTML = "";
@@ -927,6 +1015,7 @@
             } catch (err) {
                 showAlert("danger", escapeHtml(err.message || "Ошибка поиска"));
             } finally {
+                stopPhraseRotation();
                 searchStatus.classList.remove("active");
                 document.getElementById("searchBtn").disabled = false;
             }
