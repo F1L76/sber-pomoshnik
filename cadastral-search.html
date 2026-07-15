@@ -167,7 +167,7 @@
             font-weight: 600;
         }
         .boundary-map {
-            max-width: 360px;
+            max-width: 100%;
             border-radius: 14px;
             border: 1px solid var(--sber-border);
             overflow: hidden;
@@ -181,6 +181,52 @@
         .related-kn-list {
             margin: 0;
             padding-left: 1.1rem;
+        }
+        .search-input-group {
+            display: flex;
+            align-items: stretch;
+            gap: 0.75rem;
+        }
+        .search-input-group .form-control {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+        .search-input-group .btn-search {
+            white-space: nowrap;
+            align-self: stretch;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            padding-left: 1.35rem;
+            padding-right: 1.35rem;
+        }
+        @media (max-width: 576px) {
+            .search-input-group { flex-direction: column; }
+            .search-input-group .btn-search { width: 100%; }
+        }
+        .boundary-maps {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.85rem;
+        }
+        @media (max-width: 992px) {
+            .boundary-maps { grid-template-columns: 1fr; }
+        }
+        .boundary-map-wrap { min-width: 0; }
+        .boundary-basemap {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 3 / 2;
+            object-fit: cover;
+            border-radius: 14px;
+            border: 1px solid var(--sber-border);
+            background: #eef3ee;
+        }
+        .boundary-fallback {
+            color: var(--sber-muted);
+            font-size: 0.85rem;
         }
         .panorama-fallback img {
             width: 100%;
@@ -207,18 +253,16 @@
 
     <main class="container py-4">
         <section class="card-panel p-4 mb-4">
-            <form id="searchForm" class="row g-3 align-items-end">
-                <div class="col-lg-8">
-                    <label for="cadastralInput" class="form-label fw-semibold">Кадастровый номер</label>
+            <form id="searchForm">
+                <label for="cadastralInput" class="form-label fw-semibold">Кадастровый номер</label>
+                <div class="search-input-group">
                     <input type="text" class="form-control form-control-lg" id="cadastralInput"
                            placeholder="77:05:0001005:19" required pattern="[\d:]+">
-                    <div class="form-text">Формат: XX:XX:XXXXXXX:XXXX</div>
-                </div>
-                <div class="col-lg-4">
-                    <button type="submit" class="btn btn-sber w-100 btn-lg" id="searchBtn">
+                    <button type="submit" class="btn btn-sber btn-lg btn-search" id="searchBtn">
                         <i class="fa-solid fa-magnifying-glass me-2"></i>Найти
                     </button>
                 </div>
+                <div class="form-text mt-2">Формат: XX:XX:XXXXXXX:XXXX</div>
             </form>
         </section>
 
@@ -277,6 +321,127 @@
             })[c]);
         }
 
+        function geometryOuterRing(geometry) {
+            if (!geometry) return null;
+            if (geometry.type === "Polygon") return geometry.coordinates?.[0] || null;
+            if (geometry.type === "MultiPolygon") return geometry.coordinates?.[0]?.[0] || null;
+            return null;
+        }
+
+        function simplifyRing(ring, maxPts = 48) {
+            if (!ring?.length) return [];
+            if (ring.length <= maxPts) return ring.slice();
+            const step = Math.ceil(ring.length / maxPts);
+            const out = [];
+            for (let i = 0; i < ring.length; i += step) out.push(ring[i]);
+            const first = ring[0];
+            const last = out[out.length - 1];
+            if (!last || first[0] !== last[0] || first[1] !== last[1]) out.push(first);
+            return out;
+        }
+
+        function geometryCenter(geometry) {
+            if (!geometry) return null;
+            if (geometry.type === "Point") {
+                const [lon, lat] = geometry.coordinates || [];
+                return Number.isFinite(lon) && Number.isFinite(lat) ? { lon, lat } : null;
+            }
+            const ring = geometryOuterRing(geometry);
+            if (!ring?.length) return null;
+            let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+            for (const [lon, lat] of ring) {
+                minLon = Math.min(minLon, lon);
+                maxLon = Math.max(maxLon, lon);
+                minLat = Math.min(minLat, lat);
+                maxLat = Math.max(maxLat, lat);
+            }
+            return { lon: (minLon + maxLon) / 2, lat: (minLat + maxLat) / 2 };
+        }
+
+        function mapZoomForRing(ring) {
+            if (!ring?.length) return 16;
+            let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+            for (const [lon, lat] of ring) {
+                minLon = Math.min(minLon, lon);
+                maxLon = Math.max(maxLon, lon);
+                minLat = Math.min(minLat, lat);
+                maxLat = Math.max(maxLat, lat);
+            }
+            const span = Math.max(maxLon - minLon, maxLat - minLat);
+            if (span > 0.08) return 13;
+            if (span > 0.03) return 14;
+            if (span > 0.01) return 15;
+            if (span > 0.004) return 16;
+            if (span > 0.0015) return 17;
+            return 18;
+        }
+
+        function yandexStaticBoundaryUrl(geometry, layer) {
+            const center = geometryCenter(geometry);
+            if (!center) return null;
+            const ring = simplifyRing(geometryOuterRing(geometry));
+            const zoom = mapZoomForRing(ring);
+            const params = [
+                `ll=${center.lon.toFixed(6)},${center.lat.toFixed(6)}`,
+                `z=${zoom}`,
+                "size=450,300",
+                `l=${layer}`
+            ];
+            if (ring.length >= 3) {
+                const path = ring.map(([lon, lat]) => `${lon.toFixed(6)},${lat.toFixed(6)}`).join(",");
+                params.push(`pl=c:21A038FF,f:21A03855,w:4,${path}`);
+            } else if (geometry.type === "Point") {
+                params.push(`pt=${center.lon.toFixed(6)},${center.lat.toFixed(6)},pm2rdm`);
+            } else {
+                return null;
+            }
+            return `https://static-maps.yandex.ru/1.x/?${params.join("&")}`;
+        }
+
+        function renderBoundaryBlock(nspd) {
+            const geometry = nspd?.geometry;
+            const schemeUrl = yandexStaticBoundaryUrl(geometry, "map");
+            const satUrl = yandexStaticBoundaryUrl(geometry, "sat");
+            if (schemeUrl && satUrl) {
+                return `<div class="col-12">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                        <div class="info-label mb-0">Границы объекта на карте</div>
+                        ${nspd.mapUrl
+                            ? `<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(nspd.mapUrl)}" target="_blank" rel="noopener">Открыть на nspd.gov.ru</a>`
+                            : ""}
+                    </div>
+                    <div class="boundary-maps">
+                        <div class="boundary-map-wrap">
+                            <div class="info-label mb-2">Схема</div>
+                            <a href="${escapeHtml(nspd.mapUrl || schemeUrl)}" target="_blank" rel="noopener">
+                                <img class="boundary-basemap" src="${escapeHtml(schemeUrl)}" alt="Границы на схеме" loading="lazy">
+                            </a>
+                        </div>
+                        <div class="boundary-map-wrap">
+                            <div class="info-label mb-2">Спутник</div>
+                            <a href="${escapeHtml(nspd.mapUrl || satUrl)}" target="_blank" rel="noopener">
+                                <img class="boundary-basemap" src="${escapeHtml(satUrl)}" alt="Границы на спутнике" loading="lazy">
+                            </a>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            if (nspd?.boundaryPreview?.svg) {
+                return `<div class="col-md-5 col-lg-4">
+                    <div class="info-label mb-2">Контур объекта</div>
+                    <div class="boundary-map mb-2">${nspd.boundaryPreview.svg}</div>
+                    ${nspd.mapUrl ? `<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(nspd.mapUrl)}" target="_blank" rel="noopener">Открыть на nspd.gov.ru</a>` : ""}
+                </div>`;
+            }
+            if (nspd?.mapUrl) {
+                return `<div class="col-12">
+                    <p class="boundary-fallback mb-2">Геометрия границ в ответе НСПД не найдена — откройте объект на публичной карте.</p>
+                    <a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(nspd.mapUrl)}" target="_blank" rel="noopener">Открыть на nspd.gov.ru</a>
+                </div>`;
+            }
+            return "";
+        }
+
         function renderRosreestr(data) {
             const rr = data.rosreestr;
             const obj = rr.object;
@@ -297,15 +462,8 @@
                 ["Статус", obj.status]
             ].filter(([, v]) => v);
 
-            const boundaryHtml = nspd?.boundaryPreview?.svg
-                ? `<div class="col-md-5 col-lg-4">
-                    <div class="info-label mb-2">Границы на карте НСПД</div>
-                    <div class="boundary-map mb-2">${nspd.boundaryPreview.svg}</div>
-                    ${nspd.mapUrl ? `<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(nspd.mapUrl)}" target="_blank" rel="noopener">Открыть на nspd.gov.ru</a>` : ""}
-                   </div>`
-                : "";
-
-            const related = (nspd?.relatedObjects || []).filter((r) => r.cadastralNumber !== data.cadastralNumber);
+            const boundaryHtml = renderBoundaryBlock(nspd || { geometry: obj.geometry });
+            const related = ((nspd?.relatedObjects) || []).filter((r) => r.cadastralNumber !== data.cadastralNumber);
             const relatedHtml = related.length
                 ? `<div class="mt-4">
                     <div class="info-label mb-2">Связанные объекты (НСПД)</div>
@@ -318,7 +476,7 @@
             return `<h2 class="h5 mb-3"><i class="fa-solid fa-landmark me-2 text-success"></i>Данные из Росреестра</h2>
                 <p class="text-muted mb-3">Кадастровый номер: <strong>${escapeHtml(data.cadastralNumber)}</strong></p>
                 <div class="row g-3 align-items-start">
-                    <div class="${boundaryHtml ? "col-md-7 col-lg-8" : "col-12"}">
+                    <div class="col-12">
                         <div class="row g-3">${rows.map(([label, value]) => `
                             <div class="col-md-6">
                                 <div class="info-label">${escapeHtml(label)}</div>
