@@ -409,10 +409,10 @@
             if (!el || !geometry || !window.L) return;
 
             const map = L.map(el, { scrollWheelZoom: true });
-            const scheme = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-                maxZoom: 19,
-                attribution: "© OpenStreetMap"
-            });
+            const scheme = L.tileLayer(
+                "https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU",
+                { maxZoom: 19, attribution: "© Яндекс" }
+            );
             const satellite = L.tileLayer(
                 "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
                 { maxZoom: 19, attribution: "© Esri" }
