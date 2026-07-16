@@ -415,9 +415,11 @@
             const map = L.map(el, { scrollWheelZoom: true });
             // ponytail: Leaflet 1.9.4 prefix ships UA-flag SVG — plain text only
             map.attributionControl.setPrefix("Leaflet");
+            // ponytail: тайлы Яндекса в Leaflet не в WGS84 — контур НСПД уезжает на сотни метров;
+            // Esri Street Map совпадает со спутником и геометрией EPSG:4326 из geo-utils.
             const scheme = L.tileLayer(
-                "https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU",
-                { maxZoom: 19, attribution: "© Яндекс" }
+                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                { maxZoom: 19, attribution: "© Esri" }
             );
             const satellite = L.tileLayer(
                 "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
