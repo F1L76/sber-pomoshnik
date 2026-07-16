@@ -55,6 +55,7 @@
             border-radius: 8px;
         }
         .source-bazacoop { background: #1a5f4a; color: #fff; }
+        .source-kadbase { background: #2d6a1f; color: #fff; }
         .source-2gis { background: #19aa1e; color: #fff; }
         .source-yandex { background: #fc3f1d; color: #fff; }
         .verify-ok { color: var(--sber-green); font-weight: 600; }
@@ -286,6 +287,7 @@
         </div>
         <div id="results" class="d-none">
             <section class="card-panel p-4 mb-4" id="rosreestrBlock"></section>
+            <section class="card-panel p-4 mb-4 d-none" id="kadbaseBlock"></section>
             <section class="card-panel p-4 mb-4 d-none" id="panoramaBlock"></section>
             <section class="mb-3 d-flex flex-wrap gap-2" id="linksBlock"></section>
             <section id="listingsBlock"></section>
@@ -310,7 +312,7 @@
 
         const LISTING_SOURCES = new Set(["bazacoop"]);
         const SOURCE_LABELS = { bazacoop: "БазаЦООП" };
-        const SOURCE_PROGRESS = { rosreestr: "Росреестр", panorama: "2ГИС и Яндекс", bazacoop: "БазаЦООП" };
+        const SOURCE_PROGRESS = { rosreestr: "Росреестр", kadbase: "kadbase.ru", panorama: "2ГИС и Яндекс", bazacoop: "БазаЦООП" };
         const SEARCH_PHRASES = {
             start: [
                 "Котик уже на разведке — открываем кадастровый номер",
@@ -323,6 +325,7 @@
                 "Сверяем границы и характеристики в публичной карте"
             ],
             enrich: [
+                "Проверяем объект в ИАС «База N» — вдруг есть особые отметки",
                 "Ищем фото: 2ГИС и панорамы Яндекс Карт",
                 "Смотрим, как объект выглядит с улицы",
                 "Подбираем снимки местности по координатам"
@@ -339,6 +342,7 @@
             ]
         };
         let progressState = {};
+        let kadbaseRendered = false;
         let phraseTimer = null;
         let phraseCounters = {};
 
@@ -365,7 +369,8 @@
 
         function currentSearchPhase() {
             if (!progressState.rosreestr) return "start";
-            if (progressState.panorama !== "done") return "enrich";
+            if (progressState.rosreestr === "done" && progressState.kadbase !== "done") return "rosreestr";
+            if (progressState.panorama !== "done" || progressState.kadbase !== "done") return "enrich";
             if (progressState.bazacoop === "pending") {
                 return "listings";
             }
@@ -590,8 +595,121 @@
             </div>`;
         }
 
+        function formatRightsStatus(text) {
+            if (!text) return { cls: "text-muted", label: "нет данных" };
+            const lower = text.toLowerCase();
+            if (lower.includes("не обнаруж")) return { cls: "verify-ok", label: text };
+            return { cls: "verify-warn", label: text };
+        }
+
+        function renderEncumbranceTable(title, records, totalCount) {
+            if (!records?.length && !(totalCount > 0)) return "";
+            const rows = records.length
+                ? records.map((rec, i) => `<tr>
+                    <td>${i + 1}</td>
+                    <td>${escapeHtml(rec.kind || (rec.detailsHidden ? "скрыто на kadbase.ru" : "—"))}</td>
+                    <td>${escapeHtml(rec.number || (rec.detailsHidden ? "скрыто" : "—"))}</td>
+                    <td>${escapeHtml(rec.datePartial || "—")}</td>
+                </tr>`).join("")
+                : `<tr><td colspan="4" class="text-muted small">Записи есть (${totalCount}), но детали доступны только в платной версии kadbase.ru</td></tr>`;
+
+            return `<div class="mt-3">
+                <div class="info-label mb-2">${escapeHtml(title)}${totalCount != null ? ` · найдено ${totalCount}` : ""}</div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>#</th><th>Вид</th><th>Номер записи</th><th>Дата</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            </div>`;
+        }
+
+        function renderKadbase(data) {
+            const kb = data.kadbase;
+            const comparison = data.comparison;
+            const block = document.getElementById("kadbaseBlock");
+            block.classList.remove("d-none");
+            kadbaseRendered = true;
+
+            if (!kb?.found) {
+                const manualUrl = kb?.searchUrl || "https://kadbase.ru/search/";
+                block.innerHTML = `<h2 class="h5 mb-3"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Проверка в ИАС «База N» (kadbase.ru)</h2>
+                    <p class="${kb?.accessLimited ? "text-warning" : "text-danger"} mb-2">${escapeHtml(kb?.message || "Объект не найден")}</p>
+                    ${kb?.accessLimited ? `<p class="text-muted small mb-2">Сайт kadbase.ru ограничивает частые автоматические запросы. Откройте поиск вручную и введите кадастровый номер.</p>` : ""}
+                    <a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(manualUrl)}" target="_blank" rel="noopener">
+                        <span class="source-badge source-kadbase me-1">kadbase.ru</span> Открыть поиск
+                    </a>`;
+                return;
+            }
+
+            const rights = formatRightsStatus(kb.rights);
+            const restrictions = formatRightsStatus(kb.restrictions);
+            const encumbrancesHtml =
+                renderEncumbranceTable("Обременения и ограничения (ЕГРН)", kb.restrictionRecords, kb.restrictionsCount) +
+                renderEncumbranceTable("Зарегистрированные права", kb.rightsRecords, kb.rightsCount);
+
+            const rows = [
+                ["Адрес", kb.address],
+                ["Тип объекта", kb.objectType],
+                ["Статус", kb.status],
+                ["Площадь", kb.area != null ? `${kb.area} ${kb.areaUnit || ""}` : null],
+                ["Кадастровая стоимость", kb.cadastralValue != null ? Number(kb.cadastralValue).toLocaleString("ru-RU") + " ₽" : null],
+                ["Категория земель", kb.landCategory],
+                ["Разрешённое использование", kb.permittedUse],
+                ["Границы", kb.boundaries],
+                ["Обновлено в базе", kb.updatedAt]
+            ].filter(([, v]) => v);
+
+            const comparisonHtml = comparison?.checks?.length
+                ? `<div class="mt-4 pt-3 border-top">
+                    <div class="info-label mb-2">Сверка НСПД и kadbase.ru</div>
+                    <p class="small mb-2 ${comparison.status === "ok" ? "verify-ok" : comparison.status === "warning" ? "verify-warn" : "text-muted"}">${escapeHtml(comparison.summary)}</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Поле</th><th>НСПД</th><th>kadbase.ru</th><th></th></tr></thead>
+                            <tbody>${comparison.checks.map((c) => `
+                                <tr class="compare-row ${c.match ? "match" : "mismatch"}">
+                                    <td>${escapeHtml(c.label)}</td>
+                                    <td class="small">${escapeHtml(String(c.rosreestr ?? "—"))}</td>
+                                    <td class="small">${escapeHtml(String(c.kadbase ?? "—"))}</td>
+                                    <td class="text-end">${c.match ? '<i class="fa-solid fa-check verify-ok"></i>' : '<i class="fa-solid fa-triangle-exclamation verify-warn"></i>'}</td>
+                                </tr>`).join("")}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`
+                : "";
+
+            block.innerHTML = `<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                    <h2 class="h5 mb-0"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Проверка в ИАС «База N» (kadbase.ru)</h2>
+                    ${kb.objectUrl ? `<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(kb.objectUrl)}" target="_blank" rel="noopener">Открыть на kadbase.ru</a>` : ""}
+                </div>
+                <p class="text-muted small mb-3">Проверка прав и ограничений${kb.checkedAt ? ` · данные на ${escapeHtml(kb.checkedAt)}` : ""}${kb.loadedWithoutSearch ? " · получено без поиска kadbase" : ""}</p>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="info-label">Зарегистрированные права</div>
+                        <div class="${rights.cls}">${escapeHtml(rights.label)}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="info-label">Зарегистрированные ограничения (обременения)</div>
+                        <div class="${restrictions.cls}">${escapeHtml(restrictions.label)}</div>
+                    </div>
+                </div>
+                ${encumbrancesHtml}
+                ${kb.zouit ? `<div class="alert alert-warning py-2 small mt-3 mb-0"><i class="fa-solid fa-triangle-exclamation me-1"></i><strong>ЗОУИТ:</strong> ${escapeHtml(kb.zouit)} — зоны с особыми условиями использования территории (см. также на kadbase.ru).</div>` : ""}
+                <div class="row g-3 mt-1">${rows.map(([label, value]) => `
+                    <div class="col-md-6">
+                        <div class="info-label">${escapeHtml(label)}</div>
+                        <div>${escapeHtml(value)}</div>
+                    </div>`).join("")}
+                </div>
+                ${comparisonHtml}
+                <p class="text-muted small mt-3 mb-0">Справочные данные kadbase.ru не являются официальной выпиской из ЕГРН. Вид обременения, номер записи и правообладатель на сайте часто скрыты без платного доступа — показываем всё, что доступно в открытой части.</p>`;
+        }
+
         function renderLinks(links) {
             return [
+                ["kadbase.ru", links.kadbase || "https://kadbase.ru/search/", "kadbase"],
                 ["БазаЦООП", links.bazacoop || "https://bazacoop.ru/cadastral", "bazacoop"]
             ].map(([label, url, cls]) =>
                 `<a class="btn btn-outline-secondary btn-sm" href="${escapeHtml(url)}" target="_blank" rel="noopener">
@@ -712,13 +830,17 @@
 
             if (chunk.event === "rosreestr") {
                 progressState.rosreestr = "done";
-                ["panorama", "bazacoop"].forEach((k) => { progressState[k] = "pending"; });
+                ["kadbase", "panorama", "bazacoop"].forEach((k) => { progressState[k] = "pending"; });
                 updateProgress();
                 results.classList.remove("d-none");
                 document.getElementById("rosreestrBlock").innerHTML = renderRosreestr(chunk.data);
                 const boundaryGeometry =
                     chunk.data?.rosreestr?.nspd?.geometry || chunk.data?.rosreestr?.object?.geometry;
                 requestAnimationFrame(() => initBoundaryMap(boundaryGeometry));
+                document.getElementById("kadbaseBlock").classList.add("d-none");
+                document.getElementById("kadbaseBlock").innerHTML = `<div class="info-label mb-2"><i class="fa-solid fa-shield-halved me-1"></i>ИАС «База N» (kadbase.ru)</div>
+                    <div class="d-flex align-items-center gap-2 text-muted"><div class="spinner-border spinner-border-sm text-success"></div>Проверяем объект в kadbase.ru…</div>`;
+                document.getElementById("kadbaseBlock").classList.remove("d-none");
                 state.searchLinks = chunk.data.searchLinks;
                 document.getElementById("linksBlock").innerHTML = renderLinks(chunk.data.searchLinks);
                 document.getElementById("listingsBlock").innerHTML = renderListingsHeader(null) +
@@ -727,6 +849,12 @@
                         <p class="mb-0 small">Ожидаем объявления из БазаЦООП…</p>
                     </div>`;
                 showPanoramaLoading();
+            }
+
+            if (chunk.event === "kadbase") {
+                progressState.kadbase = "done";
+                updateProgress();
+                renderKadbase(chunk.data);
             }
 
             if (chunk.event === "panorama") {
@@ -780,10 +908,18 @@
                         state.sourceNotices.push(notice);
                     }
                 }
-                ["panorama", "bazacoop"].forEach((k) => {
+                ["kadbase", "panorama", "bazacoop"].forEach((k) => {
                     if (progressState[k] === "pending") progressState[k] = "done";
                 });
                 updateProgress();
+                if (!kadbaseRendered) {
+                    renderKadbase({
+                        kadbase: {
+                            found: false,
+                            message: "Проверка kadbase.ru недоступна. Перезапустите сервер: node gigachat-proxy.mjs"
+                        }
+                    });
+                }
                 const placeholder = document.getElementById("listingsPlaceholder");
                 if (placeholder) placeholder.remove();
                 const header = document.getElementById("listingsStats");
@@ -809,10 +945,13 @@
             alertBox.innerHTML = "";
             destroyBoundaryMap();
             progressState = {};
+            kadbaseRendered = false;
             searchStatus.classList.add("active");
             searchStatusText.textContent = "Подключаемся к источникам…";
             startPhraseRotation();
             results.classList.add("d-none");
+            document.getElementById("kadbaseBlock").classList.add("d-none");
+            document.getElementById("kadbaseBlock").innerHTML = "";
             document.getElementById("panoramaBlock").classList.add("d-none");
             document.getElementById("panoramaBlock").innerHTML = "";
             document.getElementById("searchBtn").disabled = true;
