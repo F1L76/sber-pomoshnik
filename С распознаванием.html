@@ -1581,7 +1581,7 @@
                     ${inDev ? '<div class="module-stamp" aria-hidden="true">В разработке</div>' : ""}
                     <div class="module-icon-bg mx-auto"><i class="${mod.icon} fs-2" style="color: #21A038;" aria-hidden="true"></i></div>
                     <h3 class="h6 fw-bold mt-1 mb-2">${mod.name}</h3>
-                    <p class="small text-muted px-1 mb-3 flex-grow-1">${mod.desc}</p>
+                    ${mod.desc ? `<p class="small text-muted px-1 mb-3 flex-grow-1">${mod.desc}</p>` : '<div class="flex-grow-1 mb-3"></div>'}
                     <button type="button" class="btn btn-outline-sber mt-auto open-module-btn" data-module="${mod.id}"${inDev ? " disabled aria-disabled=\"true\"" : ""}>${inDev ? "Скоро" : "Открыть"}</button>
                 </div>
             `;
