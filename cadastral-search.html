@@ -452,18 +452,22 @@
             boundaryMapInstance = map;
         }
 
-        function renderBoundaryBlock(nspd) {
+        function renderBoundaryBlock(nspd, { approximate = false, hint = null } = {}) {
             const geometry = nspd?.geometry;
             if (geometry) {
+                const title = approximate ? "Приблизительное расположение на карте" : "Границы объекта на карте";
+                const hintHtml = hint || (approximate
+                    ? `<p class="boundary-fallback text-muted small mt-2 mb-0">${escapeHtml("Точка по адресу — контур участка доступен только через НСПД (NSPD_BASES + edge-прокси в РФ).")}</p>`
+                    : `<p class="boundary-map-hint text-muted mt-2 mb-0">Масштаб — колёсико или жест, перемещение — перетаскивание. Слой «Схема» / «Спутник» — в правом верхнем углу.</p>`);
                 return `<div class="col-12">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                        <div class="info-label mb-0">Границы объекта на карте</div>
-                        ${nspd.mapUrl
+                        <div class="info-label mb-0">${escapeHtml(title)}</div>
+                        ${!approximate && nspd.mapUrl
                             ? `<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(nspd.mapUrl)}" target="_blank" rel="noopener">Открыть на nspd.gov.ru</a>`
                             : ""}
                     </div>
                     <div id="boundaryMap" class="boundary-leaflet" role="region" aria-label="Интерактивная карта границ"></div>
-                    <p class="boundary-map-hint text-muted mt-2 mb-0">Масштаб — колёсико или жест, перемещение — перетаскивание. Слой «Схема» / «Спутник» — в правом верхнем углу.</p>
+                    ${hintHtml}
                 </div>`;
             }
             if (nspd?.boundaryPreview?.svg) {
@@ -488,7 +492,9 @@
             const nspd = rr.nspd;
             if (!rr.found || !obj) {
                 return `<h2 class="h5 mb-3">Росреестр (НСПД)</h2>
-                    <p class="text-danger mb-0">${escapeHtml(rr.message || "Объект не найден")}</p>`;
+                    <p class="text-danger mb-2">${escapeHtml(rr.message || "Объект не найден")}</p>
+                    <p class="text-muted small mb-0">Данные kadbase.ru и приблизительная карта по адресу могут появиться ниже, если объект найден в «База N».</p>
+                    <div id="rosreestrMapFallback"></div>`;
             }
             const rows = [
                 ["Адрес", obj.address],
@@ -820,6 +826,17 @@
             return state;
         }
 
+        function showRosreestrMapFallback(mapFallback) {
+            if (!mapFallback?.geometry) return;
+            const slot = document.getElementById("rosreestrMapFallback");
+            if (!slot) return;
+            slot.innerHTML = `<div class="row g-3 mt-2">${renderBoundaryBlock(
+                { geometry: mapFallback.geometry },
+                { approximate: true, hint: mapFallback.label ? `<p class="boundary-fallback text-muted small mt-2 mb-0">${escapeHtml(mapFallback.label)}</p>` : null }
+            )}</div>`;
+            requestAnimationFrame(() => initBoundaryMap(mapFallback.geometry));
+        }
+
         async function handleStreamChunk(chunk, state) {
             if (chunk.event === "error") throw new Error(chunk.error || "Ошибка поиска");
 
@@ -830,6 +847,7 @@
 
             if (chunk.event === "rosreestr") {
                 progressState.rosreestr = "done";
+                state.rosreestrFound = Boolean(chunk.data?.rosreestr?.found);
                 ["kadbase", "panorama", "bazacoop"].forEach((k) => { progressState[k] = "pending"; });
                 updateProgress();
                 results.classList.remove("d-none");
@@ -855,6 +873,9 @@
                 progressState.kadbase = "done";
                 updateProgress();
                 renderKadbase(chunk.data);
+                if (!state.rosreestrFound && chunk.data?.mapFallback) {
+                    showRosreestrMapFallback(chunk.data.mapFallback);
+                }
             }
 
             if (chunk.event === "panorama") {
