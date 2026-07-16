@@ -1523,18 +1523,22 @@
         }
     });
 
-    loadBtn.addEventListener("click", () => {
-        const inn = innInput.value.trim().replace(/\D/g, "");
+    const CLIENT_INN_STORAGE_KEY = "sber-pomoshnik-client-inn";
+
+    function loadClientByInn(inn, opts) {
+        const silent = opts?.silent;
         if (!inn) {
-            alert("Введите ИНН");
-            return;
+            if (!silent) alert("Введите ИНН");
+            return false;
         }
         if (!mockData[inn]) {
-            alert("Клиент не найден. Доступные ИНН: 1234567890, 9876543210");
-            return;
+            if (!silent) alert("Клиент не найден. Доступные ИНН: 1234567890, 9876543210");
+            return false;
         }
         currentClientInn = inn;
         currentClientData = JSON.parse(JSON.stringify(mockData[inn]));
+        sessionStorage.setItem(CLIENT_INN_STORAGE_KEY, inn);
+        innInput.value = inn;
         clientBadge.innerHTML = `<i class="fas fa-check-circle text-success me-1" aria-hidden="true"></i>${currentClientData.clientName} <span class="text-muted">(ИНН: ${inn})</span>`;
         clientBadge.classList.add("bg-white", "shadow-sm");
         infoPanel.style.display = "block";
@@ -1551,13 +1555,18 @@
         const importBtn = document.getElementById("importConclusionBtn");
         importBtn.removeEventListener("click", importConclusionViaConverter);
         importBtn.addEventListener("click", importConclusionViaConverter);
+        return true;
+    }
+
+    loadBtn.addEventListener("click", () => {
+        loadClientByInn(innInput.value.trim().replace(/\D/g, ""));
     });
 
     const modules = [
         { id: "priority", name: "Приоритет по заявке", icon: "fas fa-flag-checkered", modal: "#priorityModal", desc: "Установка приоритета для экспертных заявок" },
         { id: "questions", name: "Вопросы по заключению", icon: "fas fa-question-circle", modal: "#questionsModal", desc: "База рисков, распознавание и резюме СЗЗ", inDev: true },
         { id: "inspection", name: "Вопросы по осмотру", icon: "fas fa-camera", modal: "#inspectionModal", desc: "Файл верификации, перепланировки", inDev: true },
-        { id: "cost", name: "Не согласен со стоимостью", icon: "fas fa-hand-holding-usd", modal: "#costModal", desc: "Арбитраж стоимости, верификация рынком" },
+        { id: "cost", name: "Не согласен со стоимостью", icon: "fas fa-hand-holding-usd", modal: "#costModal", desc: "Арбитраж стоимости, верификация рынком", inDev: true },
         { id: "where", name: "Где заявка?", icon: "fas fa-search-location", modal: "#whereModal", desc: "Статусы: осмотр, обременения, оценка", inDev: true },
         { id: "cadastral", name: "Поиск информации по кадастровому номеру", icon: "fas fa-map-location-dot", href: "/cadastral", desc: "" },
         { id: "zalog", name: "Конвертер заключения", icon: "fas fa-file-import", href: "/zalog", desc: "PDF + XLSX → сводный отчёт без GigaChat" },
@@ -2370,6 +2379,13 @@
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") checkGigaChatHealth();
     });
+
+    if (new URLSearchParams(location.search).get("view") === "services") {
+        const savedInn = sessionStorage.getItem(CLIENT_INN_STORAGE_KEY);
+        if (loadClientByInn(savedInn, { silent: true })) {
+            modulesPanel?.scrollIntoView({ block: "start" });
+        }
+    }
 </script>
 
 <footer class="site-footer">
