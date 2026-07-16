@@ -6,11 +6,15 @@
     const PAGE_WIDTH_MM = 297;
     const PAGE_HEIGHT_MM = 210;
     const MARGIN_MM = 5;
-    // ширина вёрстки под захват (≈ printable A4 landscape @ 96dpi)
     const LAYOUT_PX = Math.floor((PAGE_WIDTH_MM - MARGIN_MM * 2) * (96 / 25.4));
 
     function getJsPdf() {
-        return global.jspdf?.jsPDF || global.jsPDF || null;
+        if (global.jspdf?.jsPDF) return global.jspdf.jsPDF;
+        if (typeof global.jsPDF === "function") return global.jsPDF;
+        // html2pdf.bundle иногда кладёт конструктор сюда
+        if (global.html2pdf?.jsPDF) return global.html2pdf.jsPDF;
+        if (typeof global.html2pdf?.Worker?.jspdf === "function") return global.html2pdf.Worker.jspdf;
+        return null;
     }
 
     function getHtml2Canvas() {
@@ -94,7 +98,6 @@
         mount.appendChild(target);
         document.body.appendChild(mount);
 
-        // если таблица всё ещё шире — CSS zoom сжимает layout (учитывается html2canvas в Chromium)
         const overflow = Math.max(target.scrollWidth, mount.scrollWidth) - LAYOUT_PX;
         if (overflow > 2) {
             const zoom = LAYOUT_PX / Math.max(target.scrollWidth, mount.scrollWidth);
@@ -104,9 +107,20 @@
         return { mount, target };
     }
 
-    function canvasToPdfBlob(canvas, filename) {
+    function downloadBlob(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename || "zalog_report.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+
+    function canvasToPdfBlob(canvas) {
         const JsPDF = getJsPdf();
-        if (!JsPDF) throw new Error("jsPDF не загружен. Обновите страницу.");
+        if (!JsPDF) return null;
 
         const pdf = new JsPDF({
             orientation: "landscape",
@@ -117,14 +131,12 @@
 
         const usableW = PAGE_WIDTH_MM - MARGIN_MM * 2;
         const usableH = PAGE_HEIGHT_MM - MARGIN_MM * 2;
-        // жёстко: картинка всегда на всю ширину листа
         const imgW = usableW;
         const imgH = (canvas.height * imgW) / canvas.width;
-
         const imgData = canvas.toDataURL("image/jpeg", 0.93);
+
         let heightLeft = imgH;
         let offsetY = MARGIN_MM;
-
         pdf.addImage(imgData, "JPEG", MARGIN_MM, offsetY, imgW, imgH, undefined, "FAST");
         heightLeft -= usableH;
 
@@ -138,12 +150,39 @@
         return pdf.output("blob");
     }
 
-    async function exportReportHtmlToPdf(html, filename) {
-        const h2c = getHtml2Canvas();
-        if (!h2c && typeof html2pdf === "undefined") {
+    async function exportViaHtml2Pdf(target, filename) {
+        if (typeof html2pdf === "undefined") {
             throw new Error("Не удалось загрузить библиотеку PDF. Обновите страницу.");
         }
+        await html2pdf()
+            .set({
+                margin: MARGIN_MM,
+                filename: filename || "zalog_report.pdf",
+                image: { type: "jpeg", quality: 0.93 },
+                html2canvas: {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    letterRendering: false,
+                    backgroundColor: "#ffffff",
+                    scrollX: 0,
+                    scrollY: 0,
+                    width: LAYOUT_PX,
+                    windowWidth: LAYOUT_PX,
+                    logging: false
+                },
+                pagebreak: { mode: ["css", "legacy"] },
+                jsPDF: { unit: "mm", format: "a4", orientation: "landscape" }
+            })
+            .from(target)
+            .save();
+    }
+
+    async function exportReportHtmlToPdf(html, filename) {
         if (!html) throw new Error("Нет HTML отчёта для PDF");
+        if (typeof html2pdf === "undefined" && !getHtml2Canvas()) {
+            throw new Error("Не удалось загрузить библиотеку PDF. Обновите страницу.");
+        }
 
         const overlay = document.createElement("div");
         overlay.style.cssText =
@@ -156,9 +195,9 @@
             if (document.fonts?.ready) await document.fonts.ready;
             await new Promise((r) => setTimeout(r, 350));
 
-            let canvas;
-            if (h2c) {
-                canvas = await h2c(target, {
+            const h2c = getHtml2Canvas();
+            if (h2c && getJsPdf()) {
+                const canvas = await h2c(target, {
                     scale: 2,
                     useCORS: true,
                     allowTaint: true,
@@ -170,40 +209,19 @@
                     windowWidth: LAYOUT_PX,
                     logging: false
                 });
-            } else {
-                // fallback через html2pdf worker → canvas
-                canvas = await html2pdf()
-                    .set({
-                        html2canvas: {
-                            scale: 2,
-                            letterRendering: false,
-                            backgroundColor: "#ffffff",
-                            width: LAYOUT_PX,
-                            windowWidth: LAYOUT_PX
-                        }
-                    })
-                    .from(target)
-                    .toCanvas()
-                    .get("canvas");
+                if (!canvas || canvas.width < 10 || canvas.height < 10) {
+                    throw new Error("Не удалось отрисовать отчёт для PDF");
+                }
+                const blob = canvasToPdfBlob(canvas);
+                if (!blob || blob.size < 1500) {
+                    throw new Error("PDF получился пустым. Попробуйте ещё раз.");
+                }
+                downloadBlob(blob, filename);
+                return;
             }
 
-            if (!canvas || canvas.width < 10 || canvas.height < 10) {
-                throw new Error("Не удалось отрисовать отчёт для PDF");
-            }
-
-            const blob = canvasToPdfBlob(canvas, filename);
-            if (!blob || blob.size < 1500) {
-                throw new Error("PDF получился пустым. Попробуйте ещё раз.");
-            }
-
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = filename || "zalog_report.pdf";
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 2000);
+            // запасной путь: только html2pdf.bundle (jsPDF внутри внутри)
+            await exportViaHtml2Pdf(target, filename);
         } finally {
             mount.remove();
             overlay.remove();
