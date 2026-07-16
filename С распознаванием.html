@@ -245,6 +245,51 @@
             justify-content: center;
             margin-bottom: 0.75rem;
         }
+        .module-card-indev {
+            position: relative;
+            overflow: hidden;
+            filter: grayscale(1);
+            opacity: 0.78;
+            cursor: not-allowed;
+            background: #ECEFF3;
+            border-color: #D5DDE5;
+        }
+        .module-card-indev:hover {
+            transform: none;
+            box-shadow: var(--sber-shadow);
+            border-color: #D5DDE5;
+        }
+        .module-card-indev .module-icon-bg {
+            background: #E2E8F0;
+        }
+        .module-card-indev .module-icon-bg i {
+            color: #94A3B8 !important;
+        }
+        .module-card-indev .btn {
+            pointer-events: none;
+            opacity: 0.55;
+            border-color: #94A3B8 !important;
+            color: #64748B !important;
+        }
+        .module-stamp {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            z-index: 2;
+            transform: translate(-50%, -50%) rotate(-18deg);
+            border: 3px solid #C62828;
+            color: #C62828;
+            background: rgba(255, 255, 255, 0.88);
+            font-weight: 800;
+            font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            box-shadow: 0 2px 0 rgba(198, 40, 40, 0.25);
+            pointer-events: none;
+            white-space: nowrap;
+        }
         .badge-sber {
             background: rgba(33, 160, 56, 0.14);
             color: #156B28;
@@ -1507,17 +1552,17 @@
 
     const modules = [
         { id: "priority", name: "Приоритет по заявке", icon: "fas fa-flag-checkered", modal: "#priorityModal", desc: "Установка приоритета для экспертных заявок" },
-        { id: "questions", name: "Вопросы по заключению", icon: "fas fa-question-circle", modal: "#questionsModal", desc: "База рисков, распознавание и резюме СЗЗ" },
-        { id: "inspection", name: "Вопросы по осмотру", icon: "fas fa-camera", modal: "#inspectionModal", desc: "Файл верификации, перепланировки" },
+        { id: "questions", name: "Вопросы по заключению", icon: "fas fa-question-circle", modal: "#questionsModal", desc: "База рисков, распознавание и резюме СЗЗ", inDev: true },
+        { id: "inspection", name: "Вопросы по осмотру", icon: "fas fa-camera", modal: "#inspectionModal", desc: "Файл верификации, перепланировки", inDev: true },
         { id: "cost", name: "Не согласен со стоимостью", icon: "fas fa-hand-holding-usd", modal: "#costModal", desc: "Арбитраж стоимости, верификация рынком" },
-        { id: "where", name: "Где заявка?", icon: "fas fa-search-location", modal: "#whereModal", desc: "Статусы: осмотр, обременения, оценка" },
+        { id: "where", name: "Где заявка?", icon: "fas fa-search-location", modal: "#whereModal", desc: "Статусы: осмотр, обременения, оценка", inDev: true },
         { id: "cadastral", name: "Поиск информации по кадастровому номеру", icon: "fas fa-map-location-dot", href: "/cadastral", desc: "Росреестр (НСПД), kadbase.ru, фото 2ГИС и объявления Авито, Циан, Домклик" },
         { id: "zalog", name: "Конвертер заключения", icon: "fas fa-file-import", href: "/zalog", desc: "PDF + XLSX → сводный отчёт без GigaChat" },
         { id: "deals", name: "Данные о сделках с недвижимостью", icon: "fas fa-handshake", href: "/deals", desc: "Продажа по кадастровому кварталу" },
         { id: "express", name: "Экспресс оценка", icon: "fas fa-bolt", modal: "#expressModal", desc: "Оценка по минимальным параметрам (демо)" },
-        { id: "memorandum", name: "Служебная записка", icon: "fas fa-pen-alt", modal: "#memorandumModal", desc: "AI-подготовка СЗ по документу-основанию" },
-        { id: "techChanges", name: "Технические изменения / Снятие рисков", icon: "fas fa-sync-alt", modal: "#techChangesModal", desc: "Автоснятие риска, изменение КК" },
-        { id: "pmz", name: "ПМЗ", icon: "fas fa-building", modal: "#pmzModal", desc: "Подразделение мониторинга залогов" }
+        { id: "memorandum", name: "Служебная записка", icon: "fas fa-pen-alt", modal: "#memorandumModal", desc: "AI-подготовка СЗ по документу-основанию", inDev: true },
+        { id: "techChanges", name: "Технические изменения / Снятие рисков", icon: "fas fa-sync-alt", modal: "#techChangesModal", desc: "Автоснятие риска, изменение КК", inDev: true },
+        { id: "pmz", name: "ПМЗ", icon: "fas fa-building", modal: "#pmzModal", desc: "Подразделение мониторинга залогов", inDev: true }
     ];
 
     function renderModules() {
@@ -1527,12 +1572,14 @@
         modules.forEach(mod => {
             const col = document.createElement("div");
             col.className = "col-sm-6 col-xl-4";
+            const inDev = Boolean(mod.inDev);
             col.innerHTML = `
-                <div class="card card-hover h-100 p-4 text-center d-flex flex-column">
+                <div class="card card-hover h-100 p-4 text-center d-flex flex-column${inDev ? " module-card-indev" : ""}">
+                    ${inDev ? '<div class="module-stamp" aria-hidden="true">В разработке</div>' : ""}
                     <div class="module-icon-bg mx-auto"><i class="${mod.icon} fs-2" style="color: #21A038;" aria-hidden="true"></i></div>
                     <h3 class="h6 fw-bold mt-1 mb-2">${mod.name}</h3>
                     <p class="small text-muted px-1 mb-3 flex-grow-1">${mod.desc}</p>
-                    <button type="button" class="btn btn-outline-sber mt-auto open-module-btn" data-module="${mod.id}">Открыть</button>
+                    <button type="button" class="btn btn-outline-sber mt-auto open-module-btn" data-module="${mod.id}"${inDev ? " disabled aria-disabled=\"true\"" : ""}>${inDev ? "Скоро" : "Открыть"}</button>
                 </div>
             `;
             grid.appendChild(col);
@@ -2236,6 +2283,7 @@
     function openModuleModal(moduleId) {
         const mod = modules.find(m => m.id === moduleId);
         if (!mod) return;
+        if (mod.inDev) return;
 
         if (mod.href) {
             const target =
