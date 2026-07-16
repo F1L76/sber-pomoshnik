@@ -410,6 +410,8 @@
             if (!el || !geometry || !window.L) return;
 
             const map = L.map(el, { scrollWheelZoom: true });
+            // ponytail: Leaflet 1.9.4 prefix ships UA-flag SVG — plain text only
+            map.attributionControl.setPrefix("Leaflet");
             const scheme = L.tileLayer(
                 "https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=ru_RU",
                 { maxZoom: 19, attribution: "© Яндекс" }
