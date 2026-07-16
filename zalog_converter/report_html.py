@@ -107,7 +107,6 @@ def render_summary_block(conclusion: ConclusionData) -> str:
   <div class="mock-ai">
     <p class="mb-0 small">{escape_html(conclusion.summary)}</p>
   </div>
-  <p class="hint">Сформировано по шаблону из извлечённых полей PDF (без GigaChat).</p>
 </div>"""
 
 
@@ -140,7 +139,6 @@ def render_risks_block(conclusion: ConclusionData) -> str:
         )
     return f"""<div class="info-card report-block risks-block">
   <h3 class="section-title"><i class="fas fa-triangle-exclamation me-2 text-warning" aria-hidden="true"></i>Риски</h3>
-  <p class="hint">Из таблицы PDF ({len(risks)}); минимизация — по справочнику рисков.</p>
   <div class="table-responsive-custom">
     <table class="table table-bordered table-striped table-details risks-table mb-0">
       <thead>
@@ -191,8 +189,7 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
 
     return f"""<div class="info-card report-block objects-block">
   <h3 class="section-title"><i class="fas fa-list me-2 text-success" aria-hidden="true"></i>Перечень объектов залога</h3>
-  <p class="hint"><span class="badge-sber">XLSX: {len(objects)} объект(ов)</span>
-    <span class="ms-2">Показано: <strong id="objectsVisibleCount">{len(objects)}</strong></span></p>
+  <p class="hint">Показано: <strong id="objectsVisibleCount">{len(objects)}</strong></p>
   <div class="table-responsive-custom">
     <table class="table table-bordered table-striped table-details table-hover objects-table mb-0">
       <colgroup>
