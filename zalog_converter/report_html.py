@@ -5,7 +5,12 @@ from __future__ import annotations
 from typing import Any
 
 from .pdf_extract import ConclusionData, ConclusionRisk
-from .sber_styles import SBER_OBJECTS_TABLE_FILTER_SCRIPT, SBER_REPORT_CSS, SBER_REPORT_HEAD_LINKS
+from .sber_styles import (
+    SBER_OBJECTS_TABLE_FILTER_SCRIPT,
+    SBER_REPORT_CSS,
+    SBER_REPORT_HEAD_LINKS,
+    SBER_RISKS_CLEAR_SCRIPT,
+)
 from .name_format import format_classifier_display
 from .utils import calc_collateral_from_discount, escape_html, format_money
 from .xlsx_extract import CollateralObject
@@ -129,12 +134,17 @@ def render_risks_block(conclusion: ConclusionData) -> str:
 </div>"""
 
     rows = []
-    for risk in risks:
+    for index, risk in enumerate(risks):
         rows.append(
-            "<tr>"
+            f'<tr data-risk-index="{index}">'
             f"<td>{escape_html(risk.identifier)}</td>"
             f"<td>{escape_html(risk.risk)}</td>"
             f"<td>{escape_html(risk.minimization)}</td>"
+            '<td class="risk-action-col">'
+            '<button type="button" class="btn-clear-risk">'
+            '<i class="fas fa-file-circle-check" aria-hidden="true"></i> Снять риск'
+            "</button>"
+            "</td>"
             "</tr>"
         )
     return f"""<div class="info-card report-block risks-block">
@@ -146,11 +156,29 @@ def render_risks_block(conclusion: ConclusionData) -> str:
           <th>Объект</th>
           <th>Риск</th>
           <th>Минимизация</th>
+          <th class="risk-action-col">Действие</th>
         </tr>
       </thead>
       <tbody>{"".join(rows)}</tbody>
     </table>
   </div>
+  <div id="riskClearModal" class="risk-clear-modal" hidden>
+    <div class="risk-clear-modal__backdrop" data-risk-clear-backdrop></div>
+    <div class="risk-clear-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="riskClearTitle">
+      <h4 id="riskClearTitle">Снять риск</h4>
+      <p>Загрузите документ, подтверждающий устранение риска (акт, выписка, справка, договор и т.п.). После загрузки риск будет отмечен как снятый.</p>
+      <div id="riskClearBody" class="risk-clear-modal__risk"></div>
+      <input id="riskClearFile" class="risk-clear-modal__file" type="file"
+        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.tif,.tiff,.xlsx,.xls" />
+      <p class="risk-clear-modal__hint">Допустимы PDF, Word, Excel и сканы изображений.</p>
+      <p id="riskClearError" class="risk-clear-modal__error" hidden></p>
+      <div class="risk-clear-modal__actions">
+        <button type="button" class="risk-clear-modal__cancel" data-risk-clear-cancel>Отмена</button>
+        <button type="button" class="risk-clear-modal__submit" id="riskClearSubmit">Снять риск</button>
+      </div>
+    </div>
+  </div>
+  <script>{SBER_RISKS_CLEAR_SCRIPT}</script>
 </div>"""
 
 

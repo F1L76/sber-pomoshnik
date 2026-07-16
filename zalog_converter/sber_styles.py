@@ -302,11 +302,153 @@ SBER_REPORT_CSS = """
       .report-page { padding: 0; max-width: none; }
       .info-card { box-shadow: none; break-inside: avoid; }
       .objects-table .filter-row { display: none; }
+      .risk-action-col,
+      .btn-clear-risk,
+      .risk-clear-modal { display: none !important; }
+    }
+    .risks-table .risk-action-col {
+      width: 7.5rem;
+      white-space: nowrap;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .btn-clear-risk {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      border: 1px solid #21A038;
+      background: #fff;
+      color: #1B8A32;
+      font-size: 0.72rem;
+      font-weight: 600;
+      line-height: 1.2;
+      padding: 0.35rem 0.55rem;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .btn-clear-risk:hover {
+      background: #E8F7EC;
+    }
+    .btn-clear-risk:disabled {
+      opacity: 0.55;
+      cursor: default;
+      border-color: #94A3B8;
+      color: #64748B;
+      background: #F8FAFC;
+    }
+    .risks-table tr.risk-cleared td {
+      color: #64748B;
+      text-decoration: line-through;
+      text-decoration-color: rgba(100, 116, 139, 0.45);
+    }
+    .risks-table tr.risk-cleared .risk-action-col,
+    .risks-table tr.risk-cleared .risk-cleared-badge {
+      text-decoration: none;
+    }
+    .risk-cleared-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: #1B8A32;
+      background: #E8F7EC;
+      border-radius: 999px;
+      padding: 0.25rem 0.5rem;
+    }
+    .risk-clear-modal[hidden] { display: none !important; }
+    .risk-clear-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .risk-clear-modal__backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(30, 42, 58, 0.45);
+    }
+    .risk-clear-modal__dialog {
+      position: relative;
+      z-index: 1;
+      width: min(420px, 100%);
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 16px 48px rgba(30, 42, 58, 0.22);
+      padding: 1.25rem 1.35rem 1.15rem;
+    }
+    .risk-clear-modal__dialog h4 {
+      margin: 0 0 0.65rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+    .risk-clear-modal__dialog p {
+      margin: 0 0 0.85rem;
+      font-size: 0.875rem;
+      color: var(--sber-text-muted);
+      line-height: 1.45;
+    }
+    .risk-clear-modal__risk {
+      margin: 0 0 0.85rem;
+      padding: 0.65rem 0.75rem;
+      background: #F8FAFC;
+      border: 1px solid var(--sber-border);
+      border-radius: 12px;
+      font-size: 0.8rem;
+    }
+    .risk-clear-modal__risk strong {
+      display: block;
+      margin-bottom: 0.2rem;
+      color: var(--sber-text-dark);
+    }
+    .risk-clear-modal__file {
+      display: block;
+      width: 100%;
+      font-size: 0.8rem;
+      margin-bottom: 0.35rem;
+    }
+    .risk-clear-modal__hint {
+      margin: 0 0 1rem;
+      font-size: 0.75rem;
+      color: var(--sber-text-muted);
+    }
+    .risk-clear-modal__error {
+      margin: 0 0 0.75rem;
+      font-size: 0.8rem;
+      color: #B42318;
+    }
+    .risk-clear-modal__actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .risk-clear-modal__actions button {
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.45rem 0.95rem;
+      cursor: pointer;
+    }
+    .risk-clear-modal__cancel {
+      border: 1px solid var(--sber-border);
+      background: #fff;
+      color: var(--sber-text-dark);
+    }
+    .risk-clear-modal__submit {
+      border: none;
+      background: var(--sber-green);
+      color: #fff;
+    }
+    .risk-clear-modal__submit:disabled {
+      opacity: 0.55;
+      cursor: default;
     }
 """
 
-SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
-(function () {
+SBER_OBJECTS_TABLE_FILTER_SCRIPT = """(function () {
   const table = document.querySelector(".objects-table");
   if (!table) return;
   const tbody = table.querySelector("tbody");
@@ -427,5 +569,94 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """
   });
 
   applyFilters();
+})();
+"""
+
+SBER_RISKS_CLEAR_SCRIPT = """
+(function () {
+  const modal = document.getElementById("riskClearModal");
+  if (!modal) return;
+  const titleEl = document.getElementById("riskClearTitle");
+  const bodyEl = document.getElementById("riskClearBody");
+  const fileEl = document.getElementById("riskClearFile");
+  const errorEl = document.getElementById("riskClearError");
+  const submitBtn = document.getElementById("riskClearSubmit");
+  let activeRow = null;
+
+  function notifyParentResize() {
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "zalog-report-resize" }, "*");
+      }
+    } catch (_) {}
+  }
+
+  function closeModal() {
+    modal.hidden = true;
+    activeRow = null;
+    if (fileEl) fileEl.value = "";
+    if (errorEl) {
+      errorEl.hidden = true;
+      errorEl.textContent = "";
+    }
+  }
+
+  function openModal(row, btn) {
+    activeRow = row;
+    const objectLabel = (row.cells[0]?.textContent || "").trim();
+    const riskText = (row.cells[1]?.textContent || "").trim();
+    if (titleEl) titleEl.textContent = "Снять риск";
+    if (bodyEl) {
+      bodyEl.innerHTML =
+        "<strong>" + (objectLabel || "Объект") + "</strong>" +
+        "<span>" + (riskText || "Риск без описания") + "</span>";
+    }
+    if (fileEl) fileEl.value = "";
+    if (errorEl) {
+      errorEl.hidden = true;
+      errorEl.textContent = "";
+    }
+    if (submitBtn) submitBtn.disabled = false;
+    modal.hidden = false;
+    fileEl?.focus();
+  }
+
+  document.querySelectorAll(".btn-clear-risk").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const row = btn.closest("tr");
+      if (!row || row.classList.contains("risk-cleared")) return;
+      openModal(row, btn);
+    });
+  });
+
+  modal.querySelector("[data-risk-clear-cancel]")?.addEventListener("click", closeModal);
+  modal.querySelector("[data-risk-clear-backdrop]")?.addEventListener("click", closeModal);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.hidden) closeModal();
+  });
+
+  submitBtn?.addEventListener("click", () => {
+    if (!activeRow) return;
+    const file = fileEl?.files?.[0];
+    if (!file) {
+      if (errorEl) {
+        errorEl.textContent = "Выберите файл документа для снятия риска.";
+        errorEl.hidden = false;
+      }
+      return;
+    }
+    const btn = activeRow.querySelector(".btn-clear-risk");
+    activeRow.classList.add("risk-cleared");
+    activeRow.dataset.clearFile = file.name;
+    if (btn) {
+      const badge = document.createElement("span");
+      badge.className = "risk-cleared-badge";
+      badge.title = "Документ: " + file.name;
+      badge.textContent = "Снят";
+      btn.replaceWith(badge);
+    }
+    closeModal();
+    notifyParentResize();
+  });
 })();
 """
