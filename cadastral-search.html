@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Поиск информации по кадастровому номеру — СберБизнес Помощник</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link href="https://fonts.cdnfonts.com/css/sb-sans-interface" rel="stylesheet">
     <style>
@@ -221,25 +222,14 @@
             .search-input-group { flex-direction: column; }
             .search-input-group .btn-search { width: 100%; }
         }
-        .boundary-maps {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0.85rem;
-        }
-        @media (max-width: 992px) {
-            .boundary-maps { grid-template-columns: 1fr; }
-        }
-        .boundary-map-wrap { min-width: 0; }
-        .boundary-basemap {
-            display: block;
-            width: 100%;
-            height: auto;
-            aspect-ratio: 3 / 2;
-            object-fit: cover;
+        .boundary-leaflet {
+            height: 320px;
             border-radius: 14px;
             border: 1px solid var(--sber-border);
             background: #eef3ee;
+            z-index: 0;
         }
+        .boundary-map-hint { font-size: 0.8rem; }
         .boundary-fallback {
             color: var(--sber-muted);
             font-size: 0.85rem;
@@ -306,6 +296,7 @@
         </div>
     </main>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
         const API_BASE = (() => {
             try {
@@ -405,88 +396,54 @@
             }
         }
 
-        function geometryOuterRing(geometry) {
-            if (!geometry) return null;
-            if (geometry.type === "Polygon") return geometry.coordinates?.[0] || null;
-            if (geometry.type === "MultiPolygon") return geometry.coordinates?.[0]?.[0] || null;
-            return null;
+        let boundaryMapInstance = null;
+
+        function destroyBoundaryMap() {
+            if (boundaryMapInstance) {
+                boundaryMapInstance.remove();
+                boundaryMapInstance = null;
+            }
         }
 
-        function simplifyRing(ring, maxPts = 48) {
-            if (!ring?.length) return [];
-            if (ring.length <= maxPts) return ring.slice();
-            const step = Math.ceil(ring.length / maxPts);
-            const out = [];
-            for (let i = 0; i < ring.length; i += step) out.push(ring[i]);
-            const first = ring[0];
-            const last = out[out.length - 1];
-            if (!last || first[0] !== last[0] || first[1] !== last[1]) out.push(first);
-            return out;
-        }
+        function initBoundaryMap(geometry) {
+            destroyBoundaryMap();
+            const el = document.getElementById("boundaryMap");
+            if (!el || !geometry || !window.L) return;
 
-        function geometryCenter(geometry) {
-            if (!geometry) return null;
+            const map = L.map(el, { scrollWheelZoom: true });
+            const scheme = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                maxZoom: 19,
+                attribution: "© OpenStreetMap"
+            });
+            const satellite = L.tileLayer(
+                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                { maxZoom: 19, attribution: "© Esri" }
+            );
+            scheme.addTo(map);
+            L.control.layers({ "Схема": scheme, "Спутник": satellite }).addTo(map);
+
+            const style = { color: "#21A038", weight: 3, fillColor: "#21A038", fillOpacity: 0.28 };
             if (geometry.type === "Point") {
                 const [lon, lat] = geometry.coordinates || [];
-                return Number.isFinite(lon) && Number.isFinite(lat) ? { lon, lat } : null;
-            }
-            const ring = geometryOuterRing(geometry);
-            if (!ring?.length) return null;
-            let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
-            for (const [lon, lat] of ring) {
-                minLon = Math.min(minLon, lon);
-                maxLon = Math.max(maxLon, lon);
-                minLat = Math.min(minLat, lat);
-                maxLat = Math.max(maxLat, lat);
-            }
-            return { lon: (minLon + maxLon) / 2, lat: (minLat + maxLat) / 2 };
-        }
-
-        function mapZoomForRing(ring) {
-            if (!ring?.length) return 16;
-            let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
-            for (const [lon, lat] of ring) {
-                minLon = Math.min(minLon, lon);
-                maxLon = Math.max(maxLon, lon);
-                minLat = Math.min(minLat, lat);
-                maxLat = Math.max(maxLat, lat);
-            }
-            const span = Math.max(maxLon - minLon, maxLat - minLat);
-            if (span > 0.08) return 13;
-            if (span > 0.03) return 14;
-            if (span > 0.01) return 15;
-            if (span > 0.004) return 16;
-            if (span > 0.0015) return 17;
-            return 18;
-        }
-
-        function yandexStaticBoundaryUrl(geometry, layer) {
-            const center = geometryCenter(geometry);
-            if (!center) return null;
-            const ring = simplifyRing(geometryOuterRing(geometry));
-            const zoom = mapZoomForRing(ring);
-            const params = [
-                `ll=${center.lon.toFixed(6)},${center.lat.toFixed(6)}`,
-                `z=${zoom}`,
-                "size=450,300",
-                `l=${layer}`
-            ];
-            if (ring.length >= 3) {
-                const path = ring.map(([lon, lat]) => `${lon.toFixed(6)},${lat.toFixed(6)}`).join(",");
-                params.push(`pl=c:21A038FF,f:21A03855,w:4,${path}`);
-            } else if (geometry.type === "Point") {
-                params.push(`pt=${center.lon.toFixed(6)},${center.lat.toFixed(6)},pm2rdm`);
+                if (Number.isFinite(lon) && Number.isFinite(lat)) {
+                    L.circleMarker([lat, lon], { radius: 8, color: "#21A038", fillColor: "#21A038", fillOpacity: 0.28, weight: 3 }).addTo(map);
+                    map.setView([lat, lon], 15);
+                }
             } else {
-                return null;
+                const layer = L.geoJSON(geometry, { style });
+                layer.addTo(map);
+                const bounds = layer.getBounds();
+                if (bounds?.isValid()) {
+                    // ponytail: pad(0.4) — чуть дальше, чем fitBounds вплотную
+                    map.fitBounds(bounds.pad(0.4), { maxZoom: 17 });
+                }
             }
-            return `https://static-maps.yandex.ru/1.x/?${params.join("&")}`;
+            boundaryMapInstance = map;
         }
 
         function renderBoundaryBlock(nspd) {
             const geometry = nspd?.geometry;
-            const schemeUrl = yandexStaticBoundaryUrl(geometry, "map");
-            const satUrl = yandexStaticBoundaryUrl(geometry, "sat");
-            if (schemeUrl && satUrl) {
+            if (geometry) {
                 return `<div class="col-12">
                     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
                         <div class="info-label mb-0">Границы объекта на карте</div>
@@ -494,20 +451,8 @@
                             ? `<a class="btn btn-sm btn-outline-secondary" href="${escapeHtml(nspd.mapUrl)}" target="_blank" rel="noopener">Открыть на nspd.gov.ru</a>`
                             : ""}
                     </div>
-                    <div class="boundary-maps">
-                        <div class="boundary-map-wrap">
-                            <div class="info-label mb-2">Схема</div>
-                            <a href="${escapeHtml(nspd.mapUrl || schemeUrl)}" target="_blank" rel="noopener">
-                                <img class="boundary-basemap" src="${escapeHtml(schemeUrl)}" alt="Границы на схеме" loading="lazy">
-                            </a>
-                        </div>
-                        <div class="boundary-map-wrap">
-                            <div class="info-label mb-2">Спутник</div>
-                            <a href="${escapeHtml(nspd.mapUrl || satUrl)}" target="_blank" rel="noopener">
-                                <img class="boundary-basemap" src="${escapeHtml(satUrl)}" alt="Границы на спутнике" loading="lazy">
-                            </a>
-                        </div>
-                    </div>
+                    <div id="boundaryMap" class="boundary-leaflet" role="region" aria-label="Интерактивная карта границ"></div>
+                    <p class="boundary-map-hint text-muted mt-2 mb-0">Масштаб — колёсико или жест, перемещение — перетаскивание. Слой «Схема» / «Спутник» — в правом верхнем углу.</p>
                 </div>`;
             }
             if (nspd?.boundaryPreview?.svg) {
@@ -879,6 +824,9 @@
                 updateProgress();
                 results.classList.remove("d-none");
                 document.getElementById("rosreestrBlock").innerHTML = renderRosreestr(chunk.data);
+                const boundaryGeometry =
+                    chunk.data?.rosreestr?.nspd?.geometry || chunk.data?.rosreestr?.object?.geometry;
+                requestAnimationFrame(() => initBoundaryMap(boundaryGeometry));
                 document.getElementById("kadbaseBlock").classList.add("d-none");
                 document.getElementById("kadbaseBlock").innerHTML = `<div class="info-label mb-2"><i class="fa-solid fa-shield-halved me-1"></i>ИАС «База N» (kadbase.ru)</div>
                     <div class="d-flex align-items-center gap-2 text-muted"><div class="spinner-border spinner-border-sm text-success"></div>Проверяем объект в kadbase.ru…</div>`;
@@ -993,6 +941,7 @@
             if (!cadastralNumber) return;
 
             alertBox.innerHTML = "";
+            destroyBoundaryMap();
             progressState = {};
             kadbaseRendered = false;
             searchStatus.classList.add("active");
