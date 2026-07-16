@@ -310,6 +310,7 @@
         const results = document.getElementById("results");
         const alertBox = document.getElementById("alertBox");
 
+        const LISTING_SOURCES = new Set(["bazacoop"]);
         const SOURCE_LABELS = { bazacoop: "БазаЦООП" };
         const SOURCE_PROGRESS = { rosreestr: "Росреестр", kadbase: "kadbase.ru", panorama: "2ГИС и Яндекс", bazacoop: "БазаЦООП" };
         const SEARCH_PHRASES = {
@@ -784,7 +785,7 @@
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let buffer = "";
-            const state = { listings: [], errors: [], sourceNotices: [], searchLinks: null, stats: null, meta: {} };
+            const state = { listings: [], sourceNotices: [], searchLinks: null, stats: null, meta: {} };
 
             while (true) {
                 const { value, done } = await reader.read();
@@ -852,10 +853,10 @@
             }
 
             if (chunk.event === "listings") {
+                if (!LISTING_SOURCES.has(chunk.data.source)) return;
                 progressState[chunk.data.source] = "done";
                 updateProgress();
                 state.listings.push(...chunk.data.listings);
-                state.errors.push(...(chunk.data.errors || []));
                 if (chunk.data.unavailable) {
                     state.sourceNotices.push(chunk.data.unavailable);
                 }
@@ -884,7 +885,6 @@
             }
 
             if (chunk.event === "done") {
-                state.errors.push(...(chunk.data.errors || []));
                 state.stats = chunk.data.stats;
                 state.meta = chunk.data.meta || {};
                 for (const notice of chunk.data.meta?.sourceNotices || []) {
@@ -917,16 +917,6 @@
                             <p class="mb-2">Объявления о продаже не найдены в БазаЦООП.</p>
                             <p class="small mb-0">Используйте ссылку поиска выше.</p>
                         </div>`);
-                }
-                const partialErrors = [...new Set(state.errors)].filter((err) => {
-                    const lower = String(err).toLowerCase();
-                    if (lower.includes("базацооп") || lower.includes("bazacoop")) {
-                        return !state.sourceNotices.some((n) => n.source === "bazacoop");
-                    }
-                    return true;
-                });
-                if (partialErrors.length) {
-                    showAlert("warning", "<strong>Частичные ошибки:</strong><br>" + partialErrors.map(escapeHtml).join("<br>"));
                 }
             }
         }
