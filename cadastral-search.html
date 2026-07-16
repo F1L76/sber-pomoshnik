@@ -745,6 +745,9 @@
                 if (chunk.data.unavailable) {
                     state.sourceNotices.push(chunk.data.unavailable);
                 }
+                if (chunk.data.meta) {
+                    state.meta = { ...state.meta, ...chunk.data.meta };
+                }
                 state.stats = chunk.data.stats;
                 const placeholder = document.getElementById("listingsPlaceholder");
                 if (placeholder) placeholder.remove();

@@ -7,6 +7,7 @@
  *   1) на машине в РФ:  node scripts/nspd-edge-proxy.mjs
  *   2) туннель:         npx cloudflared tunnel --url http://127.0.0.1:8791
  *   3) на Render в env:  NSPD_BASES=https://xxxx.trycloudflare.com
+ *                      NSPD_PROXY_KEY=<тот же ключ, что на edge-прокси>
  *
  * Публичные «бесплатные прокси из интернета» для .gov.ru обычно не работают.
  */
@@ -21,8 +22,22 @@ const UPSTREAMS = (process.env.NSPD_UPSTREAMS || "https://nspd.gov.ru,https://ns
     .map((s) => s.trim().replace(/\/$/, ""))
     .filter(Boolean);
 const TIMEOUT_MS = Number(process.env.NSPD_EDGE_TIMEOUT_MS) || 12_000;
+const PROXY_KEY = String(process.env.NSPD_PROXY_KEY || "").trim();
 
 const insecureAgent = new https.Agent({ rejectUnauthorized: false });
+
+function extractProxyKey(req) {
+    const direct = String(req.headers["x-nspd-proxy-key"] || "").trim();
+    if (direct) return direct;
+    const auth = String(req.headers.authorization || "");
+    const m = auth.match(/^Bearer\s+(.+)$/i);
+    return m ? m[1].trim() : "";
+}
+
+function isAuthorized(req) {
+    if (!PROXY_KEY) return true;
+    return extractProxyKey(req) === PROXY_KEY;
+}
 
 function fetchUpstream(base, reqPath, method, headers, body) {
     return new Promise((resolve, reject) => {
@@ -112,13 +127,15 @@ function readBody(req) {
 }
 
 const server = http.createServer(async (req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept, Authorization");
-
     if (req.method === "OPTIONS") {
         res.writeHead(204);
         res.end();
+        return;
+    }
+
+    if (!isAuthorized(req)) {
+        res.writeHead(401, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ error: "Unauthorized: invalid or missing NSPD proxy key" }));
         return;
     }
 
@@ -166,8 +183,13 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, HOST, () => {
     console.log(`NSPD edge proxy: http://${HOST}:${PORT}`);
     console.log(`Upstreams: ${UPSTREAMS.join(", ")}`);
+    if (PROXY_KEY) {
+        console.log("Auth: NSPD_PROXY_KEY задан — клиенты шлют X-NSPD-Proxy-Key или Authorization: Bearer");
+    } else {
+        console.warn("ВНИМАНИЕ: NSPD_PROXY_KEY не задан — прокси открыт (задайте ключ перед туннелем)");
+    }
     console.log("Дальше (бесплатный туннель): npx cloudflared tunnel --url http://127.0.0.1:" + PORT);
-    console.log("На Render: NSPD_BASES=<url из cloudflared>");
+    console.log("На Render: NSPD_BASES=<url из cloudflared>, NSPD_PROXY_KEY=<тот же ключ>");
 });
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
