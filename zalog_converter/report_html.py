@@ -15,7 +15,7 @@ from .name_format import format_classifier_display
 from .utils import calc_collateral_from_discount, escape_html, format_money
 from .xlsx_extract import CollateralObject
 
-REPORT_SCHEMA_VERSION = 7  # 7 = фильтр стоимости «от / до» с вводом на лету
+REPORT_SCHEMA_VERSION = 8  # 8 = sticky thead + копирование столбцов
 
 
 def _unique_sorted(values: list[str]) -> list[str]:
@@ -46,6 +46,18 @@ def _text_filter(filter_id: str, placeholder: str, hint: str = "") -> str:
     return (
         f'<input type="text" class="form-control form-control-sm" data-obj-filter="{escape_html(filter_id)}" '
         f'placeholder="{escape_html(placeholder)}" aria-label="Фильтр">{hint_html}'
+    )
+
+
+def _objects_th(label_html: str, col_index: int, *, css_class: str = "") -> str:
+    cls = f' class="{escape_html(css_class)}"' if css_class else ""
+    return (
+        f"<th{cls}>"
+        f'<button type="button" class="th-copy-btn" data-copy-col="{col_index}" '
+        f'title="Копировать столбец" aria-label="Копировать столбец">'
+        f'<i class="fas fa-copy" aria-hidden="true"></i></button>'
+        f'<span class="th-lines">{label_html}</span>'
+        f"</th>"
     )
 
 
@@ -217,8 +229,9 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
 
     return f"""<div class="info-card report-block objects-block">
   <h3 class="section-title"><i class="fas fa-list me-2 text-success" aria-hidden="true"></i>Перечень объектов залога</h3>
-  <p class="hint">Показано: <strong id="objectsVisibleCount">{len(objects)}</strong></p>
-  <div class="table-responsive-custom">
+  <p class="hint">Показано: <strong id="objectsVisibleCount">{len(objects)}</strong>
+    <span class="ms-2">Нажмите <i class="fas fa-copy" aria-hidden="true"></i> в заголовке, чтобы скопировать столбец.</span></p>
+  <div class="table-responsive-custom objects-table-scroll">
     <table class="table table-bordered table-striped table-details table-hover objects-table mb-0">
       <colgroup>
         <col class="col-code">
@@ -233,17 +246,17 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
         <col class="col-liq">
       </colgroup>
       <thead>
-        <tr>
-          <th class="col-code"><span class="th-lines">Условное<br>обозначение</span></th>
-          <th class="col-classifier"><span class="th-lines">Классификатор</span></th>
-          <th class="col-name"><span class="th-lines">Наименование</span></th>
-          <th class="col-id"><span class="th-lines">Идентификатор</span></th>
-          <th class="col-quality"><span class="th-lines">Категория<br>качества</span></th>
-          <th class="col-valtype"><span class="th-lines">Вид<br>стоимости</span></th>
-          <th class="text-end col-num"><span class="th-lines">Оценочная стоимость<br>без НДС</span></th>
-          <th class="text-end col-num"><span class="th-lines">Залоговая стоимость<br>без НДС</span></th>
-          <th class="text-end col-pct"><span class="th-lines">Дисконт<br>без НДС</span></th>
-          <th class="text-end col-liq"><span class="th-lines">Ликвидность</span></th>
+        <tr class="objects-header-row">
+          {_objects_th("Условное<br>обозначение", 0, css_class="col-code")}
+          {_objects_th("Классификатор", 1, css_class="col-classifier")}
+          {_objects_th("Наименование", 2, css_class="col-name")}
+          {_objects_th("Идентификатор", 3, css_class="col-id")}
+          {_objects_th("Категория<br>качества", 4, css_class="col-quality")}
+          {_objects_th("Вид<br>стоимости", 5, css_class="col-valtype")}
+          {_objects_th("Оценочная стоимость<br>без НДС", 6, css_class="text-end col-num")}
+          {_objects_th("Залоговая стоимость<br>без НДС", 7, css_class="text-end col-num")}
+          {_objects_th("Дисконт<br>без НДС", 8, css_class="text-end col-pct")}
+          {_objects_th("Ликвидность", 9, css_class="text-end col-liq")}
         </tr>
         {filter_row}
       </thead>
@@ -259,6 +272,7 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
       </tfoot>
     </table>
   </div>
+  <div id="objectsCopyToast" class="objects-copy-toast" hidden role="status">Скопировано</div>
   <script>{SBER_OBJECTS_TABLE_FILTER_SCRIPT}</script>
 </div>"""
 

@@ -147,15 +147,86 @@ SBER_REPORT_CSS = """
       width: 100%;
       max-width: 100%;
     }
-    .objects-block .table-responsive-custom {
-      overflow-x: auto;
+    .objects-block .table-responsive-custom,
+    .objects-block .objects-table-scroll {
+      width: 100%;
+      max-width: 100%;
+      overflow: auto;
+      max-height: min(70vh, 860px);
       -webkit-overflow-scrolling: touch;
+      border-radius: 12px;
+      border: 1px solid var(--sber-border);
+      background: #fff;
     }
     .objects-table {
       width: 100%;
       min-width: 1080px;
       table-layout: auto;
+      border-collapse: separate;
+      border-spacing: 0;
     }
+    .objects-table thead tr.objects-header-row th {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      background: #EEF4F9;
+      box-shadow: 0 1px 0 var(--sber-border);
+    }
+    .objects-table thead tr.filter-row th {
+      position: sticky;
+      top: var(--objects-header-h, 3rem);
+      z-index: 3;
+      background: #f8fafc;
+      box-shadow: 0 1px 0 var(--sber-border);
+    }
+    .objects-table .th-copy-btn {
+      position: absolute;
+      top: 0.2rem;
+      right: 0.2rem;
+      border: 1px solid var(--sber-border);
+      background: #fff;
+      color: #1B8A32;
+      width: 1.35rem;
+      height: 1.35rem;
+      padding: 0;
+      border-radius: 6px;
+      font-size: 0.62rem;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.75;
+    }
+    .objects-table .th-copy-btn:hover,
+    .objects-table .th-copy-btn:focus-visible {
+      opacity: 1;
+      background: #E8F7EC;
+      outline: none;
+    }
+    .objects-table .th-copy-btn.is-copied {
+      background: #21A038;
+      border-color: #21A038;
+      color: #fff;
+    }
+    .objects-table thead th .th-lines {
+      padding-right: 1.1rem;
+    }
+    .objects-copy-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 1.25rem;
+      transform: translateX(-50%);
+      z-index: 30;
+      background: #1E2A3A;
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.55rem 0.9rem;
+      border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(30, 42, 58, 0.25);
+    }
+    .objects-copy-toast[hidden] { display: none !important; }
     .objects-table th,
     .objects-table td {
       font-size: 0.72rem;
@@ -288,8 +359,15 @@ SBER_REPORT_CSS = """
     .report-page.pdf-export .risk-action-col,
     .report-page.pdf-export .btn-clear-risk,
     .report-page.pdf-export .risk-clear-modal,
-    .report-page.pdf-export .objects-table .filter-row {
+    .report-page.pdf-export .objects-table .filter-row,
+    .report-page.pdf-export .th-copy-btn,
+    .report-page.pdf-export .objects-copy-toast {
       display: none !important;
+    }
+    .report-page.pdf-export .objects-table-scroll,
+    .report-page.pdf-export .objects-block .table-responsive-custom {
+      max-height: none !important;
+      overflow: visible !important;
     }
     .totals-row td {
       background: #F7FAFC;
@@ -308,6 +386,13 @@ SBER_REPORT_CSS = """
       .report-page { padding: 0; max-width: none; }
       .info-card { box-shadow: none; break-inside: avoid; }
       .objects-table .filter-row { display: none; }
+      .objects-table .th-copy-btn,
+      .objects-copy-toast { display: none !important; }
+      .objects-table-scroll,
+      .objects-block .table-responsive-custom {
+        max-height: none !important;
+        overflow: visible !important;
+      }
       .risk-action-col,
       .btn-clear-risk,
       .risk-clear-modal { display: none !important; }
@@ -574,7 +659,71 @@ SBER_OBJECTS_TABLE_FILTER_SCRIPT = """(function () {
     applyFilters();
   });
 
+  function syncStickyOffsets() {
+    const headerRow = table.querySelector("thead tr.objects-header-row");
+    if (!headerRow) return;
+    const h = Math.ceil(headerRow.getBoundingClientRect().height);
+    table.style.setProperty("--objects-header-h", h + "px");
+  }
+
+  function showCopyToast(ok) {
+    const toast = document.getElementById("objectsCopyToast");
+    if (!toast) return;
+    toast.textContent = ok ? "Столбец скопирован" : "Не удалось скопировать";
+    toast.hidden = false;
+    clearTimeout(showCopyToast._timer);
+    showCopyToast._timer = setTimeout(() => { toast.hidden = true; }, 1600);
+  }
+
+  async function copyColumn(colIndex, btn) {
+    const values = [];
+    tbody.querySelectorAll("tr").forEach((tr) => {
+      if (tr.style.display === "none") return;
+      const text = cellText(tr, colIndex).replace(/\\u00a0/g, " ").trim();
+      if (text) values.push(text);
+    });
+    const payload = values.join("\\n");
+    if (!payload) {
+      showCopyToast(false);
+      return;
+    }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(payload);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = payload;
+        ta.setAttribute("readonly", "");
+        ta.style.cssText = "position:fixed;left:-9999px;top:0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      if (btn) {
+        btn.classList.add("is-copied");
+        setTimeout(() => btn.classList.remove("is-copied"), 900);
+      }
+      showCopyToast(true);
+    } catch (_e) {
+      showCopyToast(false);
+    }
+  }
+
+  table.querySelectorAll(".th-copy-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const idx = Number(btn.getAttribute("data-copy-col"));
+      if (!Number.isFinite(idx)) return;
+      copyColumn(idx, btn);
+    });
+  });
+
+  syncStickyOffsets();
+  window.addEventListener("resize", syncStickyOffsets);
   applyFilters();
+  syncStickyOffsets();
 })();
 """
 
