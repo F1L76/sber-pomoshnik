@@ -2,7 +2,7 @@
  * Клиент API конвертера: keep-alive, пробуждение Render, async + JSON fallback.
  */
 (function (global) {
-    const VERSION = 4;
+    const VERSION = 5;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     let keepAliveWs = null;
@@ -153,11 +153,25 @@
             }
             if (!res.ok) {
                 if (isRetryableHttp(res.status) && attempt < maxAttempts) continue;
-                throw new Error(job.error || `HTTP ${res.status}`);
+                const errMsg = job.error || `HTTP ${res.status}`;
+                // Render перезапустил процесс — задача из памяти/диска пропала
+                if (res.status === 404 || /не найдена|истекла/i.test(errMsg)) {
+                    const lost = new Error(errMsg);
+                    lost.code = "JOB_LOST";
+                    throw lost;
+                }
+                throw new Error(errMsg);
             }
             if (job.status === "done" && job.result) return job.result;
-            if (job.status === "error") throw new Error(job.error || "Ошибка конвертации");
-            if (onProgress) onProgress(attempt, maxAttempts, job.status);
+            if (job.status === "error") {
+                const errMsg = job.error || "Ошибка конвертации";
+                if (/прервалась|перезапуск/i.test(errMsg)) {
+                    const lost = new Error(errMsg);
+                    lost.code = "JOB_LOST";
+                    throw lost;
+                }
+                throw new Error(errMsg);
+            }            if (onProgress) onProgress(attempt, maxAttempts, job.status);
         }
         throw new Error("Конвертация заняла слишком много времени.");
     }
@@ -262,7 +276,10 @@
                 const msg = String(e.message || e);
                 const retryable =
                     e.name === "AbortError" ||
-                    /503|502|504|проснулся|Render|network|fetch|HTTP 5/i.test(msg);
+                    e.code === "JOB_LOST" ||
+                    /503|502|504|проснулся|Render|network|fetch|HTTP 5|не найдена|истекла|прервалась|перезапуск/i.test(
+                        msg
+                    );
                 if (!useJson && retryable) useJson = true;
                 if (attempt < maxAttempts && retryable) continue;
                 throw e;
