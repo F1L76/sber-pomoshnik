@@ -248,8 +248,7 @@
         .module-card-indev {
             position: relative;
             overflow: hidden;
-            filter: grayscale(1);
-            opacity: 0.78;
+            opacity: 0.9;
             cursor: not-allowed;
             background: #ECEFF3;
             border-color: #D5DDE5;
@@ -265,6 +264,10 @@
         .module-card-indev .module-icon-bg i {
             color: #94A3B8 !important;
         }
+        .module-card-indev h3,
+        .module-card-indev p {
+            color: #64748B !important;
+        }
         .module-card-indev .btn {
             pointer-events: none;
             opacity: 0.55;
@@ -277,16 +280,16 @@
             left: 50%;
             z-index: 2;
             transform: translate(-50%, -50%) rotate(-18deg);
-            border: 3px solid #C62828;
-            color: #C62828;
-            background: rgba(255, 255, 255, 0.88);
+            border: 3px solid #E53935;
+            color: #E53935;
+            background: rgba(255, 255, 255, 0.92);
             font-weight: 800;
-            font-size: clamp(0.85rem, 2.2vw, 1.05rem);
+            font-size: clamp(0.9rem, 2.4vw, 1.15rem);
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            padding: 0.35rem 0.75rem;
+            padding: 0.4rem 0.85rem;
             border-radius: 6px;
-            box-shadow: 0 2px 0 rgba(198, 40, 40, 0.25);
+            box-shadow: 0 2px 8px rgba(229, 57, 53, 0.35);
             pointer-events: none;
             white-space: nowrap;
         }
