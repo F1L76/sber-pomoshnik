@@ -54,9 +54,7 @@
             padding: 0.25rem 0.55rem;
             border-radius: 8px;
         }
-        .source-cian { background: #0563f5; color: #fff; }
-        .source-avito { background: #00aaff; color: #00334d; }
-        .source-domclick { background: #21A038; color: #fff; }
+        .source-bazacoop { background: #1a5f4a; color: #fff; }
         .source-kadbase { background: #2d6a1f; color: #fff; }
         .source-2gis { background: #19aa1e; color: #fff; }
         .source-yandex { background: #fc3f1d; color: #fff; }
@@ -312,8 +310,8 @@
         const results = document.getElementById("results");
         const alertBox = document.getElementById("alertBox");
 
-        const SOURCE_LABELS = { cian: "Циан", avito: "Авито", domclick: "Домклик" };
-        const SOURCE_PROGRESS = { rosreestr: "Росреестр", kadbase: "kadbase.ru", panorama: "2ГИС и Яндекс", avito: "Авито", domclick: "Домклик", cian: "Циан" };
+        const SOURCE_LABELS = { bazacoop: "БазаЦООП" };
+        const SOURCE_PROGRESS = { rosreestr: "Росреестр", kadbase: "kadbase.ru", panorama: "2ГИС и Яндекс", bazacoop: "БазаЦООП" };
         const SEARCH_PHRASES = {
             start: [
                 "Котик уже на разведке — открываем кадастровый номер",
@@ -331,8 +329,8 @@
                 "Смотрим, как объект выглядит с улицы"
             ],
             listings: [
-                "Сканируем объявления на Авито, Циан и Домклик",
-                "Ищем похожие продажи рядом — пригодится для ориентира",
+                "Ищем объявления в БазаЦООП",
+                "Подбираем аналоги по кадастру и региону",
                 "Собираем рыночный контекст вокруг этого адреса"
             ],
             waiting: [
@@ -371,7 +369,7 @@
             if (!progressState.rosreestr) return "start";
             if (progressState.rosreestr === "done" && progressState.kadbase !== "done") return "rosreestr";
             if (progressState.panorama !== "done" || progressState.kadbase !== "done") return "enrich";
-            if ([progressState.avito, progressState.domclick, progressState.cian].some((s) => s === "pending")) {
+            if (progressState.bazacoop === "pending") {
                 return "listings";
             }
             return "waiting";
@@ -699,9 +697,7 @@
         function renderLinks(links) {
             return [
                 ["kadbase.ru", links.kadbase || "https://kadbase.ru/search/", "kadbase"],
-                ["Авито", links.avito, "avito"],
-                ["Циан", links.cian, "cian"],
-                ["Домклик", links.domclick, "domclick"]
+                ["БазаЦООП", links.bazacoop || "https://bazacoop.ru/cadastral", "bazacoop"]
             ].map(([label, url, cls]) =>
                 `<a class="btn btn-outline-secondary btn-sm" href="${escapeHtml(url)}" target="_blank" rel="noopener">
                     <span class="source-badge source-${cls} me-1">${label}</span> Открыть поиск
@@ -761,7 +757,7 @@
             const meta = note ? `<div class="alert alert-info">${escapeHtml(note)}</div>` : "";
             const statsHtml = stats
                 ? `<p class="text-muted small" id="listingsStats">Найдено объявлений: ${stats.matched || 0}
-                (Циан: ${stats.bySource?.cian || 0}, Авито: ${stats.bySource?.avito || 0}, Домклик: ${stats.bySource?.domclick || 0})</p>`
+                (БазаЦООП: ${stats.bySource?.bazacoop || 0})</p>`
                 : `<p class="text-muted small" id="listingsStats">Ищем объявления…</p>`;
             return meta + statsHtml;
         }
@@ -820,7 +816,7 @@
 
             if (chunk.event === "rosreestr") {
                 progressState.rosreestr = "done";
-                ["kadbase", "panorama", "avito", "domclick", "cian"].forEach((k) => { progressState[k] = "pending"; });
+                ["kadbase", "panorama", "bazacoop"].forEach((k) => { progressState[k] = "pending"; });
                 updateProgress();
                 results.classList.remove("d-none");
                 document.getElementById("rosreestrBlock").innerHTML = renderRosreestr(chunk.data);
@@ -836,7 +832,7 @@
                 document.getElementById("listingsBlock").innerHTML = renderListingsHeader(null) +
                     `<div class="card-panel p-4 text-center text-muted" id="listingsPlaceholder">
                         <div class="spinner-border spinner-border-sm text-success mb-2"></div>
-                        <p class="mb-0 small">Ожидаем объявления с площадок…</p>
+                        <p class="mb-0 small">Ожидаем объявления из БазаЦООП…</p>
                     </div>`;
                 showPanoramaLoading();
             }
@@ -896,7 +892,7 @@
                         state.sourceNotices.push(notice);
                     }
                 }
-                ["kadbase", "panorama", "avito", "domclick", "cian"].forEach((k) => {
+                ["kadbase", "panorama", "bazacoop"].forEach((k) => {
                     if (progressState[k] === "pending") progressState[k] = "done";
                 });
                 updateProgress();
@@ -918,14 +914,14 @@
                     document.getElementById("listingsBlock").insertAdjacentHTML("beforeend",
                         `<div class="card-panel p-4 text-center text-muted">
                             <i class="fa-regular fa-folder-open fa-2x mb-3"></i>
-                            <p class="mb-2">Объявления о продаже не найдены на Авито, Циан и Домклик.</p>
-                            <p class="small mb-0">Используйте ссылки поиска выше.</p>
+                            <p class="mb-2">Объявления о продаже не найдены в БазаЦООП.</p>
+                            <p class="small mb-0">Используйте ссылку поиска выше.</p>
                         </div>`);
                 }
                 const partialErrors = [...new Set(state.errors)].filter((err) => {
                     const lower = String(err).toLowerCase();
-                    if (lower.startsWith("авито")) {
-                        return !state.sourceNotices.some((n) => n.source === "avito");
+                    if (lower.includes("базацооп") || lower.includes("bazacoop")) {
+                        return !state.sourceNotices.some((n) => n.source === "bazacoop");
                     }
                     return true;
                 });
