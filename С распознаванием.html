@@ -702,7 +702,12 @@
                 <button type="button" class="btn btn-outline-danger rounded-pill px-4" id="conclusionDetailDeleteBtn" style="display: none;" title="Удалить это заключение из карточки клиента">
                     <i class="fas fa-trash-alt me-1" aria-hidden="true"></i>Удалить заключение
                 </button>
-                <button type="button" class="btn btn-outline-secondary rounded-pill px-4 ms-auto" data-bs-dismiss="modal">Закрыть</button>
+                <div class="d-flex flex-wrap gap-2 ms-auto">
+                    <button type="button" class="btn btn-success rounded-pill px-4" id="conclusionDetailPdfBtn" style="display: none;" title="Скачать сводный отчёт в PDF">
+                        <i class="fas fa-file-pdf me-1" aria-hidden="true"></i>Скачать PDF
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Закрыть</button>
+                </div>
             </div>
         </div>
     </div>
@@ -822,6 +827,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
 <script src="/converter-status-ui.js?v=6"></script>
 <script src="/zalog-api-client.js?v=5"></script>
 <script>
@@ -1298,6 +1304,9 @@
                     <button type="button" class="btn btn-sm btn-outline-sber conclusion-detail-btn" data-conclusion-id="${c.id}">
                         <i class="fas fa-info-circle me-1" aria-hidden="true"></i>Подробнее
                     </button>
+                    ${c.reportHtml ? `<button type="button" class="btn btn-sm btn-success conclusion-pdf-btn" data-conclusion-id="${c.id}" title="Скачать заключение в PDF">
+                        <i class="fas fa-file-pdf me-1" aria-hidden="true"></i>PDF
+                    </button>` : ""}
                     <button type="button" class="btn btn-sm btn-outline-danger conclusion-delete-btn" data-conclusion-id="${c.id}" title="Удалить заключение">
                         <i class="fas fa-trash-alt" aria-hidden="true"></i><span class="visually-hidden"> Удалить</span>
                     </button>
@@ -1309,6 +1318,10 @@
             btn.removeEventListener("click", detailHandler);
             btn.addEventListener("click", detailHandler);
         });
+        document.querySelectorAll(".conclusion-pdf-btn").forEach(btn => {
+            btn.removeEventListener("click", conclusionPdfHandler);
+            btn.addEventListener("click", conclusionPdfHandler);
+        });
         document.querySelectorAll(".conclusion-delete-btn").forEach(btn => {
             btn.removeEventListener("click", deleteConclusionHandler);
             btn.addEventListener("click", deleteConclusionHandler);
@@ -1318,6 +1331,14 @@
     function detailHandler(e) {
         const conclusionId = e.currentTarget.getAttribute("data-conclusion-id");
         showConclusionDetails(conclusionId);
+    }
+
+    function conclusionPdfHandler(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const conclusionId = e.currentTarget.getAttribute("data-conclusion-id");
+        const conclusion = currentClientData?.conclusions?.find((c) => c.id === conclusionId);
+        if (conclusion) downloadConclusionPdf(conclusion, e.currentTarget);
     }
 
     function deleteConclusion(conclusionId) {
@@ -1391,13 +1412,119 @@
             delBtn.style.display = "inline-block";
             delBtn.setAttribute("data-conclusion-id", conclusionId);
         }
+        const pdfBtn = document.getElementById("conclusionDetailPdfBtn");
+        if (pdfBtn) {
+            const canPdf = Boolean(conclusion.reportHtml);
+            pdfBtn.style.display = canPdf ? "inline-block" : "none";
+            pdfBtn.setAttribute("data-conclusion-id", conclusionId);
+            pdfBtn.disabled = !canPdf;
+        }
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();
+    }
+
+    async function waitForReportFrame(frame) {
+        if (!frame) throw new Error("Нет отчёта для PDF");
+        if (frame.contentDocument?.querySelector(".report-page")) return frame.contentDocument;
+        await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error("Отчёт не загрузился для PDF")), 8000);
+            frame.addEventListener(
+                "load",
+                () => {
+                    clearTimeout(timer);
+                    resolve();
+                },
+                { once: true }
+            );
+        });
+        const doc = frame.contentDocument;
+        if (!doc?.querySelector(".report-page")) throw new Error("В отчёте нет содержимого для PDF");
+        return doc;
+    }
+
+    async function downloadConclusionPdf(conclusion, triggerBtn) {
+        if (!conclusion?.reportHtml) {
+            alert("Нет сводного отчёта для PDF. Импортируйте заключение через конвертер (PDF + XLSX).");
+            return;
+        }
+        if (typeof html2pdf === "undefined") {
+            alert("Не удалось загрузить библиотеку PDF. Обновите страницу.");
+            return;
+        }
+
+        const safeId = String(conclusion.id || "report").replace(/[^\w.-]+/g, "_");
+        const filename = `zalog_${safeId}.pdf`;
+        const modalEl = document.getElementById("conclusionDetailModal");
+        let frame = null;
+        let tempFrame = null;
+        let btn = triggerBtn || document.getElementById("conclusionDetailPdfBtn");
+
+        if (modalEl?.dataset.openConclusionId === conclusion.id) {
+            frame = modalEl.querySelector(".conclusion-report-frame");
+        }
+        if (!frame) {
+            tempFrame = document.createElement("iframe");
+            tempFrame.setAttribute("title", "PDF export");
+            tempFrame.style.cssText =
+                "position:fixed;left:-10000px;top:0;width:1280px;height:1800px;opacity:0;pointer-events:none;border:0;";
+            document.body.appendChild(tempFrame);
+            tempFrame.srcdoc = conclusion.reportHtml;
+            frame = tempFrame;
+        }
+
+        if (btn) btn.disabled = true;
+        try {
+            const doc = await waitForReportFrame(frame);
+            const target = doc.querySelector(".report-page") || doc.body;
+            if (doc.fonts?.ready) await doc.fonts.ready;
+            target.classList.add("pdf-export");
+            await new Promise((r) => setTimeout(r, 300));
+
+            const captureWidth = Math.max(target.scrollWidth, target.offsetWidth, 1280);
+            const exportStyle = doc.createElement("style");
+            exportStyle.textContent =
+                `html, body { width: ${captureWidth}px !important; min-width: ${captureWidth}px !important; overflow: visible !important; }`;
+            doc.head.appendChild(exportStyle);
+
+            await html2pdf()
+                .set({
+                    margin: [6, 6, 6, 6],
+                    filename,
+                    image: { type: "jpeg", quality: 0.95 },
+                    html2canvas: {
+                        scale: 1.6,
+                        useCORS: true,
+                        letterRendering: true,
+                        scrollX: 0,
+                        scrollY: 0,
+                        width: captureWidth,
+                        windowWidth: captureWidth
+                    },
+                    pagebreak: { mode: ["css", "legacy"] },
+                    jsPDF: { unit: "mm", format: "a4", orientation: "landscape" }
+                })
+                .from(target)
+                .save();
+
+            target.classList.remove("pdf-export");
+            exportStyle.remove();
+        } catch (err) {
+            console.error(err);
+            alert(err.message || "Не удалось сохранить PDF");
+        } finally {
+            tempFrame?.remove();
+            if (btn) btn.disabled = false;
+        }
     }
 
     document.getElementById("conclusionDetailDeleteBtn")?.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-conclusion-id");
         if (id) deleteConclusion(id);
+    });
+    document.getElementById("conclusionDetailPdfBtn")?.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-conclusion-id");
+        const conclusion = currentClientData?.conclusions?.find((c) => c.id === id);
+        if (conclusion) downloadConclusionPdf(conclusion, e.currentTarget);
     });
     document.getElementById("conclusionDetailModal")?.addEventListener("hidden.bs.modal", () => {
         const modalEl = document.getElementById("conclusionDetailModal");
@@ -1406,6 +1533,12 @@
         if (delBtn) {
             delBtn.style.display = "none";
             delBtn.removeAttribute("data-conclusion-id");
+        }
+        const pdfBtn = document.getElementById("conclusionDetailPdfBtn");
+        if (pdfBtn) {
+            pdfBtn.style.display = "none";
+            pdfBtn.removeAttribute("data-conclusion-id");
+            pdfBtn.disabled = false;
         }
     });
 

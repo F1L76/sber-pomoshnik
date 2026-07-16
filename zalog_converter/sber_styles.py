@@ -285,6 +285,12 @@ SBER_REPORT_CSS = """
       font-size: 0.58rem;
       font-weight: 600;
     }
+    .report-page.pdf-export .risk-action-col,
+    .report-page.pdf-export .btn-clear-risk,
+    .report-page.pdf-export .risk-clear-modal,
+    .report-page.pdf-export .objects-table .filter-row {
+      display: none !important;
+    }
     .totals-row td {
       background: #F7FAFC;
       font-weight: 600;
