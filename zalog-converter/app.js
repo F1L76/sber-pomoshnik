@@ -316,73 +316,22 @@ function pdfFilename() {
 }
 
 async function downloadReportPdf() {
-  const doc = reportFrame.contentDocument;
-  if (!doc?.body || !lastHtml) return;
-  if (typeof html2pdf === "undefined") {
-    setStatus("error", { kind: "error", text: "Не удалось загрузить библиотеку PDF. Обновите страницу." });
+  if (!lastHtml) return;
+  if (typeof ZalogPdfExport === "undefined") {
+    setStatus("error", { kind: "error", text: "Не удалось загрузить модуль PDF. Обновите страницу." });
     return;
   }
 
-  const target = doc.querySelector(".report-page") || doc.body;
   const hadStatus = !statusEl.hidden;
   btnDownload.disabled = true;
   setStatus("processing", { kind: "loading", text: "Формируем PDF для скачивания…" });
 
-  const savedFrame = {
-    width: reportFrame.style.width,
-    maxWidth: reportFrame.style.maxWidth,
-    overflow: reportFrame.style.overflow,
-  };
-  let exportStyle = null;
-
   try {
-    if (doc.fonts?.ready) {
-      await doc.fonts.ready;
-    }
-    target.classList.add("pdf-export");
-    await new Promise((resolve) => window.setTimeout(resolve, 350));
-
-    const captureWidth = Math.max(target.scrollWidth, target.offsetWidth, 1280);
-    exportStyle = doc.createElement("style");
-    exportStyle.id = "pdf-export-viewport";
-    exportStyle.textContent =
-      `html, body { width: ${captureWidth}px !important; min-width: ${captureWidth}px !important; overflow: visible !important; }`;
-    doc.head.appendChild(exportStyle);
-
-    reportFrame.style.width = `${captureWidth + 32}px`;
-    reportFrame.style.maxWidth = "none";
-    reportFrame.style.overflow = "visible";
-    await new Promise((resolve) => window.setTimeout(resolve, 80));
-
-    await html2pdf()
-      .set({
-        margin: [6, 6, 6, 6],
-        filename: pdfFilename(),
-        image: { type: "jpeg", quality: 0.95 },
-        html2canvas: {
-          scale: 1.6,
-          useCORS: true,
-          letterRendering: true,
-          scrollX: 0,
-          scrollY: 0,
-          width: captureWidth,
-          windowWidth: captureWidth,
-        },
-        pagebreak: { mode: ["css", "legacy"] },
-        jsPDF: { unit: "mm", format: "a4", orientation: "landscape" },
-      })
-      .from(target)
-      .save();
+    await ZalogPdfExport.exportReportHtmlToPdf(lastHtml, pdfFilename());
     if (!hadStatus) clearStatus();
   } catch (error) {
     setStatus("error", { kind: "error", text: error.message || "Не удалось сохранить PDF" });
   } finally {
-    target.classList.remove("pdf-export");
-    exportStyle?.remove();
-    reportFrame.style.width = savedFrame.width;
-    reportFrame.style.maxWidth = savedFrame.maxWidth;
-    reportFrame.style.overflow = savedFrame.overflow;
-    scheduleReportFrameFit();
     btnDownload.disabled = false;
   }
 }

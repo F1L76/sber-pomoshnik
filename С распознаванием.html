@@ -830,6 +830,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
 <script src="/converter-status-ui.js?v=6"></script>
 <script src="/zalog-api-client.js?v=5"></script>
+<script src="/zalog-pdf-export.js?v=1"></script>
 <script>
     const mockData = {
         "1234567890": {
@@ -1423,96 +1424,26 @@
         modal.show();
     }
 
-    async function waitForReportFrame(frame) {
-        if (!frame) throw new Error("Нет отчёта для PDF");
-        if (frame.contentDocument?.querySelector(".report-page")) return frame.contentDocument;
-        await new Promise((resolve, reject) => {
-            const timer = setTimeout(() => reject(new Error("Отчёт не загрузился для PDF")), 8000);
-            frame.addEventListener(
-                "load",
-                () => {
-                    clearTimeout(timer);
-                    resolve();
-                },
-                { once: true }
-            );
-        });
-        const doc = frame.contentDocument;
-        if (!doc?.querySelector(".report-page")) throw new Error("В отчёте нет содержимого для PDF");
-        return doc;
-    }
-
     async function downloadConclusionPdf(conclusion, triggerBtn) {
         if (!conclusion?.reportHtml) {
             alert("Нет сводного отчёта для PDF. Импортируйте заключение через конвертер (PDF + XLSX).");
             return;
         }
-        if (typeof html2pdf === "undefined") {
-            alert("Не удалось загрузить библиотеку PDF. Обновите страницу.");
+        if (typeof ZalogPdfExport === "undefined") {
+            alert("Не удалось загрузить модуль PDF. Обновите страницу.");
             return;
         }
 
         const safeId = String(conclusion.id || "report").replace(/[^\w.-]+/g, "_");
         const filename = `zalog_${safeId}.pdf`;
-        const modalEl = document.getElementById("conclusionDetailModal");
-        let frame = null;
-        let tempFrame = null;
-        let btn = triggerBtn || document.getElementById("conclusionDetailPdfBtn");
-
-        if (modalEl?.dataset.openConclusionId === conclusion.id) {
-            frame = modalEl.querySelector(".conclusion-report-frame");
-        }
-        if (!frame) {
-            tempFrame = document.createElement("iframe");
-            tempFrame.setAttribute("title", "PDF export");
-            tempFrame.style.cssText =
-                "position:fixed;left:-10000px;top:0;width:1280px;height:1800px;opacity:0;pointer-events:none;border:0;";
-            document.body.appendChild(tempFrame);
-            tempFrame.srcdoc = conclusion.reportHtml;
-            frame = tempFrame;
-        }
-
+        const btn = triggerBtn || document.getElementById("conclusionDetailPdfBtn");
         if (btn) btn.disabled = true;
         try {
-            const doc = await waitForReportFrame(frame);
-            const target = doc.querySelector(".report-page") || doc.body;
-            if (doc.fonts?.ready) await doc.fonts.ready;
-            target.classList.add("pdf-export");
-            await new Promise((r) => setTimeout(r, 300));
-
-            const captureWidth = Math.max(target.scrollWidth, target.offsetWidth, 1280);
-            const exportStyle = doc.createElement("style");
-            exportStyle.textContent =
-                `html, body { width: ${captureWidth}px !important; min-width: ${captureWidth}px !important; overflow: visible !important; }`;
-            doc.head.appendChild(exportStyle);
-
-            await html2pdf()
-                .set({
-                    margin: [6, 6, 6, 6],
-                    filename,
-                    image: { type: "jpeg", quality: 0.95 },
-                    html2canvas: {
-                        scale: 1.6,
-                        useCORS: true,
-                        letterRendering: true,
-                        scrollX: 0,
-                        scrollY: 0,
-                        width: captureWidth,
-                        windowWidth: captureWidth
-                    },
-                    pagebreak: { mode: ["css", "legacy"] },
-                    jsPDF: { unit: "mm", format: "a4", orientation: "landscape" }
-                })
-                .from(target)
-                .save();
-
-            target.classList.remove("pdf-export");
-            exportStyle.remove();
+            await ZalogPdfExport.exportReportHtmlToPdf(conclusion.reportHtml, filename);
         } catch (err) {
             console.error(err);
             alert(err.message || "Не удалось сохранить PDF");
         } finally {
-            tempFrame?.remove();
             if (btn) btn.disabled = false;
         }
     }
