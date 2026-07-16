@@ -177,7 +177,7 @@ def render_objects_block(objects: list[CollateralObject]) -> str:
             f'<td class="col-name">{escape_html(obj.name)}</td>'
             f'<td class="col-id">{escape_html(obj.identifier or "—")}</td>'
             f'<td class="col-quality">{escape_html(obj.quality_category)}</td>'
-            f'<td class="col-valtype">{escape_html(obj.valuation_type)}</td>'
+            f'<td class="col-valtype">{escape_html(obj.valuation_type or "—")}</td>'
             f'<td class="text-end col-num">{format_money(cost_num)}&nbsp;₽</td>'
             f'<td class="text-end col-num">{format_money(coll_num)}&nbsp;₽</td>'
             f'<td class="text-end col-pct">{discount:.1f}%</td>'

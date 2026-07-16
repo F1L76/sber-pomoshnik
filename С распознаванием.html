@@ -1192,11 +1192,11 @@
             name: obj.name || "",
             identifier: obj.identifier || "",
             qualityCategory: obj.quality_category || "Стандарт",
-            valuationType: obj.valuation_type || (cost > 0 ? "Рыночная" : "Льготная"),
+            valuationType: obj.valuation_type || "",
             cost,
             collateralValue: Number.isFinite(collateral) ? collateral : cost,
             discount,
-            costType: obj.cost_type || (cost > 0 ? "рыночная" : "льготная"),
+            costType: obj.cost_type || (obj.valuation_type || "").toLowerCase(),
             bankMarketPrice: Number(obj.bank_market_price) || cost * 1.05,
             liquidity: obj.liquidity || ""
         };

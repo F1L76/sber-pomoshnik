@@ -34,6 +34,7 @@ def build_asz_col_map(header_row: list[Any]) -> dict[str, int]:
         "collateral": -1,
         "quality": -1,
         "liquidity": -1,
+        "valuation_type": -1,
         "conditional": -1,
         "classifier": -1,
         "name": -1,
@@ -57,6 +58,11 @@ def build_asz_col_map(header_row: list[Any]) -> dict[str, int]:
             col_map["collateral"] = index
         elif "категория качества" in value:
             col_map["quality"] = index
+        elif "вид оценочной стоимости" in value or value.strip() in {
+            "вид стоимости",
+            "тип стоимости",
+        }:
+            col_map["valuation_type"] = index
         elif "срок экспозиции" in value or "ликвидность" in value and "ликвидацион" not in value:
             col_map["liquidity"] = index
 
@@ -292,6 +298,64 @@ def extract_liquidity(row: list[Any], col_map: dict[str, int]) -> str:
     return _format_liquidity_cell(_cell(row, col_map.get("liquidity", 11)))
 
 
+_VALUATION_CANON = {
+    "рыночная": "Рыночная",
+    "кадастровая": "Кадастровая",
+    "прочая": "Прочая",
+    "балансовая": "Балансовая",
+    "льготная": "Льготная",
+}
+
+
+def normalize_valuation_type(raw: Any) -> str:
+    """Нормализует вид стоимости из Excel (Рыночная / Кадастровая / Прочая / Балансовая)."""
+    text = str(raw or "").strip()
+    if not text or text.lower() in {"н/д", "не указано", "none", "-"}:
+        return ""
+    # берём первое значимое слово/фразу до лишней пунктуации
+    head = re.split(r"[;/|]", text, maxsplit=1)[0].strip()
+    key = re.sub(r"\s+", " ", head).casefold()
+    for needle, label in _VALUATION_CANON.items():
+        if key == needle or key.startswith(needle):
+            return label
+    # если уже одно из известных написаний с другим регистром
+    for label in _VALUATION_CANON.values():
+        if key == label.casefold():
+            return label
+    return head[:40]
+
+
+def extract_valuation_type(description: str, row: list[Any] | None = None, col_map: dict[str, int] | None = None) -> str:
+    """Вид оценочной стоимости из описания ASZ или отдельной колонки."""
+    if col_map and row is not None:
+        idx = col_map.get("valuation_type", -1)
+        if idx is not None and idx >= 0:
+            from_col = normalize_valuation_type(_cell(row, idx))
+            if from_col:
+                return from_col
+
+    fields = parse_semicolon_description(description)
+    for key in (
+        "вид оценочной стоимости",
+        "вид стоимости",
+        "тип стоимости",
+        "вид оценки",
+    ):
+        if key in fields:
+            value = normalize_valuation_type(fields[key])
+            if value:
+                return value
+
+    match = re.search(
+        r"вид\s+(?:оценочной\s+)?стоимост[иы]?\s*:\s*([^;]+)",
+        str(description or ""),
+        re.IGNORECASE,
+    )
+    if match:
+        return normalize_valuation_type(match.group(1))
+    return ""
+
+
 def extract_identifier_from_asz_description(description_cell: str) -> str:
     from_type_colons = _extract_identifier_after_type_colons(description_cell)
     if from_type_colons:
@@ -342,8 +406,8 @@ def parse_asz_row(row: list[Any], col_map: dict[str, int], row_index: int) -> di
         collateral = cost
     quality = str(_cell(row, col_map["quality"]) or "").strip() or "Стандарт"
     liquidity = extract_liquidity(row, col_map)
-    valuation_type = "Рыночная" if cost > 0 else "Льготная"
-    cost_type = "рыночная" if cost > 0 else "льготная"
+    valuation_type = extract_valuation_type(description, row, col_map)
+    cost_type = valuation_type.lower() if valuation_type else ""
     name = format_object_report_name(
         description or kind_path,
         classifier_raw,

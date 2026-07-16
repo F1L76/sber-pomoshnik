@@ -596,7 +596,12 @@ def format_object_report_name(
 
     eval_date = _report_field(fields, "дата оценки")
     cost_label = (
-        (valuation_type or cost_type or _report_field(fields, "вид стоимости", "стоимость") or "")
+        (
+            valuation_type
+            or cost_type
+            or _report_field(fields, "вид оценочной стоимости", "вид стоимости", "тип стоимости")
+            or ""
+        )
         .strip()
         .lower()
     )

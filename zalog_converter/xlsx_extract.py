@@ -6,7 +6,12 @@ import re
 from dataclasses import dataclass, asdict
 from typing import Any
 
-from .asz_xlsx import build_asz_col_map, find_asz_header_row, parse_asz_row
+from .asz_xlsx import (
+    build_asz_col_map,
+    extract_valuation_type,
+    find_asz_header_row,
+    parse_asz_row,
+)
 from .name_format import (
     collect_row_description_segments,
     format_classifier_display,
@@ -123,6 +128,7 @@ def _build_col_map(header_row: list[Any]) -> dict[str, int]:
         "discount": -1,
         "collateral": -1,
         "quality": -1,
+        "valuation_type": -1,
     }
     for index, cell in enumerate(header_row):
         value = str(cell or "").lower()
@@ -140,6 +146,8 @@ def _build_col_map(header_row: list[Any]) -> dict[str, int]:
             col_map["identifier"] = index
         elif "примечан" in value:
             col_map["note"] = index
+        elif "вид оценочной стоимости" in value or "вид стоимости" in value or "тип стоимости" in value:
+            col_map["valuation_type"] = index
         elif "оценочная стоимость" in value or "стоимость оцен" in value:
             col_map["cost"] = index
         elif "дисконт" in value:
@@ -352,8 +360,15 @@ def _parse_simple_format(
         classifier_code = get_classifier_code_3_level(classifier_raw)
         row_segments = collect_row_description_segments(row, col_map)
         estimated_cost = parse_number_cell(_cell(row, col_map["cost"]))
-        valuation_type = "Рыночная" if estimated_cost > 0 else "Льготная"
-        cost_type = "рыночная" if estimated_cost > 0 else "льготная"
+        fields_early = merge_description_fields(raw_name_cell, row_segments or None)
+        valuation_type = extract_valuation_type(raw_name_cell, row, col_map)
+        if not valuation_type:
+            for key in ("вид оценочной стоимости", "вид стоимости", "тип стоимости"):
+                if fields_early.get(key):
+                    valuation_type = extract_valuation_type(f"{key}: {fields_early[key]}")
+                    if valuation_type:
+                        break
+        cost_type = valuation_type.lower() if valuation_type else ""
         identifier = str(_cell(row, col_map["identifier"]) or "").strip()
         if _is_known_label(identifier):
             identifier = ""
