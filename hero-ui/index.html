@@ -4,15 +4,690 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Роль ТМ ММБ в ЗС</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Barlow:wght@300;400;500;600&display=swap"
-      rel="stylesheet"
-    />
+    <style>
+      :root {
+        --color-onyx-canvas: #171721;
+        --color-graphite-card: #1e1e2a;
+        --color-obsidian-button: #272735;
+        --color-slate-border: #70707d;
+        --color-mist-border: #e2e3ed;
+        --color-ash-text: #c3c3cc;
+        --color-ivory-text: #ededf3;
+        --color-cobalt: #5266eb;
+        --color-pure-white: #ffffff;
+        --page-max-width: 1200px;
+        --section-gap: 72px;
+        --card-padding: 32px;
+        --radius-card: 12px;
+        --radius-pill: 32px;
+        --radius-nav: 40px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--color-onyx-canvas);
+        color: var(--color-ivory-text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      img {
+        max-width: 100%;
+        display: block;
+      }
+
+      .page-shell {
+        background: var(--color-onyx-canvas);
+      }
+
+      .container {
+        width: min(calc(100% - 32px), var(--page-max-width));
+        margin: 0 auto;
+      }
+
+      .topbar {
+        position: fixed;
+        top: 16px;
+        left: 0;
+        right: 0;
+        z-index: 30;
+      }
+
+      .topbar-inner {
+        width: min(calc(100% - 32px), var(--page-max-width));
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 12px 16px;
+        border-radius: var(--radius-nav);
+        transition: background 180ms ease, backdrop-filter 180ms ease, border-color 180ms ease;
+      }
+
+      .topbar.scrolled .topbar-inner {
+        background: rgba(30, 30, 42, 0.72);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(226, 227, 237, 0.16);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 16px;
+        font-weight: 480;
+        letter-spacing: 0.01em;
+      }
+
+      .brand-mark {
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        border: 1px solid rgba(237, 237, 243, 0.36);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+
+      .brand-mark::before,
+      .brand-mark::after {
+        content: "";
+        position: absolute;
+        border-radius: 999px;
+        border: 1px solid rgba(237, 237, 243, 0.45);
+      }
+
+      .brand-mark::before {
+        width: 18px;
+        height: 18px;
+      }
+
+      .brand-mark::after {
+        width: 8px;
+        height: 8px;
+        background: rgba(237, 237, 243, 0.1);
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .nav a,
+      .nav span {
+        padding: 10px 20px;
+        border-radius: 40px;
+        color: var(--color-ivory-text);
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .ghost-button,
+      .primary-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 46px;
+        padding: 12px 24px;
+        border-radius: var(--radius-pill);
+        font-size: 16px;
+        line-height: 1;
+        font-weight: 400;
+      }
+
+      .ghost-button {
+        border: 1px solid var(--color-mist-border);
+        color: var(--color-ivory-text);
+        background: transparent;
+      }
+
+      .primary-button {
+        border: 0;
+        color: var(--color-pure-white);
+        background: var(--color-cobalt);
+      }
+
+      .hero {
+        min-height: 100vh;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      .hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(rgba(23, 23, 33, 0.46), rgba(23, 23, 33, 0.8)),
+          url("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1800&q=80")
+            center/cover no-repeat;
+      }
+
+      .hero-content {
+        position: relative;
+        z-index: 1;
+        width: min(calc(100% - 32px), 740px);
+        text-align: center;
+        padding: 96px 0 72px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 40px;
+        background: rgba(30, 30, 42, 0.7);
+        border: 1px solid rgba(226, 227, 237, 0.18);
+        color: var(--color-ash-text);
+        font-size: 12px;
+        line-height: 1;
+        letter-spacing: 0.12px;
+        margin-bottom: 24px;
+      }
+
+      .eyebrow-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--color-cobalt);
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+        font-weight: 480;
+        letter-spacing: 0.01em;
+      }
+
+      .hero h1 {
+        font-size: clamp(42px, 8vw, 65px);
+        line-height: 1.08;
+        max-width: 680px;
+        margin: 0 auto 20px;
+      }
+
+      .hero p {
+        margin: 0 auto;
+        max-width: 560px;
+        color: var(--color-ivory-text);
+        font-size: 18px;
+        line-height: 1.35;
+      }
+
+      .hero-actions {
+        margin-top: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .hero-metrics {
+        margin-top: 40px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .metric-card,
+      .card,
+      .split-card {
+        background: var(--color-graphite-card);
+        border-radius: var(--radius-card);
+        padding: var(--card-padding);
+        border: 0;
+      }
+
+      .metric-value {
+        font-size: 32px;
+        line-height: 1.15;
+        letter-spacing: 0.48px;
+        margin-bottom: 8px;
+      }
+
+      .metric-label {
+        color: var(--color-ash-text);
+        font-size: 14px;
+        line-height: 1.3;
+      }
+
+      .section {
+        padding: var(--section-gap) 0;
+      }
+
+      .section-header {
+        max-width: 760px;
+        margin-bottom: 32px;
+      }
+
+      .section-kicker {
+        color: var(--color-ash-text);
+        font-size: 12px;
+        line-height: 1;
+        letter-spacing: 0.12px;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+      }
+
+      .section-header h2 {
+        font-size: clamp(28px, 5vw, 42px);
+        line-height: 1.15;
+        margin-bottom: 12px;
+      }
+
+      .section-header p {
+        margin: 0;
+        color: var(--color-ash-text);
+        font-size: 16px;
+        line-height: 1.5;
+      }
+
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .card {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .card-tag {
+        display: inline-flex;
+        align-self: flex-start;
+        padding: 8px 14px;
+        border-radius: 40px;
+        background: var(--color-obsidian-button);
+        color: var(--color-ash-text);
+        font-size: 12px;
+        line-height: 1;
+      }
+
+      .card h3 {
+        font-size: 28px;
+        line-height: 1.2;
+        letter-spacing: 0.42px;
+      }
+
+      .card p,
+      .split-copy p,
+      .list li {
+        color: var(--color-ash-text);
+        font-size: 16px;
+        line-height: 1.5;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1.15fr 0.85fr;
+        gap: 16px;
+      }
+
+      .split-card {
+        min-height: 100%;
+      }
+
+      .list {
+        margin: 24px 0 0;
+        padding-left: 20px;
+      }
+
+      .list li + li {
+        margin-top: 12px;
+      }
+
+      .process {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .process-step {
+        background: var(--color-graphite-card);
+        border-radius: var(--radius-card);
+        padding: 24px;
+      }
+
+      .process-step strong {
+        display: block;
+        color: var(--color-ivory-text);
+        font-size: 21px;
+        line-height: 1.25;
+        font-weight: 480;
+        margin-bottom: 10px;
+      }
+
+      .process-step p {
+        margin: 0;
+        color: var(--color-ash-text);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .cta-panel {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        background: var(--color-graphite-card);
+        border-radius: var(--radius-card);
+        padding: 32px;
+      }
+
+      .cta-panel h3 {
+        font-size: 32px;
+        line-height: 1.15;
+        margin-bottom: 10px;
+      }
+
+      .cta-panel p {
+        margin: 0;
+        color: var(--color-ash-text);
+        max-width: 640px;
+        line-height: 1.5;
+      }
+
+      footer {
+        padding: 24px 0 40px;
+      }
+
+      .disclaimer {
+        color: var(--color-ash-text);
+        font-size: 12px;
+        line-height: 1.35;
+        letter-spacing: 0.01em;
+      }
+
+      @media (max-width: 1080px) {
+        .nav {
+          display: none;
+        }
+
+        .hero-metrics,
+        .card-grid,
+        .process,
+        .split {
+          grid-template-columns: 1fr;
+        }
+
+        .cta-panel {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .topbar-inner {
+          padding: 12px;
+        }
+
+        .actions .ghost-button {
+          display: none;
+        }
+
+        .hero-content {
+          padding-top: 120px;
+        }
+
+        .metric-card,
+        .card,
+        .split-card,
+        .cta-panel {
+          padding: 24px;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div class="page-shell">
+      <header class="topbar" id="topbar">
+        <div class="topbar-inner">
+          <a class="brand" href="#hero">
+            <span class="brand-mark" aria-hidden="true"></span>
+            <span>ТМ ММБ / ЗС</span>
+          </a>
+
+          <nav class="nav" aria-label="Основная навигация">
+            <a href="#role">Роль</a>
+            <a href="#capabilities">Взаимодействие</a>
+            <a href="#process">Процесс</a>
+            <a href="#improvements">Улучшения</a>
+          </nav>
+
+          <div class="actions">
+            <a class="ghost-button" href="#role">Подробнее</a>
+            <a class="primary-button" href="#improvements">Открыть схему</a>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero" id="hero">
+          <div class="hero-content">
+            <div class="eyebrow">
+              <span class="eyebrow-dot" aria-hidden="true"></span>
+              Единый контур КП, ЗС, ДММБ и разработчиков АС
+            </div>
+
+            <h1>Роль ТМ ММБ в ЗС: спокойная координация сложных процессов</h1>
+            <p>
+              Территориальный менеджер связывает кредитующие подразделения, залоговую
+              службу, методологов и разработчиков АС: доводит дефекты до исправления,
+              возвращает ответы по методологии, сопровождает арбитражи и помогает
+              повышать автономность процессов.
+            </p>
+
+            <div class="hero-actions">
+              <a class="primary-button" href="#capabilities">Посмотреть контур</a>
+              <a class="ghost-button" href="#process">Как это работает</a>
+            </div>
+
+            <div class="hero-metrics">
+              <div class="metric-card">
+                <div class="metric-value">01</div>
+                <div class="metric-label">Единая точка обратной связи между КП и ЗС</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">04</div>
+                <div class="metric-label">Основных направления взаимодействия в ежедневной работе</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-value">360°</div>
+                <div class="metric-label">Контроль качества: дефекты, методология, обучение и улучшения</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="role">
+          <div class="container">
+            <div class="section-header">
+              <div class="section-kicker">Role</div>
+              <h2>ТМ ММБ не просто передает вопросы, а держит весь цикл до результата</h2>
+              <p>
+                В этой модели ТМ выступает связующим контуром между подразделениями.
+                Его задача не ограничивается эскалацией: он собирает входящие вопросы,
+                направляет их в нужную функцию и возвращает КП понятный, прикладной
+                результат.
+              </p>
+            </div>
+
+            <div class="card-grid" id="capabilities">
+              <article class="card">
+                <span class="card-tag">Интеграция АС</span>
+                <h3>Ошибки и дефекты</h3>
+                <p>
+                  ТМ получает от КП информацию об ошибках интеграции АС СБОФ и
+                  АС Залоги, передает дефекты разработчикам, контролирует ответ и
+                  возвращает КП обратную связь после исправления.
+                </p>
+              </article>
+
+              <article class="card">
+                <span class="card-tag">Методология</span>
+                <h3>Вопросы и разъяснения</h3>
+                <p>
+                  По вопросам методологии ТМ работает с методологами ЗС и ДММБ,
+                  чтобы КП получало не фрагментарный комментарий, а согласованную
+                  позицию, пригодную для ежедневной практики.
+                </p>
+              </article>
+
+              <article class="card">
+                <span class="card-tag">Сопровождение</span>
+                <h3>Арбитражи и обучение</h3>
+                <p>
+                  ТМ взаимодействует с группой сопровождения ЗС по арбитражам и другим
+                  вопросам, а также проводит регулярное обучение КП по совместной
+                  работе с ЗС и порядку взаимодействия.
+                </p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="container">
+            <div class="split">
+              <div class="split-card split-copy">
+                <div class="section-kicker">Expert Support</div>
+                <h2>Экспертный контур ЗС остается рядом с ТМ на сложных кейсах</h2>
+                <p>
+                  ТМ взаимодействует с экспертами ЗС в части определения стоимости,
+                  оценки рисков при подготовке залоговых заключений и иных вопросов,
+                  где требуется профессиональная экспертная позиция.
+                </p>
+                <ul class="list">
+                  <li>определение стоимости и спорные оценки;</li>
+                  <li>подсветка рисков по залоговому заключению;</li>
+                  <li>уточнение корректной логики рассмотрения кейса;</li>
+                  <li>быстрая маршрутизация сложных вопросов в профильную экспертизу.</li>
+                </ul>
+              </div>
+
+              <div class="split-card">
+                <div class="section-kicker">Outcome</div>
+                <h2>Что получает КП</h2>
+                <ul class="list">
+                  <li>понятный канал для ошибок и вопросов без поиска “к кому идти”;</li>
+                  <li>ответ не только по факту, но и по правильному порядку действий;</li>
+                  <li>поддержку по арбитражам и нестандартным ситуациям;</li>
+                  <li>обучение, повышающее автономность и качество работы.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="process">
+          <div class="container">
+            <div class="section-header">
+              <div class="section-kicker">Process</div>
+              <h2>Как выглядит рабочий цикл</h2>
+              <p>
+                Модель предельно простая: ТМ принимает сигнал от КП, направляет его в
+                нужную функцию и доводит процесс до обратной связи и закрепления
+                результата.
+              </p>
+            </div>
+
+            <div class="process">
+              <div class="process-step">
+                <strong>1. Получить</strong>
+                <p>ТМ принимает от КП дефект, методологический вопрос, кейс арбитража или запрос на разбор.</p>
+              </div>
+              <div class="process-step">
+                <strong>2. Направить</strong>
+                <p>Материал уходит в разработку АС, методологам ЗС/ДММБ, экспертам ЗС или в группу сопровождения.</p>
+              </div>
+              <div class="process-step">
+                <strong>3. Уточнить</strong>
+                <p>ТМ добивается корректного ответа, при необходимости синхронизирует несколько функций между собой.</p>
+              </div>
+              <div class="process-step">
+                <strong>4. Вернуть результат</strong>
+                <p>КП получает итоговую обратную связь, а повторяющиеся проблемы становятся материалом для обучения и улучшений.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="improvements">
+          <div class="container">
+            <div class="cta-panel">
+              <div>
+                <div class="section-kicker">Improvements</div>
+                <h3>Улучшения и оптимизация тоже проходят через ТМ</h3>
+                <p>
+                  ТМ регулярно направляет предложения по улучшению и оптимизации
+                  процессов на методологов ЗС и ДММБ, а также разработчиков АС.
+                  Цель одна: больше автономности у КП, меньше ручных разрывов,
+                  выше качество взаимодействия между ЗС и кредитующим подразделением.
+                </p>
+              </div>
+
+              <a class="primary-button" href="#hero">Вернуться к началу</a>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <div class="container">
+          <div class="disclaimer">
+            Одностраничная локальная страница по теме «Роль ТМ ММБ в ЗС». Файл можно
+            открывать напрямую в браузере на macOS без React, Vite и локального сервера.
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <script>
+      const topbar = document.getElementById("topbar");
+      const syncTopbarState = () => {
+        if (window.scrollY > 12) {
+          topbar.classList.add("scrolled");
+        } else {
+          topbar.classList.remove("scrolled");
+        }
+      };
+
+      syncTopbarState();
+      window.addEventListener("scroll", syncTopbarState, { passive: true });
+    </script>
   </body>
 </html>
