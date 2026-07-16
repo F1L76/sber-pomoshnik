@@ -329,32 +329,50 @@ SBER_REPORT_CSS = """
       max-width: none;
     }
     .report-page.pdf-export {
-      max-width: none;
-      width: 1280px;
+      max-width: 100%;
+      width: 100%;
       margin: 0;
-      padding: 1rem 1.25rem 2rem;
+      padding: 0.5rem 0.6rem 0.85rem;
+      box-sizing: border-box;
     }
     .report-page.pdf-export .info-card,
-    .report-page.pdf-export .table-responsive-custom {
+    .report-page.pdf-export .table-responsive-custom,
+    .report-page.pdf-export .objects-table-scroll {
       width: 100%;
-      overflow: visible;
+      max-width: 100%;
+      overflow: visible !important;
+      max-height: none !important;
     }
     .report-page.pdf-export .objects-table {
-      width: max-content;
-      min-width: 100%;
+      width: 100% !important;
+      min-width: 0 !important;
+      table-layout: fixed;
     }
     .report-page.pdf-export .objects-table .col-tight {
       white-space: normal;
     }
     .report-page.pdf-export .objects-table th,
     .report-page.pdf-export .objects-table td {
-      font-size: 0.62rem;
-      padding: 0.25rem 0.2rem;
-      line-height: 1.2;
+      font-size: 0.48rem;
+      padding: 0.15rem 0.12rem;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .report-page.pdf-export .objects-table th {
-      font-size: 0.58rem;
+      font-size: 0.45rem;
       font-weight: 600;
+    }
+    .report-page.pdf-export .objects-table .col-name {
+      font-size: 0.46rem;
+      min-width: 0;
+      width: 26%;
+    }
+    .report-page.pdf-export .section-title {
+      font-size: 0.95rem;
+    }
+    .report-page.pdf-export .report-hero h1 {
+      font-size: 1.15rem;
     }
     .report-page.pdf-export .risk-action-col,
     .report-page.pdf-export .btn-clear-risk,

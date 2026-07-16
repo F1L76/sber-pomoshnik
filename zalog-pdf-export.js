@@ -3,6 +3,12 @@
  * Не через iframe: html2canvas из iframe часто отдаёт пустой файл.
  */
 (function (global) {
+    // A4 landscape usable width ≈ 297mm − margins; 96dpi → px
+    const PAGE_WIDTH_MM = 297;
+    const MARGIN_MM = 6;
+    const PX_PER_MM = 96 / 25.4;
+    const PAGE_CONTENT_PX = Math.floor((PAGE_WIDTH_MM - MARGIN_MM * 2) * PX_PER_MM);
+
     function parseReport(html) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(String(html || ""), "text/html");
@@ -20,12 +26,12 @@
             "position:fixed",
             "left:0",
             "top:0",
-            "width:1280px",
-            "max-width:100vw",
+            `width:${PAGE_CONTENT_PX}px`,
             "background:#fff",
             "z-index:2147483000",
             "overflow:visible",
-            "pointer-events:none"
+            "pointer-events:none",
+            "box-sizing:border-box"
         ].join(";");
 
         doc.querySelectorAll("style").forEach((styleEl) => {
@@ -34,17 +40,17 @@
 
         const target = document.importNode(page, true);
         target.classList.add("pdf-export");
-        // в PDF не нужны кнопки и модалки
-        target.querySelectorAll(".btn-clear-risk, .risk-clear-modal, .risk-action-col, .objects-table .filter-row").forEach((el) => {
-            if (el.classList?.contains("risk-action-col") || el.matches?.("th.risk-action-col, td.risk-action-col")) {
-                el.remove();
-            } else if (el.classList?.contains("filter-row") || el.classList?.contains("risk-clear-modal")) {
-                el.remove();
-            } else {
-                el.remove();
-            }
-        });
+        target.style.width = "100%";
+        target.style.maxWidth = "100%";
+        target.style.boxSizing = "border-box";
+
+        target
+            .querySelectorAll(
+                ".btn-clear-risk, .risk-clear-modal, .risk-action-col, .objects-table .filter-row, .th-copy-btn, .objects-copy-toast"
+            )
+            .forEach((el) => el.remove());
         target.querySelectorAll("th.risk-action-col, td.risk-action-col").forEach((el) => el.remove());
+
         mount.appendChild(target);
         document.body.appendChild(mount);
         return { mount, target };
@@ -65,28 +71,38 @@
         const { mount, target } = mountReport(html);
         try {
             if (document.fonts?.ready) await document.fonts.ready;
-            await new Promise((r) => setTimeout(r, 250));
+            await new Promise((r) => setTimeout(r, 300));
 
-            const captureWidth = Math.max(target.scrollWidth, target.offsetWidth, 1100);
+            // если после вёрстки шире страницы — слегка уменьшаем масштаб захвата
+            const naturalWidth = Math.max(target.scrollWidth, target.offsetWidth, 1);
+            const fitScale = Math.min(1, PAGE_CONTENT_PX / naturalWidth);
+            const captureWidth = Math.round(PAGE_CONTENT_PX);
             mount.style.width = `${captureWidth}px`;
+            if (fitScale < 0.999) {
+                target.style.transform = `scale(${fitScale})`;
+                target.style.transformOrigin = "top left";
+                target.style.width = `${Math.round(captureWidth / fitScale)}px`;
+            }
 
             const worker = html2pdf()
                 .set({
-                    margin: [8, 8, 8, 8],
+                    margin: MARGIN_MM,
                     filename: filename || "zalog_report.pdf",
                     image: { type: "jpeg", quality: 0.92 },
                     html2canvas: {
-                        scale: 1.5,
+                        scale: 2,
                         useCORS: true,
                         allowTaint: true,
-                        letterRendering: true,
+                        // letterRendering ломает кириллицу (Ба��ка)
+                        letterRendering: false,
                         backgroundColor: "#ffffff",
                         scrollX: 0,
                         scrollY: 0,
+                        width: captureWidth,
                         windowWidth: captureWidth,
                         logging: false
                     },
-                    pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+                    pagebreak: { mode: ["css", "legacy"] },
                     jsPDF: { unit: "mm", format: "a4", orientation: "landscape" }
                 })
                 .from(target);
