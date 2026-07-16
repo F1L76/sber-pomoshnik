@@ -1,5 +1,6 @@
 .env
 node_modules/
+hero-ui/dist/
 python-deps/
 .cache/
 .DS_Store

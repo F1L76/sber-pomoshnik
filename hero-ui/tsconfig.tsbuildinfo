@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/backgroundvideo.tsx","./src/components/blurtext.tsx","./src/components/capabilitiescontent.tsx","./src/components/fadingvideo.tsx","./src/components/herocontent.tsx","./src/components/navbar.tsx","./src/hooks/usetypewriter.ts"],"version":"5.9.3"}
