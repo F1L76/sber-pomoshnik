@@ -425,7 +425,7 @@
                 "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
                 { maxZoom: 19, attribution: "© Esri" }
             );
-            scheme.addTo(map);
+            satellite.addTo(map);
             L.control.layers({ "Схема": scheme, "Спутник": satellite }).addTo(map);
 
             const style = { color: "#21A038", weight: 3, fillColor: "#21A038", fillOpacity: 0.28 };
