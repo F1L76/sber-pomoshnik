@@ -327,35 +327,65 @@
         const alertBox = document.getElementById("alertBox");
 
         const LOADING_MESSAGES = [
-            "Запрос к vin.drom.ru…",
-            "Проверяем VIN и нормализуем номер…",
-            "Получаем марку, модель и год…",
-            "Собираем характеристики ТС…",
-            "Формируем карточку результата…"
+            "Сберкот заглядывает под капот vin.drom.ru…",
+            "Считаем буквы VIN — I, O и Q в отпуске",
+            "Спрашиваем у базы: кто ты, железный друг?",
+            "Расшифровываем 17 символов, как шифр дня",
+            "Ищем марку и модель — без гадания на кофе",
+            "Проверяем, не перепутали ли 0 с буквой O",
+            "Сверяем год выпуска с заводской табличкой",
+            "Уточняем объём двигателя и мощность в л.с.",
+            "Котик мурлычет — данные уже в пути",
+            "Смотрим, не Toyota ли это на самом деле",
+            "Копаемся в характеристиках, как в бардачке",
+            "Собираем карточку: кузов, КПП, топливо",
+            "Если VIN с опечаткой — попробуем угадать правильный",
+            "Drom отвечает медленно — терпение, скоро всё будет",
+            "Почти готово: осталось подписать «найдено» лапкой"
         ];
+        const LOADING_TITLES = [
+            "Ищем данные по VIN…",
+            "Сберкот на автомобильной разведке",
+            "Расшифровываем номер кузова",
+            "Собираем паспорт автомобиля"
+        ];
+        let loadingTitleTimer = null;
+        let loadingTitleIndex = 0;
         let loadingMessageTimer = null;
         let loadingMessageIndex = 0;
 
         function showSearchLoading(vinCount) {
             const title = document.getElementById("loadingTitle");
             const text = document.getElementById("searchLoadingText");
-            title.textContent = vinCount > 1 ? `Ищем ${vinCount} VIN…` : "Ищем данные по VIN…";
+            loadingTitleIndex = 0;
             loadingMessageIndex = 0;
+            title.textContent = vinCount > 1
+                ? `Сберкот проверяет ${vinCount} VIN…`
+                : LOADING_TITLES[0];
             text.textContent = LOADING_MESSAGES[0];
             searchLoading.classList.add("active");
             searchLoading.setAttribute("aria-busy", "true");
             clearInterval(loadingMessageTimer);
+            clearInterval(loadingTitleTimer);
             loadingMessageTimer = setInterval(() => {
                 loadingMessageIndex = (loadingMessageIndex + 1) % LOADING_MESSAGES.length;
                 text.textContent = LOADING_MESSAGES[loadingMessageIndex];
             }, 2200);
+            if (vinCount <= 1) {
+                loadingTitleTimer = setInterval(() => {
+                    loadingTitleIndex = (loadingTitleIndex + 1) % LOADING_TITLES.length;
+                    title.textContent = LOADING_TITLES[loadingTitleIndex];
+                }, 4400);
+            }
         }
 
         function hideSearchLoading() {
             searchLoading.classList.remove("active");
             searchLoading.setAttribute("aria-busy", "false");
             clearInterval(loadingMessageTimer);
+            clearInterval(loadingTitleTimer);
             loadingMessageTimer = null;
+            loadingTitleTimer = null;
         }
 
         if (location.protocol === "file:") {
