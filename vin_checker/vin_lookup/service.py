@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 
 from vin_validator.iso3779 import VIN_LENGTH, normalize_vin
 
-from .drom import lookup_drom
+from .drom import lookup_drom, lookup_drom_plate
 from .models import VehicleInfo
 from .vin_corrections import find_corrected_vin, format_correction_message, is_rate_limited
 
@@ -74,6 +74,52 @@ def _attach_correction(
     return result
 
 
+def _lookup_plate_timed(plate: str, normalized: str) -> VehicleInfo:
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(lookup_drom_plate, plate, normalized)
+        try:
+            return future.result(timeout=DROM_TIMEOUT)
+        except FuturesTimeout:
+            return VehicleInfo(
+                vin=plate,
+                normalized=normalized,
+                found=False,
+                source="drom",
+                sources_used=["drom"],
+                lookup_error=f"Превышено время ожидания ({DROM_TIMEOUT} с). Повторите позже.",
+            )
+
+
+def lookup_plate(plate: str) -> VehicleInfo:
+    from vin_validator.plate import normalize_plate, plate_error
+
+    normalized = normalize_plate(plate)
+    err = plate_error(normalized)
+    if err:
+        return VehicleInfo(
+            vin=plate,
+            normalized=normalized,
+            found=False,
+            lookup_error=err,
+        )
+
+    result = _lookup_plate_timed(plate, normalized)
+    if result.found:
+        return result
+    if not result.lookup_error:
+        result.lookup_error = "По этому госномеру данных о марке и модели не найдено"
+    return result
+
+
+def lookup_query(query: str, *, try_corrections: bool = True) -> VehicleInfo:
+    from vin_validator.plate import is_probable_plate
+
+    q = str(query or "").strip()
+    if is_probable_plate(q):
+        return lookup_plate(q)
+    return lookup_vin(q, try_corrections=try_corrections)
+
+
 def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
     pre = _preflight(vin)
     if pre:
@@ -106,14 +152,13 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
     return drom
 
 
-def lookup_batch(vins: list[str]) -> list[VehicleInfo]:
+def lookup_batch(queries: list[str]) -> list[VehicleInfo]:
     import time
 
-    # Подбор VIN только для одиночного запроса (иначе слишком много обращений к API)
-    try_corrections = len(vins) == 1
+    try_corrections = len(queries) == 1
     out: list[VehicleInfo] = []
-    for i, v in enumerate(vins):
+    for i, q in enumerate(queries):
         if i:
             time.sleep(0.5)
-        out.append(lookup_vin(v, try_corrections=try_corrections))
+        out.append(lookup_query(q, try_corrections=try_corrections))
     return out

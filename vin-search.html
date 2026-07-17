@@ -235,7 +235,7 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
                 <div>
                     <p class="small mb-1 opacity-75">СберБизнес Помощник · сопровождение 2.0</p>
-                    <h1 class="h3 mb-0"><i class="fa-solid fa-car me-2 text-success"></i>Поиск информации по VIN номеру</h1>
+                    <h1 class="h3 mb-0"><i class="fa-solid fa-car me-2 text-success"></i>Поиск информации по VIN и госномеру</h1>
                 </div>
                 <a href="/?view=services" class="btn btn-outline-light btn-sm">← СберБизнес Помощник</a>
             </div>
@@ -247,6 +247,9 @@
             <ul class="nav nav-pills vin-tabs mb-3" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="tabSingle" type="button" data-tab="single">Один VIN</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tabPlate" type="button" data-tab="plate">Госномер</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="tabBatch" type="button" data-tab="batch">Групповой</button>
@@ -265,10 +268,22 @@
                 <div class="form-text mt-2">17 символов (без I, O, Q). Источник: vin.drom.ru</div>
             </div>
 
+            <div id="panelPlate" class="d-none">
+                <label for="plateSingle" class="form-label fw-semibold">Госномер</label>
+                <div class="search-input-group">
+                    <input type="text" class="form-control form-control-lg text-uppercase" id="plateSingle"
+                           maxlength="16" placeholder="А123АА77" autocomplete="off" spellcheck="false">
+                    <button type="button" class="btn btn-sber btn-lg btn-search" id="searchBtnPlate">
+                        <i class="fa-solid fa-magnifying-glass me-2"></i>Найти
+                    </button>
+                </div>
+                <div class="form-text mt-2">Формат: А123АА77 (кириллица, без RUS). Тот же бесплатный источник, что и для VIN — vin.drom.ru</div>
+            </div>
+
             <div id="panelBatch" class="d-none">
-                <label for="vinBatch" class="form-label fw-semibold">Список VIN (до 50)</label>
+                <label for="vinBatch" class="form-label fw-semibold">Список VIN и госномеров (до 50)</label>
                 <textarea class="form-control mb-2" id="vinBatch" rows="8"
-                          placeholder="По одному VIN на строку" spellcheck="false"></textarea>
+                          placeholder="По одному номеру на строку" spellcheck="false"></textarea>
                 <div class="d-flex flex-wrap gap-2">
                     <label class="btn btn-outline-sber btn-sm mb-0">
                         <i class="fa-solid fa-file-arrow-up me-1"></i>Загрузить .txt
@@ -312,7 +327,7 @@
             <div id="results"></div>
             <div id="emptyState" class="empty-state">
                 <div><i class="fa-solid fa-car-side"></i></div>
-                <p class="mb-1 fw-semibold">Введите VIN и нажмите «Найти»</p>
+                <p class="mb-1 fw-semibold">Введите VIN или госномер и нажмите «Найти»</p>
                 <p class="small mb-0">Марка, модель, год, двигатель, КПП и другие характеристики</p>
             </div>
         </section>
@@ -320,12 +335,14 @@
 
     <script>
         const DEMO_VIN = "WMA58WZZ8JM786405";
+        const DEMO_PLATE = "А123АА77";
         const MAX_VINS = 50;
         const API_BASE = location.protocol === "file:" ? "http://localhost:8787" : "";
 
         let activeTab = "single";
 
         const vinSingle = document.getElementById("vinSingle");
+        const plateSingle = document.getElementById("plateSingle");
         const vinBatch = document.getElementById("vinBatch");
         const vinFile = document.getElementById("vinFile");
         const resultsEl = document.getElementById("results");
@@ -337,6 +354,7 @@
         const LOADING_MESSAGES = [
             "Котик заглядывает под капот vin.drom.ru…",
             "Считаем буквы VIN — I, O и Q в отпуске",
+            "Сверяем госномер с базой — без очереди в ГИБДД",
             "Спрашиваем у базы: кто ты, железный друг?",
             "Расшифровываем 17 символов, как шифр дня",
             "Ищем марку и модель — без гадания на кофе",
@@ -353,6 +371,7 @@
         ];
         const LOADING_TITLES = [
             "Ищем данные по VIN…",
+            "Ищем авто по госномеру…",
             "Котик на автомобильной разведке",
             "Расшифровываем номер кузова",
             "Собираем паспорт автомобиля"
@@ -368,8 +387,10 @@
             loadingTitleIndex = 0;
             loadingMessageIndex = 0;
             title.textContent = vinCount > 1
-                ? `Котик проверяет ${vinCount} VIN…`
-                : LOADING_TITLES[0];
+                ? `Котик проверяет ${vinCount} номеров…`
+                : activeTab === "plate"
+                    ? "Ищем авто по госномеру…"
+                    : LOADING_TITLES[0];
             text.textContent = LOADING_MESSAGES[0];
             searchLoading.classList.add("active");
             searchLoading.setAttribute("aria-busy", "true");
@@ -405,19 +426,27 @@
                 activeTab = btn.dataset.tab;
                 document.querySelectorAll("[data-tab]").forEach((b) => b.classList.toggle("active", b === btn));
                 document.getElementById("panelSingle").classList.toggle("d-none", activeTab !== "single");
+                document.getElementById("panelPlate").classList.toggle("d-none", activeTab !== "plate");
                 document.getElementById("panelBatch").classList.toggle("d-none", activeTab !== "batch");
             });
         });
 
         document.getElementById("searchBtn").addEventListener("click", runLookup);
+        document.getElementById("searchBtnPlate").addEventListener("click", runLookup);
         document.getElementById("searchBtnBatch").addEventListener("click", runLookup);
         document.getElementById("btnDemo").addEventListener("click", () => {
-            document.getElementById("tabSingle").click();
-            vinSingle.value = DEMO_VIN;
-            vinSingle.focus();
+            if (activeTab === "plate") {
+                plateSingle.value = DEMO_PLATE;
+                plateSingle.focus();
+            } else {
+                document.getElementById("tabSingle").click();
+                vinSingle.value = DEMO_VIN;
+                vinSingle.focus();
+            }
         });
         document.getElementById("btnClear").addEventListener("click", clearAll);
         vinSingle.addEventListener("keydown", (e) => { if (e.key === "Enter") runLookup(); });
+        plateSingle.addEventListener("keydown", (e) => { if (e.key === "Enter") runLookup(); });
         vinFile.addEventListener("change", async (e) => {
             const file = e.target.files?.[0];
             if (!file) return;
@@ -427,6 +456,7 @@
 
         function clearAll() {
             vinSingle.value = "";
+            plateSingle.value = "";
             vinBatch.value = "";
             vinFile.value = "";
             statsRow.classList.add("d-none");
@@ -471,16 +501,21 @@
                 : !ok && !item.vin_correction_message
                     ? `<div class="alert alert-secondary py-2 small">По этому VIN данных не найдено</div>` : "";
 
+            const extra = item.extra || {};
+            const queryLabel = extra["Госномер"] ? "Госномер" : "Запрос";
+            const queryValue = extra["Госномер"] || item.vin;
+
             return `<article class="vin-card">
                 <div class="vin-card-header ${headerClass}">
                     <div>
-                        <div class="vin-code">${escapeHtml(item.vin)}</div>
+                        <div class="vin-code">${escapeHtml(queryValue)}</div>
                         <div class="vin-title">${escapeHtml(item.title || "—")}</div>
                     </div>
                     <span class="status-badge ${badgeClass}">${badgeText}</span>
                 </div>
                 <div class="vin-card-body">
                     ${correction}${error}
+                    ${section("Идентификация", [row(queryLabel, queryValue), row("VIN", extra.VIN || (item.normalized && item.normalized.length === 17 ? item.normalized : null))].join(""))}
                     ${section("Основное", [row("Марка", item.make), row("Модель", item.model), row("Год", item.model_year), row("Производитель", item.manufacturer), row("Комплектация", item.trim)].join(""))}
                     ${section("Кузов", [row("Класс кузова", item.body_class), row("Тип ТС", item.vehicle_type), row("Мощность", item.power_hp && `${item.power_hp} л.с.`), row("Цвет", item.color), row("Привод", item.drive_type)].join(""))}
                     ${section("Техника", [row("Топливо", item.fuel_type), row("Двигатель", engineStr), row("КПП", transStr)].join(""))}
@@ -490,17 +525,25 @@
         }
 
         function estimateVinCount(payload) {
+            if (payload.plates?.length) return Math.min(payload.plates.length, MAX_VINS);
             if (payload.vins?.length) return Math.min(payload.vins.length, MAX_VINS);
+            if (payload.plate) return 1;
             const found = String(payload.text || "").toUpperCase().match(/[A-HJ-NPR-Z0-9]{17}/g);
             if (found?.length) return Math.min(found.length, MAX_VINS);
             return Math.min(String(payload.text || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).length || 1, MAX_VINS);
         }
 
         async function runLookup() {
-            const payload = activeTab === "single"
-                ? { vins: [vinSingle.value.trim()].filter(Boolean) }
-                : { text: vinBatch.value };
+            let payload;
+            if (activeTab === "plate") {
+                payload = { plate: plateSingle.value.trim() };
+            } else if (activeTab === "single") {
+                payload = { vins: [vinSingle.value.trim()].filter(Boolean) };
+            } else {
+                payload = { text: vinBatch.value };
+            }
 
+            if (activeTab === "plate" && !payload.plate) { plateSingle.focus(); return; }
             if (activeTab === "single" && !payload.vins?.length) { vinSingle.focus(); return; }
             if (activeTab === "batch" && !payload.text?.trim()) { vinBatch.focus(); return; }
 

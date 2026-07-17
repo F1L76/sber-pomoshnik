@@ -580,7 +580,10 @@ const server = http.createServer(async (req, res) => {
             const body = JSON.parse(raw || "{}");
             const result = await lookupVins({
                 vins: Array.isArray(body.vins) ? body.vins : undefined,
-                text: body.text
+                plates: Array.isArray(body.plates) ? body.plates : undefined,
+                queries: Array.isArray(body.queries) ? body.queries : undefined,
+                text: body.text,
+                plate: body.plate
             });
             res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
             res.end(JSON.stringify(result));

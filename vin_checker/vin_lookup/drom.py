@@ -69,7 +69,13 @@ def _warm_session(opener: urllib.request.OpenerDirector, vin: str) -> str:
     return report_url
 
 
-def _parse_car_data(raw_vin: str, normalized: str, payload: dict[str, Any]) -> VehicleInfo:
+def _parse_car_data(
+    raw_vin: str,
+    normalized: str,
+    payload: dict[str, Any],
+    *,
+    plate: str | None = None,
+) -> VehicleInfo:
     if not payload.get("status"):
         msg = payload.get("message") or payload.get("error") or "Дром не вернул данные"
         return VehicleInfo(
@@ -107,10 +113,16 @@ def _parse_car_data(raw_vin: str, normalized: str, payload: dict[str, Any]) -> V
     extra: dict[str, str] = {}
     if volume:
         extra["Объём (см³)"] = str(volume)
+    if plate:
+        extra["Госномер"] = plate
+        if vin_from_api and vin_from_api != plate:
+            extra["VIN"] = vin_from_api
+
+    display_normalized = vin_from_api if plate and vin_from_api else normalized
 
     return VehicleInfo(
         vin=raw_vin,
-        normalized=vin_from_api,
+        normalized=display_normalized,
         found=True,
         source="drom",
         sources_used=["drom"],
@@ -132,6 +144,79 @@ def _s(value: Any) -> str | None:
     return text or None
 
 
+def _lookup_drom_query(
+    raw_query: str,
+    normalized: str,
+    query_field: str,
+    *,
+    plate: str | None = None,
+) -> VehicleInfo:
+    try:
+        opener = _open_opener()
+        referer = _warm_session(opener, normalized)
+
+        token_payload = _post_form(
+            opener,
+            DROM_BUY_TOKEN_URL,
+            {query_field: normalized},
+            referer,
+        )
+        if not token_payload.get("status") or not token_payload.get("token"):
+            return VehicleInfo(
+                vin=raw_query,
+                normalized=normalized,
+                found=False,
+                source="drom",
+                sources_used=["drom"],
+                lookup_error="Не удалось начать проверку. Повторите позже.",
+            )
+
+        token = token_payload["token"]
+        car_payload: dict[str, Any] = {}
+        for attempt in range(3):
+            car_payload = _post_form(
+                opener,
+                DROM_CAR_DATA_URL,
+                {query_field: normalized, "token": token},
+                referer,
+            )
+            car = car_payload.get("carData") or {}
+            if car_payload.get("status") and car:
+                break
+            if car_payload.get("state") in ("pending", "loading"):
+                time.sleep(0.4 * (attempt + 1))
+                continue
+            if attempt < 2:
+                time.sleep(0.25)
+        return _parse_car_data(raw_query, normalized, car_payload, plate=plate)
+
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            msg = (
+                "Слишком много запросов к источнику данных (HTTP 429). "
+                "Подождите 1–2 минуты и повторите."
+            )
+        else:
+            msg = f"Ошибка сервера (HTTP {exc.code})"
+        return VehicleInfo(
+            vin=raw_query,
+            normalized=normalized,
+            found=False,
+            source="drom",
+            sources_used=["drom"],
+            lookup_error=msg,
+        )
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+        return VehicleInfo(
+            vin=raw_query,
+            normalized=normalized,
+            found=False,
+            source="drom",
+            sources_used=["drom"],
+            lookup_error=f"Ошибка сети: {exc}",
+        )
+
+
 def lookup_drom(raw_vin: str, normalized: str | None = None) -> VehicleInfo:
     """
     Получает бесплатный превью с vin.drom.ru (как на странице перед покупкой отчёта).
@@ -147,67 +232,22 @@ def lookup_drom(raw_vin: str, normalized: str | None = None) -> VehicleInfo:
             lookup_error="VIN должен содержать 17 символов",
         )
 
-    try:
-        opener = _open_opener()
-        referer = _warm_session(opener, normalized)
+    return _lookup_drom_query(raw_vin, normalized, "vin")
 
-        token_payload = _post_form(
-            opener,
-            DROM_BUY_TOKEN_URL,
-            {"vin": normalized},
-            referer,
-        )
-        if not token_payload.get("status") or not token_payload.get("token"):
-            return VehicleInfo(
-                vin=raw_vin,
-                normalized=normalized,
-                found=False,
-                source="drom",
-                sources_used=["drom"],
-                lookup_error="Не удалось начать проверку. Повторите позже.",
-            )
 
-        token = token_payload["token"]
-        car_payload: dict[str, Any] = {}
-        for attempt in range(3):
-            car_payload = _post_form(
-                opener,
-                DROM_CAR_DATA_URL,
-                {"vin": normalized, "token": token},
-                referer,
-            )
-            car = car_payload.get("carData") or {}
-            if car_payload.get("status") and car:
-                break
-            if car_payload.get("state") in ("pending", "loading"):
-                time.sleep(0.4 * (attempt + 1))
-                continue
-            if attempt < 2:
-                time.sleep(0.25)
-        return _parse_car_data(raw_vin, normalized, car_payload)
+def lookup_drom_plate(raw_plate: str, normalized: str | None = None) -> VehicleInfo:
+    """Бесплатный превью по госномеру (vin.drom.ru, поле carplate)."""
+    from vin_validator.plate import normalize_plate, plate_error
 
-    except urllib.error.HTTPError as exc:
-        if exc.code == 429:
-            msg = (
-                "Слишком много запросов к источнику данных (HTTP 429). "
-                "Подождите 1–2 минуты и повторите. Не запускайте групповую проверку подряд."
-            )
-        else:
-            msg = f"Ошибка сервера (HTTP {exc.code})"
+    normalized = normalized or normalize_plate(raw_plate)
+    err = plate_error(normalized)
+    if err:
         return VehicleInfo(
-            vin=raw_vin,
+            vin=raw_plate,
             normalized=normalized,
             found=False,
             source="drom",
-            sources_used=["drom"],
-            lookup_error=f"Ошибка сервера (HTTP {exc.code})",
+            lookup_error=err,
         )
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
-        return VehicleInfo(
-            vin=raw_vin,
-            normalized=normalized,
-            found=False,
-            source="drom",
-            sources_used=["drom"],
-            lookup_error=f"Ошибка сети: {exc}",
-        )
+
+    return _lookup_drom_query(raw_plate, normalized, "carplate", plate=normalized)
