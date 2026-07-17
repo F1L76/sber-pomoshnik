@@ -525,9 +525,9 @@
         }
 
         function estimateVinCount(payload) {
+            if (payload.plate) return 1;
             if (payload.plates?.length) return Math.min(payload.plates.length, MAX_VINS);
             if (payload.vins?.length) return Math.min(payload.vins.length, MAX_VINS);
-            if (payload.plate) return 1;
             const found = String(payload.text || "").toUpperCase().match(/[A-HJ-NPR-Z0-9]{17}/g);
             if (found?.length) return Math.min(found.length, MAX_VINS);
             return Math.min(String(payload.text || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).length || 1, MAX_VINS);
