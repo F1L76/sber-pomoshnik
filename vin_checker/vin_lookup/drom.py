@@ -26,10 +26,11 @@ USER_AGENT = (
 )
 # ponytail: file-backed — Node spawns a new Python per request, so memory cache dies
 _CACHE_TTL = int(os.environ.get("DROM_CACHE_TTL", "3600"))
-_COOLDOWN_SEC = int(os.environ.get("DROM_COOLDOWN_SEC", "120"))
-_MIN_GAP_SEC = float(os.environ.get("DROM_MIN_GAP", "8"))
-_RETRY_WAIT_SEC = float(os.environ.get("DROM_RETRY_WAIT", "20"))
-_MAX_WAIT_SEC = float(os.environ.get("DROM_MAX_WAIT", "50"))
+# ponytail: QRATOR режет IP надолго — короткий cooldown только провоцирует повторные 429
+_COOLDOWN_SEC = int(os.environ.get("DROM_COOLDOWN_SEC", "900"))
+_MIN_GAP_SEC = float(os.environ.get("DROM_MIN_GAP", "12"))
+_RETRY_WAIT_SEC = float(os.environ.get("DROM_RETRY_WAIT", "0"))
+_MAX_WAIT_SEC = float(os.environ.get("DROM_MAX_WAIT", "0"))
 _STATE_PATH = Path(
     os.environ.get(
         "DROM_STATE_PATH",
@@ -156,19 +157,15 @@ def _mark_request_done() -> None:
 
 
 def _wait_before_request() -> None:
-    """Ждём cooldown / минимальный интервал, чтобы не ловить 429 пачкой."""
+    """Минимальный интервал между запросами. Cooldown — не ждём, вызывающий код пропускает drom."""
+    if drom_cooling_down():
+        return
     state = _load_state()
     now = time.time()
-    wait = 0.0
-    cooldown = float(state.get("cooldown_until") or 0)
-    if now < cooldown:
-        wait = max(wait, min(cooldown - now, _MAX_WAIT_SEC))
     last = float(state.get("last_request_at") or 0)
     gap = _MIN_GAP_SEC - (now - last)
     if gap > 0:
-        wait = max(wait, gap)
-    if wait > 0:
-        time.sleep(wait)
+        time.sleep(min(gap, max(_MAX_WAIT_SEC, _MIN_GAP_SEC)))
 
 
 def rate_limited_result(raw: str, normalized: str) -> VehicleInfo:
@@ -179,8 +176,8 @@ def rate_limited_result(raw: str, normalized: str) -> VehicleInfo:
         source="drom",
         sources_used=["drom"],
         lookup_error=(
-            "Источник временно ограничил запросы. "
-            "Повторите через пару минут — обычно помогает."
+            "Полный отчёт по VIN временно недоступен из‑за лимита запросов. "
+            "Попробуйте позже или используйте данные по коду VIN ниже."
         ),
     )
 
@@ -382,54 +379,58 @@ def _lookup_drom_query(
     if cached:
         return cached
 
+    if drom_cooling_down():
+        return _rate_limited_result(raw_query, normalized)
+
     _wait_before_request()
 
-    last_exc: BaseException | None = None
-    for round_i in range(2):
-        try:
-            opener = _open_opener()
-            result = _fetch_drom_once(
-                opener, raw_query, normalized, query_field, plate=plate
-            )
-            _mark_request_done()
-            _cache_set(cache_key, result)
-            return result
-        except urllib.error.HTTPError as exc:
-            last_exc = exc
-            if exc.code == 429:
-                _mark_rate_limited()
-                if round_i == 0:
-                    time.sleep(_RETRY_WAIT_SEC)
-                    continue
-                return _rate_limited_result(raw_query, normalized)
-            return VehicleInfo(
-                vin=raw_query,
-                normalized=normalized,
-                found=False,
-                source="drom",
-                sources_used=["drom"],
-                lookup_error=f"Ошибка сервера (HTTP {exc.code})",
-            )
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
-            return VehicleInfo(
-                vin=raw_query,
-                normalized=normalized,
-                found=False,
-                source="drom",
-                sources_used=["drom"],
-                lookup_error=f"Ошибка сети: {exc}",
-            )
-
-    if isinstance(last_exc, urllib.error.HTTPError) and last_exc.code == 429:
-        return _rate_limited_result(raw_query, normalized)
-    return VehicleInfo(
-        vin=raw_query,
-        normalized=normalized,
-        found=False,
-        source="drom",
-        sources_used=["drom"],
-        lookup_error="Не удалось получить данные",
-    )
+    try:
+        opener = _open_opener()
+        result = _fetch_drom_once(
+            opener, raw_query, normalized, query_field, plate=plate
+        )
+        _mark_request_done()
+        _cache_set(cache_key, result)
+        return result
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            _mark_rate_limited()
+            # ponytail: один retry только если явно задан DROM_RETRY_WAIT>0
+            if _RETRY_WAIT_SEC > 0:
+                time.sleep(_RETRY_WAIT_SEC)
+                try:
+                    opener = _open_opener()
+                    result = _fetch_drom_once(
+                        opener, raw_query, normalized, query_field, plate=plate
+                    )
+                    _mark_request_done()
+                    _cache_set(cache_key, result)
+                    return result
+                except urllib.error.HTTPError as exc2:
+                    if exc2.code == 429:
+                        _mark_rate_limited()
+                        return _rate_limited_result(raw_query, normalized)
+                    exc = exc2
+                except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+                    return _rate_limited_result(raw_query, normalized)
+            return _rate_limited_result(raw_query, normalized)
+        return VehicleInfo(
+            vin=raw_query,
+            normalized=normalized,
+            found=False,
+            source="drom",
+            sources_used=["drom"],
+            lookup_error=f"Ошибка сервера (HTTP {exc.code})",
+        )
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
+        return VehicleInfo(
+            vin=raw_query,
+            normalized=normalized,
+            found=False,
+            source="drom",
+            sources_used=["drom"],
+            lookup_error=f"Ошибка сети: {exc}",
+        )
 
 
 def lookup_drom(raw_vin: str, normalized: str | None = None) -> VehicleInfo:

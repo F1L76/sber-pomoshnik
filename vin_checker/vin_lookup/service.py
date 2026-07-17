@@ -12,10 +12,11 @@ from .models import VehicleInfo
 from .nhtsa import lookup_nhtsa
 from .sravni import lookup_sravni_plate
 from .vin_corrections import find_corrected_vin, format_correction_message, is_rate_limited
+from .wmi_offline import lookup_wmi_offline
 
-DROM_TIMEOUT = int(os.environ.get("DROM_TIMEOUT", "90"))
+DROM_TIMEOUT = int(os.environ.get("DROM_TIMEOUT", "35"))
 SRAVNI_TIMEOUT = int(os.environ.get("SRAVNI_TIMEOUT", "25"))
-NHTSA_TIMEOUT = int(os.environ.get("NHTSA_TIMEOUT", "15"))
+NHTSA_TIMEOUT = int(os.environ.get("NHTSA_TIMEOUT", "8"))
 VIN_CORRECTION_ENABLED = os.environ.get("VIN_CORRECTION", "0").lower() not in (
     "0",
     "false",
@@ -23,6 +24,8 @@ VIN_CORRECTION_ENABLED = os.environ.get("VIN_CORRECTION", "0").lower() not in (
 )
 # ponytail: NHTSA on by default; set USE_NHTSA=0 to disable
 USE_NHTSA = os.environ.get("USE_NHTSA", "1").lower() not in ("0", "false", "no")
+# ponytail: vin.drom.ru часто 429 по IP — по умолчанию не долбим в cooldown
+USE_DROM_VIN = os.environ.get("DROM_FOR_VIN", "1").lower() not in ("0", "false", "no")
 
 
 def _preflight(vin: str) -> VehicleInfo | None:
@@ -69,7 +72,9 @@ def _lookup_nhtsa_timed(vin: str, normalized: str) -> VehicleInfo:
 
 
 def _has_vehicle_data(info: VehicleInfo) -> bool:
-    if not info.found:
+    if not info:
+        return False
+    if not info.found and not (info.make or info.model or info.model_year):
         return False
     return bool(info.make or info.model or info.model_year or info.vehicle_type)
 
@@ -247,37 +252,62 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
         return pre
 
     normalized = normalize_vin(vin)
+    offline = lookup_wmi_offline(vin, normalized)
 
-    # Сначала NHTSA (без лимита drom). Drom — если NHTSA пуст (с паузой/retry внутри).
+    # NHTSA — без лимита drom
     nhtsa = _lookup_nhtsa_timed(vin, normalized) if USE_NHTSA else None
     if nhtsa and _has_vehicle_data(nhtsa):
+        result = _merge_vehicle(nhtsa, offline)
         if os.environ.get("DROM_ALWAYS", "0").lower() not in ("1", "true", "yes"):
-            nhtsa.found = True
-            nhtsa.lookup_error = None
-            return nhtsa
+            result.found = True
+            result.lookup_error = None
+            return result
 
-    drom = _lookup_drom_timed(vin, normalized)
+    # Drom только вне cooldown — иначе QRATOR снова отдаст 429
+    drom = None
+    if USE_DROM_VIN and not drom_cooling_down():
+        drom = _lookup_drom_timed(vin, normalized)
+    elif USE_DROM_VIN and drom_cooling_down():
+        drom = rate_limited_result(vin, normalized)
 
-    if _has_vehicle_data(drom):
-        result = _merge_vehicle(drom, nhtsa) if nhtsa else drom
+    result = offline
+    if drom and _has_vehicle_data(drom):
+        result = _merge_vehicle(drom, result)
+        if nhtsa:
+            result = _merge_vehicle(result, nhtsa)
         result.found = True
         result.lookup_error = None
         return result
 
     if nhtsa and _has_vehicle_data(nhtsa):
-        result = _merge_vehicle(nhtsa, drom)
+        result = _merge_vehicle(nhtsa, result)
+        if drom:
+            result = _merge_vehicle(result, drom)
         result.found = True
         result.lookup_error = None
         return result
 
-    if is_rate_limited(drom):
+    # Есть хотя бы марка/год из WMI — не показываем 429 как единственный ответ
+    if _has_vehicle_data(offline) or offline.make or offline.model_year:
+        result = offline
+        if nhtsa:
+            result = _merge_vehicle(result, nhtsa)
+        result.found = True
+        result.lookup_error = None
+        if not result.model:
+            result.extra = {
+                **(result.extra or {}),
+                "Примечание": "Модель уточняется по полной базе; сейчас определены марка и год по VIN",
+            }
+        return result
+
+    if drom and is_rate_limited(drom):
         return drom
 
-    base = drom if drom.lookup_error else (nhtsa or drom)
+    base = drom if (drom and drom.lookup_error) else (nhtsa or offline)
     if not base.lookup_error:
         base.lookup_error = "По этому VIN данных о марке и модели не найдено"
 
-    # ponytail: corrections multiply drom calls — only when not rate-limited
     if try_corrections and not is_rate_limited(base):
         return _attach_correction(base, vin, normalized)
     return base
