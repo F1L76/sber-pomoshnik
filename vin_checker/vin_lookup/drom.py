@@ -9,6 +9,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 from vin_validator.iso3779 import normalize_vin
@@ -20,42 +21,124 @@ DROM_BUY_TOKEN_URL = "https://vin.drom.ru/report/get_buy_token/"
 DROM_CAR_DATA_URL = "https://vin.drom.ru/report/get_car_data/"
 REQUEST_TIMEOUT = int(os.environ.get("DROM_HTTP_TIMEOUT", "25"))
 USER_AGENT = "vin-checker/1.0 (preview; +https://vin.drom.ru)"
-# ponytail: in-process cache + cooldown after 429; ceiling = one process, upgrade = Redis
+# ponytail: file-backed — Node spawns a new Python per request, so memory cache dies
 _CACHE_TTL = int(os.environ.get("DROM_CACHE_TTL", "3600"))
-_COOLDOWN_SEC = int(os.environ.get("DROM_COOLDOWN_SEC", "90"))
-_cache: dict[str, tuple[float, VehicleInfo]] = {}
-_cooldown_until = 0.0
+_COOLDOWN_SEC = int(os.environ.get("DROM_COOLDOWN_SEC", "180"))
+_STATE_PATH = Path(
+    os.environ.get(
+        "DROM_STATE_PATH",
+        str(Path(__file__).resolve().parents[2] / "data" / "drom-rate.json"),
+    )
+)
+_CACHE_FIELDS = (
+    "vin",
+    "normalized",
+    "found",
+    "source",
+    "sources_used",
+    "make",
+    "model",
+    "model_year",
+    "manufacturer",
+    "series",
+    "trim",
+    "body_class",
+    "vehicle_type",
+    "doors",
+    "drive_type",
+    "fuel_type",
+    "color",
+    "category",
+    "body_number",
+    "engine_number",
+    "power_hp",
+    "power_kw",
+    "engine_cylinders",
+    "displacement_l",
+    "engine_model",
+    "engine_configuration",
+    "transmission_style",
+    "transmission_speeds",
+    "plant_country",
+    "plant_city",
+    "plant_state",
+    "gvwr",
+    "extra",
+    "lookup_error",
+)
+
+
+def _load_state() -> dict[str, Any]:
+    try:
+        return json.loads(_STATE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"cooldown_until": 0, "cache": {}}
+
+
+def _save_state(state: dict[str, Any]) -> None:
+    try:
+        _STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = _STATE_PATH.with_suffix(".tmp")
+        tmp.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(_STATE_PATH)
+    except OSError:
+        pass
+
+
+def _info_to_cache(info: VehicleInfo) -> dict[str, Any]:
+    return {name: getattr(info, name) for name in _CACHE_FIELDS}
+
+
+def _info_from_cache(data: dict[str, Any]) -> VehicleInfo:
+    kwargs = {name: data.get(name) for name in _CACHE_FIELDS if name in data}
+    kwargs.setdefault("vin", "")
+    kwargs.setdefault("normalized", "")
+    kwargs.setdefault("found", False)
+    if kwargs.get("extra") is None:
+        kwargs["extra"] = {}
+    if kwargs.get("sources_used") is None:
+        kwargs["sources_used"] = []
+    return VehicleInfo(**kwargs)
 
 
 def _cache_get(key: str) -> VehicleInfo | None:
-    hit = _cache.get(key)
+    state = _load_state()
+    hit = (state.get("cache") or {}).get(key)
     if not hit:
         return None
-    expires, info = hit
-    if time.time() > expires:
-        _cache.pop(key, None)
+    if time.time() > float(hit.get("expires") or 0):
+        state["cache"].pop(key, None)
+        _save_state(state)
         return None
-    from dataclasses import replace
-
-    return replace(
-        info,
-        extra=dict(info.extra or {}),
-        sources_used=list(info.sources_used or []),
-    )
+    return _info_from_cache(hit.get("data") or {})
 
 
 def _cache_set(key: str, info: VehicleInfo) -> None:
-    if info.found:
-        _cache[key] = (time.time() + _CACHE_TTL, info)
+    if not info.found:
+        return
+    state = _load_state()
+    cache = state.setdefault("cache", {})
+    now = time.time()
+    # prune expired
+    cache = {
+        k: v
+        for k, v in cache.items()
+        if float(v.get("expires") or 0) > now
+    }
+    cache[key] = {"expires": now + _CACHE_TTL, "data": _info_to_cache(info)}
+    state["cache"] = cache
+    _save_state(state)
 
 
 def drom_cooling_down() -> bool:
-    return time.time() < _cooldown_until
+    state = _load_state()
+    return time.time() < float(state.get("cooldown_until") or 0)
 
 
 def _mark_rate_limited() -> None:
-    global _cooldown_until
-    _cooldown_until = time.time() + _COOLDOWN_SEC
+    state = _load_state()
+    state["cooldown_until"] = time.time() + _COOLDOWN_SEC
+    _save_state(state)
 
 
 def rate_limited_result(raw: str, normalized: str) -> VehicleInfo:
@@ -67,7 +150,7 @@ def rate_limited_result(raw: str, normalized: str) -> VehicleInfo:
         sources_used=["drom"],
         lookup_error=(
             "Слишком много запросов к источнику данных (HTTP 429). "
-            "Подождите 1–2 минуты и повторите."
+            "Подождите 2–3 минуты и повторите."
         ),
     )
 

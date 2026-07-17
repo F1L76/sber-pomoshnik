@@ -157,6 +157,10 @@ def _merge_vehicle(base: VehicleInfo, other: VehicleInfo) -> VehicleInfo:
     return base
 
 
+# ponytail: plate uses Sravni; drom plate off by default to avoid 429 (DROM_FOR_PLATE=1 to enable)
+USE_DROM_PLATE = os.environ.get("DROM_FOR_PLATE", "0").lower() in ("1", "true", "yes")
+
+
 def _enrich_by_vin(result: VehicleInfo, vin: str) -> VehicleInfo:
     """Дополняет карточку по VIN: drom + NHTSA."""
     normalized = normalize_vin(vin)
@@ -184,10 +188,10 @@ def lookup_plate(plate: str) -> VehicleInfo:
             lookup_error=err,
         )
 
-    # Сначала Сравни; drom — только если нет cooldown (экономим лимит 429).
+    # Госномер: Сравни. Drom — только по флагу и вне cooldown.
     sravni = lookup_sravni_plate(plate, normalized)
     drom = None
-    if not drom_cooling_down():
+    if USE_DROM_PLATE and not drom_cooling_down():
         drom = _lookup_drom_plate_safe(plate, normalized)
 
     if _has_vehicle_data(sravni):
@@ -244,45 +248,27 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
 
     normalized = normalize_vin(vin)
 
-    skip_drom = drom_cooling_down()
-    workers = 2 if (USE_NHTSA and not skip_drom) else 1
-    with ThreadPoolExecutor(max_workers=max(workers, 1)) as pool:
-        f_drom = None if skip_drom else pool.submit(lookup_drom, vin, normalized)
-        f_nhtsa = pool.submit(lookup_nhtsa, vin, normalized) if USE_NHTSA else None
+    # Сначала NHTSA (без лимита drom). Drom — только если NHTSA пуст и нет cooldown.
+    nhtsa = _lookup_nhtsa_timed(vin, normalized) if USE_NHTSA else None
+    if nhtsa and _has_vehicle_data(nhtsa):
+        # ponytail: skip drom when NHTSA already enough; set DROM_ALWAYS=1 to always merge
+        if os.environ.get("DROM_ALWAYS", "0").lower() not in ("1", "true", "yes"):
+            nhtsa.found = True
+            nhtsa.lookup_error = None
+            return nhtsa
+        if drom_cooling_down():
+            nhtsa.found = True
+            nhtsa.lookup_error = None
+            return nhtsa
 
-        if f_drom is not None:
-            try:
-                drom = f_drom.result(timeout=DROM_TIMEOUT)
-            except FuturesTimeout:
-                drom = VehicleInfo(
-                    vin=vin,
-                    normalized=normalized,
-                    found=False,
-                    source="drom",
-                    sources_used=["drom"],
-                    lookup_error=f"Превышено время ожидания ({DROM_TIMEOUT} с). Повторите позже.",
-                )
-        else:
-            drom = VehicleInfo(
-                vin=vin,
-                normalized=normalized,
-                found=False,
-                source="drom",
-                sources_used=[],
-            )
+    if drom_cooling_down():
+        if nhtsa and _has_vehicle_data(nhtsa):
+            nhtsa.found = True
+            nhtsa.lookup_error = None
+            return nhtsa
+        return rate_limited_result(vin, normalized)
 
-        nhtsa = None
-        if f_nhtsa is not None:
-            try:
-                nhtsa = f_nhtsa.result(timeout=NHTSA_TIMEOUT)
-            except FuturesTimeout:
-                nhtsa = VehicleInfo(
-                    vin=vin,
-                    normalized=normalized,
-                    found=False,
-                    source="nhtsa",
-                    sources_used=["nhtsa"],
-                )
+    drom = _lookup_drom_timed(vin, normalized)
 
     if _has_vehicle_data(drom):
         result = _merge_vehicle(drom, nhtsa) if nhtsa else drom
@@ -296,8 +282,7 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
         result.lookup_error = None
         return result
 
-    # Не маскируем 429, но не гоняем коррекцию VIN при лимите.
-    if is_rate_limited(drom) or skip_drom:
+    if is_rate_limited(drom):
         return rate_limited_result(vin, normalized)
 
     base = drom if drom.lookup_error else (nhtsa or drom)
