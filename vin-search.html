@@ -499,11 +499,26 @@
             const error = item.lookup_error && !item.vin_correction_message
                 ? `<div class="alert alert-danger py-2 small">${escapeHtml(item.lookup_error)}</div>`
                 : !ok && !item.vin_correction_message
-                    ? `<div class="alert alert-secondary py-2 small">По этому VIN данных не найдено</div>` : "";
+                    ? `<div class="alert alert-secondary py-2 small">Данные не найдены</div>` : "";
 
             const extra = item.extra || {};
             const queryLabel = extra["Госномер"] ? "Госномер" : "Запрос";
             const queryValue = extra["Госномер"] || item.vin;
+            const vinValue = extra.VIN || (item.normalized && item.normalized.length === 17 ? item.normalized : null);
+
+            const usedExtra = new Set(["Госномер", "VIN"]);
+            const policyKeys = [
+                "Собственник", "Телефон", "Страховая компания", "Номер полиса",
+                "Окончание полиса", "Водители", "Число водителей", "Цена полиса", "Тип расчёта"
+            ];
+            const policyRows = policyKeys
+                .filter((k) => extra[k])
+                .map((k) => { usedExtra.add(k); return row(k, extra[k]); })
+                .join("");
+            const otherRows = Object.keys(extra)
+                .filter((k) => !usedExtra.has(k) && extra[k])
+                .map((k) => row(k, extra[k]))
+                .join("");
 
             return `<article class="vin-card">
                 <div class="vin-card-header ${headerClass}">
@@ -515,11 +530,13 @@
                 </div>
                 <div class="vin-card-body">
                     ${correction}${error}
-                    ${section("Идентификация", [row(queryLabel, queryValue), row("VIN", extra.VIN || (item.normalized && item.normalized.length === 17 ? item.normalized : null))].join(""))}
-                    ${section("Основное", [row("Марка", item.make), row("Модель", item.model), row("Год", item.model_year), row("Производитель", item.manufacturer), row("Комплектация", item.trim)].join(""))}
-                    ${section("Кузов", [row("Класс кузова", item.body_class), row("Тип ТС", item.vehicle_type), row("Мощность", item.power_hp && `${item.power_hp} л.с.`), row("Цвет", item.color), row("Привод", item.drive_type)].join(""))}
-                    ${section("Техника", [row("Топливо", item.fuel_type), row("Двигатель", engineStr), row("КПП", transStr)].join(""))}
+                    ${section("Идентификация", [row(queryLabel, queryValue), row("VIN", vinValue), row("Номер кузова", item.body_number), row("Номер двигателя", item.engine_number)].join(""))}
+                    ${section("Основное", [row("Марка", item.make), row("Модель", item.model), row("Год", item.model_year), row("Производитель", item.manufacturer), row("Серия", item.series), row("Комплектация", item.trim), row("Категория", item.category)].join(""))}
+                    ${section("Кузов", [row("Класс кузова", item.body_class), row("Тип ТС", item.vehicle_type), row("Двери", item.doors), row("Мощность", item.power_hp && `${item.power_hp} л.с.`), row("Мощность, кВт", item.power_kw), row("Цвет", item.color), row("Привод", item.drive_type)].join(""))}
+                    ${section("Техника", [row("Топливо", item.fuel_type), row("Двигатель", engineStr), row("КПП", transStr), row("Полная масса", item.gvwr)].join(""))}
                     ${section("Производство", row("Завод", plantStr))}
+                    ${section("Полис ОСАГО", policyRows)}
+                    ${section("Дополнительно", otherRows)}
                 </div>
             </article>`;
         }

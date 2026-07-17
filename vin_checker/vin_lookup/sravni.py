@@ -84,15 +84,53 @@ def _parse_prev_policy(
         )
 
     extra: dict[str, str] = {"Госномер": car_number}
+
     owner = _s(payload.get("userName"))
     if owner:
-        extra["Собственник (из полиса)"] = owner
+        extra["Собственник"] = owner
+
+    phone = _s(payload.get("maskedPhone"))
+    if phone:
+        # 798065***** → +7 (980) 65*-****
+        digits = phone if phone.startswith("+") else phone
+        if digits.startswith("7") and len(digits) >= 10:
+            extra["Телефон"] = f"+7 ({digits[1:4]}) {digits[4:6]}*-****"
+        else:
+            extra["Телефон"] = phone
+
     company = _s(payload.get("companyName"))
     if company:
-        extra["СК (полис)"] = company
+        extra["Страховая компания"] = company
+
+    policy_num = _s(payload.get("previousPolicyNumber"))
+    if policy_num:
+        extra["Номер полиса"] = policy_num
+
     policy_end = _s(payload.get("policyEndDate"))
     if policy_end:
         extra["Окончание полиса"] = policy_end[:10]
+
+    drivers = payload.get("drivers") or []
+    driver_names = [_s(d.get("fullName")) for d in drivers if isinstance(d, dict)]
+    driver_names = [n for n in driver_names if n]
+    if driver_names:
+        extra["Водители"] = ", ".join(driver_names)
+
+    amount = payload.get("driversAmount")
+    if amount is not None and str(amount).strip() != "":
+        extra["Число водителей"] = str(amount)
+
+    price = payload.get("price")
+    if isinstance(price, (int, float)) and price > 0:
+        extra["Цена полиса"] = f"{price:g} ₽"
+
+    kind = _s(payload.get("type"))
+    if kind:
+        labels = {
+            "sravniProlongation": "Продление ОСАГО",
+            "prolongation": "Продление ОСАГО",
+        }
+        extra["Тип расчёта"] = labels.get(kind, kind)
 
     return VehicleInfo(
         vin=raw_plate,

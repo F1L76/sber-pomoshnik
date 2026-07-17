@@ -76,36 +76,46 @@ def _attach_correction(
     return result
 
 
-def _lookup_sravni_plate_timed(plate: str, normalized: str) -> VehicleInfo:
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(lookup_sravni_plate, plate, normalized)
-        try:
-            return future.result(timeout=SRAVNI_TIMEOUT)
-        except FuturesTimeout:
-            return VehicleInfo(
-                vin=plate,
-                normalized=normalized,
-                found=False,
-                source="sravni",
-                sources_used=["sravni"],
-                lookup_error=f"Превышено время ожидания ({SRAVNI_TIMEOUT} с).",
-            )
+def _merge_vehicle(base: VehicleInfo, other: VehicleInfo) -> VehicleInfo:
+    """Дополняет base полями из other (пустое ← другое)."""
+    if not other or not other.found:
+        if other and other.sources_used:
+            base.sources_used = list(dict.fromkeys([*(base.sources_used or []), *other.sources_used]))
+        return base
 
+    fields = (
+        "make", "model", "model_year", "manufacturer", "series", "trim",
+        "body_class", "vehicle_type", "doors", "drive_type", "fuel_type",
+        "color", "category", "body_number", "engine_number", "power_hp", "power_kw",
+        "engine_cylinders", "displacement_l", "engine_model", "engine_configuration",
+        "transmission_style", "transmission_speeds",
+        "plant_country", "plant_city", "plant_state", "gvwr",
+    )
+    for name in fields:
+        if not getattr(base, name, None) and getattr(other, name, None):
+            setattr(base, name, getattr(other, name))
 
-def _lookup_drom_plate_timed(plate: str, normalized: str) -> VehicleInfo:
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(lookup_drom_plate, plate, normalized)
-        try:
-            return future.result(timeout=DROM_TIMEOUT)
-        except FuturesTimeout:
-            return VehicleInfo(
-                vin=plate,
-                normalized=normalized,
-                found=False,
-                source="drom",
-                sources_used=["drom"],
-                lookup_error=f"Превышено время ожидания ({DROM_TIMEOUT} с). Повторите позже.",
-            )
+    for key, value in (other.extra or {}).items():
+        if value and key not in base.extra:
+            base.extra[key] = value
+
+    vin_from_other = (other.extra or {}).get("VIN") or (
+        other.normalized if other.normalized and len(other.normalized) == 17 else None
+    )
+    if vin_from_other and len(str(vin_from_other)) == 17:
+        if not base.extra.get("VIN"):
+            base.extra["VIN"] = str(vin_from_other)
+        if not base.normalized or len(base.normalized) != 17:
+            base.normalized = str(vin_from_other)
+
+    base.sources_used = list(
+        dict.fromkeys([*(base.sources_used or []), *(other.sources_used or [])])
+    )
+    if not base.found and other.found:
+        base.found = True
+        base.lookup_error = None
+        base.source = other.source
+    return base
 
 
 def lookup_plate(plate: str) -> VehicleInfo:
@@ -121,23 +131,53 @@ def lookup_plate(plate: str) -> VehicleInfo:
             lookup_error=err,
         )
 
-    # Основной источник госномера — Сравни; drom — запасной, если превью пустое.
-    result = _lookup_sravni_plate_timed(plate, normalized)
-    if _has_vehicle_data(result):
+    # Оба источника параллельно — максимум полей в одной карточке.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        f_sravni = pool.submit(lookup_sravni_plate, plate, normalized)
+        f_drom = pool.submit(lookup_drom_plate, plate, normalized)
+        try:
+            sravni = f_sravni.result(timeout=SRAVNI_TIMEOUT)
+        except FuturesTimeout:
+            sravni = VehicleInfo(
+                vin=plate,
+                normalized=normalized,
+                found=False,
+                source="sravni",
+                sources_used=["sravni"],
+                lookup_error=f"Превышено время ожидания ({SRAVNI_TIMEOUT} с).",
+            )
+        try:
+            drom = f_drom.result(timeout=DROM_TIMEOUT)
+        except FuturesTimeout:
+            drom = VehicleInfo(
+                vin=plate,
+                normalized=normalized,
+                found=False,
+                source="drom",
+                sources_used=["drom"],
+            )
+
+    if _has_vehicle_data(sravni):
+        result = _merge_vehicle(sravni, drom)
+    elif _has_vehicle_data(drom):
+        result = _merge_vehicle(drom, sravni)
+    else:
+        result = sravni if sravni.lookup_error else drom
+        if not result.lookup_error:
+            result.lookup_error = "По этому госномеру данных о марке и модели не найдено"
         return result
 
-    fallback = _lookup_drom_plate_timed(plate, normalized)
-    if _has_vehicle_data(fallback):
-        fallback.sources_used = list(
-            dict.fromkeys([*(result.sources_used or []), *(fallback.sources_used or [])])
-        )
-        return fallback
+    # Если нашли VIN — дотягиваем теххарактеристики по VIN.
+    vin = result.extra.get("VIN") or (
+        result.normalized if result.normalized and len(result.normalized) == 17 else None
+    )
+    if vin and len(str(vin)) == 17:
+        by_vin = _lookup_drom_timed(str(vin), str(vin))
+        if _has_vehicle_data(by_vin):
+            result = _merge_vehicle(result, by_vin)
 
-    if result.lookup_error:
-        return result
-    if fallback.lookup_error:
-        return fallback
-    result.lookup_error = "По этому госномеру данных о марке и модели не найдено"
+    result.found = True
+    result.lookup_error = None
     return result
 
 
