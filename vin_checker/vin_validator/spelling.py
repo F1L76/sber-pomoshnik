@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
-from .iso3779 import FORBIDDEN_CHARS, VIN_LENGTH, normalize_vin
+from .iso3779 import FORBIDDEN_CHARS, VIN_LENGTH, fix_cyrillic_keyboard, normalize_vin
 
-# Кириллица, часто путаемая с латиницей при вводе
+# Кириллица, часто путаемая с латиницей при вводе (для сообщений об ошибках)
 _CYRILLIC_TO_LATIN: dict[str, str] = {
     "А": "A",
     "В": "B",
@@ -16,27 +16,13 @@ _CYRILLIC_TO_LATIN: dict[str, str] = {
     "Н": "H",
     "К": "K",
     "М": "M",
-    "О": "0",  # в VIN буква O запрещена → цифра 0
+    "О": "0",
     "Р": "P",
     "Т": "T",
     "У": "Y",
     "Х": "X",
-    "І": "I",  # украинская I — в VIN запрещена
+    "І": "1",
     "З": "3",
-    "Ь": "b",
-    "Д": "D",
-    "Г": "G",
-    "Л": "L",
-    "П": "P",
-    "Ф": "F",
-    "Ц": "C",
-    "Ч": "4",
-    "Ш": "W",
-    "Щ": "W",
-    "Ы": "Y",
-    "Э": "E",
-    "Ю": "U",
-    "Я": "R",
 }
 
 # Типичные замены при опечатках (латиница)
@@ -140,11 +126,23 @@ def check_spelling(vin: str) -> SpellingResult:
             )
         )
 
-    # Посимвольный разбор исходной строки (без предварительной нормализации)
+    # Посимвольный разбор: сначала та же логика, что в normalize (раскладка / двойники)
     working: list[str] = []
     changed = False
 
     core = raw.strip().replace("-", "").replace(" ", "")
+    fixed_core = fix_cyrillic_keyboard(core)
+    if fixed_core != core:
+        issues.append(
+            SpellingIssue(
+                code=SpellingCode.CYRILLIC,
+                message="Обнаружена кириллица — исправлена с учётом раскладки клавиатуры",
+                suggestion=normalize_vin(fixed_core),
+            )
+        )
+        changed = True
+        core = fixed_core
+
     for pos, char in enumerate(core, start=1):
         if char in _CYRILLIC_TO_LATIN:
             replacement = _CYRILLIC_TO_LATIN[char]

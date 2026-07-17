@@ -265,7 +265,8 @@
                         <i class="fa-solid fa-magnifying-glass me-2"></i>Найти
                     </button>
                 </div>
-                <div class="form-text mt-2">17 символов (без I, O, Q)</div>
+                <div class="form-text mt-2">17 символов (без I, O, Q). Кириллица из‑за раскладки подставится латиницей автоматически.</div>
+                <div class="form-text text-success mt-1" id="vinLayoutHint" hidden>Кириллица заменена на латиницу.</div>
             </div>
 
             <div id="panelPlate" class="d-none">
@@ -345,11 +346,71 @@
         const plateSingle = document.getElementById("plateSingle");
         const vinBatch = document.getElementById("vinBatch");
         const vinFile = document.getElementById("vinFile");
+        const vinLayoutHint = document.getElementById("vinLayoutHint");
         const resultsEl = document.getElementById("results");
         const emptyState = document.getElementById("emptyState");
         const statsRow = document.getElementById("statsRow");
         const searchLoading = document.getElementById("searchLoading");
         const alertBox = document.getElementById("alertBox");
+
+        // ЙЦУКЕН → QWERTY (ошибочная раскладка)
+        const CYR_LAYOUT = {
+            "Й":"Q","Ц":"W","У":"E","К":"R","Е":"T","Н":"Y","Г":"U","Ш":"I","Щ":"O","З":"P","Х":"[","Ъ":"]",
+            "Ф":"A","Ы":"S","В":"D","А":"F","П":"G","Р":"H","О":"J","Л":"K","Д":"L","Ж":";","Э":"'",
+            "Я":"Z","Ч":"X","С":"C","М":"V","И":"B","Т":"N","Ь":"M","Б":",","Ю":".","Ё":"`"
+        };
+        // Визуальные двойники при наборе VIN «на глаз»
+        const CYR_LOOKALIKE = {
+            "А":"A","В":"B","С":"C","Е":"E","Н":"H","К":"K","М":"M","О":"0","Р":"P","Т":"T","У":"Y","Х":"X","І":"1","З":"3"
+        };
+        const LAYOUT_MARKERS = new Set("ЙЦГШЩЗЪФЫПЛДЖЭЯЧИЬБЮЁ".split(""));
+
+        function fixCyrillicKeyboard(text) {
+            if (!text || !/[^\u0000-\u007f]/.test(text)) return text;
+            const useLayout = [...text].some((c) => LAYOUT_MARKERS.has(c.toUpperCase()));
+            const table = useLayout ? CYR_LAYOUT : CYR_LOOKALIKE;
+            return [...text].map((ch) => table[ch.toUpperCase()] || ch).join("");
+        }
+
+        function normalizeVinInput(raw) {
+            return fixCyrillicKeyboard(String(raw || "")).toUpperCase().replace(/[\s-]/g, "");
+        }
+
+        function bindVinKeyboardFix(input, hintEl) {
+            if (!input) return;
+            input.addEventListener("input", () => {
+                const before = input.value;
+                const after = normalizeVinInput(before);
+                if (after !== before) {
+                    const pos = input.selectionStart;
+                    input.value = after;
+                    const delta = after.length - before.length;
+                    const next = Math.max(0, (pos || after.length) + delta);
+                    try { input.setSelectionRange(next, next); } catch (_) {}
+                    if (hintEl) {
+                        hintEl.hidden = false;
+                        clearTimeout(hintEl._hideTimer);
+                        hintEl._hideTimer = setTimeout(() => { hintEl.hidden = true; }, 2500);
+                    }
+                }
+            });
+            input.addEventListener("paste", (e) => {
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData).getData("text");
+                const start = input.selectionStart || 0;
+                const end = input.selectionEnd || 0;
+                const next = normalizeVinInput(input.value.slice(0, start) + text + input.value.slice(end));
+                input.value = next.slice(0, input.maxLength || 32);
+                if (hintEl && /[^\u0000-\u007f]/.test(text)) {
+                    hintEl.hidden = false;
+                    clearTimeout(hintEl._hideTimer);
+                    hintEl._hideTimer = setTimeout(() => { hintEl.hidden = true; }, 2500);
+                }
+            });
+        }
+
+        bindVinKeyboardFix(vinSingle, vinLayoutHint);
+        bindVinKeyboardFix(vinBatch, null);
 
         const LOADING_MESSAGES = [
             "Котик заглядывает под капот…",
@@ -555,7 +616,7 @@
             if (activeTab === "plate") {
                 payload = { plate: plateSingle.value.trim() };
             } else if (activeTab === "single") {
-                payload = { vins: [vinSingle.value.trim()].filter(Boolean) };
+                payload = { vins: [normalizeVinInput(vinSingle.value)].filter(Boolean) };
             } else {
                 payload = { text: vinBatch.value };
             }

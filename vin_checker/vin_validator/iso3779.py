@@ -16,6 +16,92 @@ ALLOWED_CHARS = frozenset(
     "0123456789ABCDEFGHJKLMNPRSTUVWXYZ"
 )
 
+# Визуальные двойники (скопировали VIN «на глаз» кириллицей)
+_CYR_LOOKALIKE: dict[str, str] = {
+    "А": "A",
+    "В": "B",
+    "С": "C",
+    "Е": "E",
+    "Н": "H",
+    "К": "K",
+    "М": "M",
+    "О": "0",  # в VIN нет O
+    "Р": "P",
+    "Т": "T",
+    "У": "Y",
+    "Х": "X",
+    "І": "1",  # украинская I → ближе к 1 (I запрещена)
+    "З": "3",
+}
+
+# ЙЦУКЕН → QWERTY: та же физическая клавиша при ошибочной раскладке
+_CYR_LAYOUT: dict[str, str] = {
+    "Й": "Q",
+    "Ц": "W",
+    "У": "E",
+    "К": "R",
+    "Е": "T",
+    "Н": "Y",
+    "Г": "U",
+    "Ш": "I",
+    "Щ": "O",
+    "З": "P",
+    "Х": "[",
+    "Ъ": "]",
+    "Ф": "A",
+    "Ы": "S",
+    "В": "D",
+    "А": "F",
+    "П": "G",
+    "Р": "H",
+    "О": "J",
+    "Л": "K",
+    "Д": "L",
+    "Ж": ";",
+    "Э": "'",
+    "Я": "Z",
+    "Ч": "X",
+    "С": "C",
+    "М": "V",
+    "И": "B",
+    "Т": "N",
+    "Ь": "M",
+    "Б": ",",
+    "Ю": ".",
+    "Ё": "`",
+}
+
+# Буквы без латинского «двойника» VIN — признак ошибочной раскладки
+_LAYOUT_MARKERS = frozenset("ЙЦГШЩЗЪФЫПЛДЖЭЯЧИЬБЮЁ")
+
+
+def fix_cyrillic_keyboard(text: str) -> str:
+    """
+    Кириллица → латиница для VIN.
+    Если есть буквы вроде Й/Ц/Ф — считаем ошибкой раскладки (ЙЦУКЕН→QWERTY),
+    иначе — визуальные двойники (А→A, Х→X, …).
+    """
+    if not text or not any(ord(c) > 127 for c in text):
+        return text
+    use_layout = any(c.upper() in _LAYOUT_MARKERS for c in text)
+    table = _CYR_LAYOUT if use_layout else _CYR_LOOKALIKE
+    out: list[str] = []
+    for ch in text:
+        up = ch.upper()
+        if up in table:
+            out.append(table[up])
+        elif ch.lower() != ch and ch.upper() in table:
+            out.append(table[ch.upper()])
+        else:
+            # строчные кириллические
+            up2 = ch.upper()
+            if up2 in table:
+                out.append(table[up2])
+            else:
+                out.append(ch)
+    return "".join(out)
+
+
 # Транслитерация для расчёта контрольной цифры (позиция 9)
 _TRANSLITERATION: dict[str, int] = {
     "A": 1,
@@ -127,8 +213,9 @@ class VinValidationResult:
 
 
 def normalize_vin(vin: str) -> str:
-    """Приведение к верхнему регистру без пробелов и разделителей."""
-    return "".join(vin.upper().split()).replace("-", "")
+    """Кириллица→латиница (раскладка/двойники), верхний регистр, без пробелов и дефисов."""
+    fixed = fix_cyrillic_keyboard(vin or "")
+    return "".join(fixed.upper().split()).replace("-", "")
 
 
 def calculate_check_digit(vin: str) -> str | None:
@@ -175,15 +262,16 @@ def validate_iso3779(vin: str) -> VinValidationResult:
         )
 
     stripped = raw.strip()
-    if stripped != normalize_vin(stripped) and any(ord(c) > 127 for c in stripped):
+    normalized = normalize_vin(raw)
+
+    # Кириллица уже поправлена в normalize_vin; ругаемся только если остались «левые» символы
+    if any(ord(c) > 127 for c in normalized):
         issues.append(
             VinIssue(
                 code=IssueCode.NON_ASCII,
                 message="Обнаружены недопустимые не-ASCII символы",
             )
         )
-
-    normalized = normalize_vin(raw)
 
     if len(normalized) != VIN_LENGTH:
         issues.append(
@@ -251,3 +339,16 @@ def validate_iso3779(vin: str) -> VinValidationResult:
 def validate_batch(vins: Iterable[str]) -> list[VinValidationResult]:
     """Групповая проверка списка VIN."""
     return [validate_iso3779(v) for v in vins]
+
+
+def _self_check() -> None:
+    # визуальные двойники
+    assert normalize_vin("ХТА219010С0123456") == "XTA219010C0123456"
+    # ошибочная раскладка: XWF0AHL35D0011102 → чца0фрд35в0011102
+    assert normalize_vin("чца0фрд35в0011102") == "XWF0AHL35D0011102"
+    print("iso3779 keyboard self-check ok")
+
+
+if __name__ == "__main__":
+    _self_check()
+

@@ -3,6 +3,7 @@
 from .iso3779 import (
     VinValidationResult,
     calculate_check_digit,
+    fix_cyrillic_keyboard,
     normalize_vin,
     validate_batch,
     validate_iso3779,
@@ -13,6 +14,7 @@ __all__ = [
     "VinValidationResult",
     "SpellingResult",
     "calculate_check_digit",
+    "fix_cyrillic_keyboard",
     "normalize_vin",
     "validate_batch",
     "validate_iso3779",
