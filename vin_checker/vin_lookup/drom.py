@@ -89,13 +89,27 @@ def _parse_car_data(
 
     car = payload.get("carData") or {}
     if not car:
+        # ponytail: drom free preview often returns state=no-data for plates with no public cache
+        if payload.get("state") == "no-data":
+            msg = (
+                "По этому госномеру бесплатных данных нет (vin.drom.ru). "
+                "Попробуйте VIN, если он известен."
+                if plate
+                else "По этому VIN бесплатных данных нет (vin.drom.ru)."
+            )
+        else:
+            msg = (
+                "Сервер не вернул данные по этому госномеру"
+                if plate
+                else "Сервер не вернул данные по этому VIN"
+            )
         return VehicleInfo(
             vin=raw_vin,
             normalized=normalized,
             found=False,
             source="drom",
             sources_used=["drom"],
-            lookup_error="Сервер не вернул данные по этому VIN",
+            lookup_error=msg,
         )
 
     full_model = str(car.get("model") or "").strip()
