@@ -20,6 +20,56 @@ DROM_BUY_TOKEN_URL = "https://vin.drom.ru/report/get_buy_token/"
 DROM_CAR_DATA_URL = "https://vin.drom.ru/report/get_car_data/"
 REQUEST_TIMEOUT = int(os.environ.get("DROM_HTTP_TIMEOUT", "25"))
 USER_AGENT = "vin-checker/1.0 (preview; +https://vin.drom.ru)"
+# ponytail: in-process cache + cooldown after 429; ceiling = one process, upgrade = Redis
+_CACHE_TTL = int(os.environ.get("DROM_CACHE_TTL", "3600"))
+_COOLDOWN_SEC = int(os.environ.get("DROM_COOLDOWN_SEC", "90"))
+_cache: dict[str, tuple[float, VehicleInfo]] = {}
+_cooldown_until = 0.0
+
+
+def _cache_get(key: str) -> VehicleInfo | None:
+    hit = _cache.get(key)
+    if not hit:
+        return None
+    expires, info = hit
+    if time.time() > expires:
+        _cache.pop(key, None)
+        return None
+    from dataclasses import replace
+
+    return replace(
+        info,
+        extra=dict(info.extra or {}),
+        sources_used=list(info.sources_used or []),
+    )
+
+
+def _cache_set(key: str, info: VehicleInfo) -> None:
+    if info.found:
+        _cache[key] = (time.time() + _CACHE_TTL, info)
+
+
+def drom_cooling_down() -> bool:
+    return time.time() < _cooldown_until
+
+
+def _mark_rate_limited() -> None:
+    global _cooldown_until
+    _cooldown_until = time.time() + _COOLDOWN_SEC
+
+
+def _rate_limited_result(raw: str, normalized: str) -> VehicleInfo:
+    return VehicleInfo(
+        vin=raw,
+        normalized=normalized,
+        found=False,
+        source="drom",
+        sources_used=["drom"],
+        lookup_error=(
+            "Слишком много запросов к источнику данных (HTTP 429). "
+            "Подождите 1–2 минуты и повторите."
+        ),
+    )
 
 
 def _split_make_model(full_model: str) -> tuple[str | None, str | None]:
@@ -165,6 +215,14 @@ def _lookup_drom_query(
     *,
     plate: str | None = None,
 ) -> VehicleInfo:
+    cache_key = f"{query_field}:{normalized}"
+    cached = _cache_get(cache_key)
+    if cached:
+        return cached
+
+    if drom_cooling_down():
+        return _rate_limited_result(raw_query, normalized)
+
     try:
         opener = _open_opener()
         referer = _warm_session(opener, normalized)
@@ -202,16 +260,15 @@ def _lookup_drom_query(
                 continue
             if attempt < 2:
                 time.sleep(0.25)
-        return _parse_car_data(raw_query, normalized, car_payload, plate=plate)
+        result = _parse_car_data(raw_query, normalized, car_payload, plate=plate)
+        _cache_set(cache_key, result)
+        return result
 
     except urllib.error.HTTPError as exc:
         if exc.code == 429:
-            msg = (
-                "Слишком много запросов к источнику данных (HTTP 429). "
-                "Подождите 1–2 минуты и повторите."
-            )
-        else:
-            msg = f"Ошибка сервера (HTTP {exc.code})"
+            _mark_rate_limited()
+            return _rate_limited_result(raw_query, normalized)
+        msg = f"Ошибка сервера (HTTP {exc.code})"
         return VehicleInfo(
             vin=raw_query,
             normalized=normalized,

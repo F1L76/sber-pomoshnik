@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 
 from vin_validator.iso3779 import VIN_LENGTH, normalize_vin
 
-from .drom import lookup_drom, lookup_drom_plate
+from .drom import drom_cooling_down, lookup_drom, lookup_drom_plate
 from .models import VehicleInfo
 from .nhtsa import lookup_nhtsa
 from .sravni import lookup_sravni_plate
@@ -160,9 +160,10 @@ def _merge_vehicle(base: VehicleInfo, other: VehicleInfo) -> VehicleInfo:
 def _enrich_by_vin(result: VehicleInfo, vin: str) -> VehicleInfo:
     """Дополняет карточку по VIN: drom + NHTSA."""
     normalized = normalize_vin(vin)
-    drom = _lookup_drom_timed(vin, normalized)
-    if _has_vehicle_data(drom):
-        result = _merge_vehicle(result, drom)
+    if not drom_cooling_down():
+        drom = _lookup_drom_timed(vin, normalized)
+        if _has_vehicle_data(drom):
+            result = _merge_vehicle(result, drom)
     if USE_NHTSA:
         nhtsa = _lookup_nhtsa_timed(vin, normalized)
         if _has_vehicle_data(nhtsa) or nhtsa.extra:
@@ -183,38 +184,20 @@ def lookup_plate(plate: str) -> VehicleInfo:
             lookup_error=err,
         )
 
-    # Оба источника параллельно — максимум полей в одной карточке.
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        f_sravni = pool.submit(lookup_sravni_plate, plate, normalized)
-        f_drom = pool.submit(lookup_drom_plate, plate, normalized)
-        try:
-            sravni = f_sravni.result(timeout=SRAVNI_TIMEOUT)
-        except FuturesTimeout:
-            sravni = VehicleInfo(
-                vin=plate,
-                normalized=normalized,
-                found=False,
-                source="sravni",
-                sources_used=["sravni"],
-                lookup_error=f"Превышено время ожидания ({SRAVNI_TIMEOUT} с).",
-            )
-        try:
-            drom = f_drom.result(timeout=DROM_TIMEOUT)
-        except FuturesTimeout:
-            drom = VehicleInfo(
-                vin=plate,
-                normalized=normalized,
-                found=False,
-                source="drom",
-                sources_used=["drom"],
-            )
+    # Сначала Сравни; drom — только если нет cooldown (экономим лимит 429).
+    sravni = lookup_sravni_plate(plate, normalized)
+    drom = None
+    if not drom_cooling_down():
+        drom = _lookup_drom_plate_safe(plate, normalized)
 
     if _has_vehicle_data(sravni):
-        result = _merge_vehicle(sravni, drom)
-    elif _has_vehicle_data(drom):
+        result = _merge_vehicle(sravni, drom) if drom else sravni
+    elif drom and _has_vehicle_data(drom):
         result = _merge_vehicle(drom, sravni)
     else:
-        result = sravni if sravni.lookup_error else drom
+        result = sravni if (sravni.lookup_error or not drom) else drom
+        if drom and is_rate_limited(drom) and not result.lookup_error:
+            result = drom
         if not result.lookup_error:
             result.lookup_error = "По этому госномеру данных о марке и модели не найдено"
         return result
@@ -228,6 +211,21 @@ def lookup_plate(plate: str) -> VehicleInfo:
     result.found = True
     result.lookup_error = None
     return result
+
+
+def _lookup_drom_plate_safe(plate: str, normalized: str) -> VehicleInfo:
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(lookup_drom_plate, plate, normalized)
+        try:
+            return future.result(timeout=DROM_TIMEOUT)
+        except FuturesTimeout:
+            return VehicleInfo(
+                vin=plate,
+                normalized=normalized,
+                found=False,
+                source="drom",
+                sources_used=["drom"],
+            )
 
 
 def lookup_query(query: str, *, try_corrections: bool = True) -> VehicleInfo:
@@ -246,22 +244,33 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
 
     normalized = normalize_vin(vin)
 
-    # drom + NHTSA параллельно — больше техполей в карточке.
-    workers = 2 if USE_NHTSA else 1
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        f_drom = pool.submit(lookup_drom, vin, normalized)
+    skip_drom = drom_cooling_down()
+    workers = 2 if (USE_NHTSA and not skip_drom) else 1
+    with ThreadPoolExecutor(max_workers=max(workers, 1)) as pool:
+        f_drom = None if skip_drom else pool.submit(lookup_drom, vin, normalized)
         f_nhtsa = pool.submit(lookup_nhtsa, vin, normalized) if USE_NHTSA else None
-        try:
-            drom = f_drom.result(timeout=DROM_TIMEOUT)
-        except FuturesTimeout:
+
+        if f_drom is not None:
+            try:
+                drom = f_drom.result(timeout=DROM_TIMEOUT)
+            except FuturesTimeout:
+                drom = VehicleInfo(
+                    vin=vin,
+                    normalized=normalized,
+                    found=False,
+                    source="drom",
+                    sources_used=["drom"],
+                    lookup_error=f"Превышено время ожидания ({DROM_TIMEOUT} с). Повторите позже.",
+                )
+        else:
             drom = VehicleInfo(
                 vin=vin,
                 normalized=normalized,
                 found=False,
                 source="drom",
-                sources_used=["drom"],
-                lookup_error=f"Превышено время ожидания ({DROM_TIMEOUT} с). Повторите позже.",
+                sources_used=[],
             )
+
         nhtsa = None
         if f_nhtsa is not None:
             try:
@@ -287,6 +296,10 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
         result.lookup_error = None
         return result
 
+    # Не маскируем 429, но не гоняем коррекцию VIN при лимите.
+    if is_rate_limited(drom):
+        return drom
+
     base = drom if drom.lookup_error else (nhtsa or drom)
     if not base.lookup_error:
         base.lookup_error = "По этому VIN данных о марке и модели не найдено"
@@ -303,6 +316,7 @@ def lookup_batch(queries: list[str]) -> list[VehicleInfo]:
     out: list[VehicleInfo] = []
     for i, q in enumerate(queries):
         if i:
-            time.sleep(0.5)
+            # ponytail: slow batch to reduce 429 from drom
+            time.sleep(1.2 if not drom_cooling_down() else 0.3)
         out.append(lookup_query(q, try_corrections=try_corrections))
     return out
