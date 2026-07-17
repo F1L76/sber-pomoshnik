@@ -170,14 +170,55 @@
         .search-loading {
             display: none;
             align-items: center;
-            gap: 1rem;
-            padding: 1rem;
+            gap: 1.25rem;
+            padding: 1.25rem 1.5rem;
             margin-bottom: 1rem;
-            border-radius: 14px;
-            background: #fff;
+            background: linear-gradient(135deg, #fff 0%, #f5faf7 100%);
             border: 1px solid var(--sber-border);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 24px rgba(30, 42, 58, 0.06);
         }
         .search-loading.active { display: flex; }
+        .loader-gif {
+            width: 88px;
+            height: 88px;
+            flex-shrink: 0;
+            border-radius: 14px;
+            object-fit: contain;
+            background: #fff;
+        }
+        .search-loading-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .search-loading-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--sber-text);
+            margin: 0 0 0.25rem;
+        }
+        .search-loading-text {
+            color: var(--sber-muted);
+            font-size: 0.9rem;
+            margin: 0 0 0.65rem;
+        }
+        .loader-progress {
+            height: 4px;
+            background: var(--sber-border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .loader-progress-bar {
+            height: 100%;
+            width: 35%;
+            background: linear-gradient(90deg, var(--sber-green), #3dd15a);
+            border-radius: 4px;
+            animation: loader-slide 1.4s ease-in-out infinite;
+        }
+        @keyframes loader-slide {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(320%); }
+        }
     </style>
 </head>
 <body>
@@ -237,11 +278,22 @@
             </div>
         </section>
 
-        <div id="searchLoading" class="search-loading" aria-live="polite">
-            <div class="spinner-border text-success" role="status"></div>
-            <div>
-                <div class="fw-semibold" id="loadingTitle">Ищем данные по VIN…</div>
-                <div class="small text-muted" id="loadingText">Запрос к vin.drom.ru</div>
+        <div id="searchLoading" class="search-loading" aria-live="polite" aria-busy="false">
+            <img
+                class="loader-gif"
+                id="searchLoaderGif"
+                src="/assets/loading-sbercat.gif"
+                width="88"
+                height="88"
+                alt="Сберкот ищет VIN"
+                onerror="this.onerror=null;this.src='https://gifs.obs.ru-moscow-1.hc.sbercloud.ru/f61fbd71aa1b7d2456a24782a6af8553657c341a6d7e02d28f23205097d4b44b.gif'"
+            >
+            <div class="search-loading-body">
+                <p class="search-loading-title" id="loadingTitle">Ищем данные по VIN…</p>
+                <p class="search-loading-text mb-0" id="searchLoadingText">Запрос к vin.drom.ru…</p>
+                <div class="loader-progress" aria-hidden="true">
+                    <div class="loader-progress-bar"></div>
+                </div>
             </div>
         </div>
 
@@ -273,6 +325,38 @@
         const statsRow = document.getElementById("statsRow");
         const searchLoading = document.getElementById("searchLoading");
         const alertBox = document.getElementById("alertBox");
+
+        const LOADING_MESSAGES = [
+            "Запрос к vin.drom.ru…",
+            "Проверяем VIN и нормализуем номер…",
+            "Получаем марку, модель и год…",
+            "Собираем характеристики ТС…",
+            "Формируем карточку результата…"
+        ];
+        let loadingMessageTimer = null;
+        let loadingMessageIndex = 0;
+
+        function showSearchLoading(vinCount) {
+            const title = document.getElementById("loadingTitle");
+            const text = document.getElementById("searchLoadingText");
+            title.textContent = vinCount > 1 ? `Ищем ${vinCount} VIN…` : "Ищем данные по VIN…";
+            loadingMessageIndex = 0;
+            text.textContent = LOADING_MESSAGES[0];
+            searchLoading.classList.add("active");
+            searchLoading.setAttribute("aria-busy", "true");
+            clearInterval(loadingMessageTimer);
+            loadingMessageTimer = setInterval(() => {
+                loadingMessageIndex = (loadingMessageIndex + 1) % LOADING_MESSAGES.length;
+                text.textContent = LOADING_MESSAGES[loadingMessageIndex];
+            }, 2200);
+        }
+
+        function hideSearchLoading() {
+            searchLoading.classList.remove("active");
+            searchLoading.setAttribute("aria-busy", "false");
+            clearInterval(loadingMessageTimer);
+            loadingMessageTimer = null;
+        }
 
         if (location.protocol === "file:") {
             alertBox.innerHTML = '<div class="alert alert-warning">Откройте через сервер: <a href="http://localhost:8787/vin">http://localhost:8787/vin</a></div>';
@@ -387,10 +471,7 @@
             const timeoutSec = Math.round(timeoutMs / 1000);
 
             alertBox.innerHTML = "";
-            searchLoading.classList.add("active");
-            document.getElementById("loadingTitle").textContent = vinCount > 1
-                ? `Поиск ${vinCount} VIN…` : "Ищем данные по VIN…";
-            document.getElementById("loadingText").textContent = `До ${timeoutSec} с · vin.drom.ru`;
+            showSearchLoading(vinCount);
 
             const ctrl = new AbortController();
             const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -420,7 +501,7 @@
                     : (err.message || "Ошибка запроса");
                 alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(msg)}</div>`;
             } finally {
-                searchLoading.classList.remove("active");
+                hideSearchLoading();
             }
         }
     </script>
