@@ -26,9 +26,8 @@ USER_AGENT = (
 )
 # ponytail: file-backed — Node spawns a new Python per request, so memory cache dies
 _CACHE_TTL = int(os.environ.get("DROM_CACHE_TTL", "3600"))
-# ponytail: QRATOR режет IP надолго — короткий cooldown только провоцирует повторные 429
-_COOLDOWN_SEC = int(os.environ.get("DROM_COOLDOWN_SEC", "900"))
-_MIN_GAP_SEC = float(os.environ.get("DROM_MIN_GAP", "12"))
+_COOLDOWN_SEC = int(os.environ.get("DROM_COOLDOWN_SEC", "180"))
+_MIN_GAP_SEC = float(os.environ.get("DROM_MIN_GAP", "10"))
 _RETRY_WAIT_SEC = float(os.environ.get("DROM_RETRY_WAIT", "0"))
 _MAX_WAIT_SEC = float(os.environ.get("DROM_MAX_WAIT", "0"))
 _STATE_PATH = Path(
@@ -140,6 +139,11 @@ def _cache_set(key: str, info: VehicleInfo) -> None:
 def drom_cooling_down() -> bool:
     state = _load_state()
     return time.time() < float(state.get("cooldown_until") or 0)
+
+
+def cooldown_remaining() -> float:
+    state = _load_state()
+    return max(0.0, float(state.get("cooldown_until") or 0) - time.time())
 
 
 def _mark_rate_limited() -> None:
@@ -276,7 +280,7 @@ def _parse_car_data(
             lookup_error=msg,
         )
 
-    full_model = str(car.get("model") or "").strip()
+    full_model = _s(car.get("model")) or ""
     make, model = _split_make_model(full_model)
     year = car.get("year")
     volume = car.get("volume")
@@ -319,6 +323,36 @@ def _s(value: Any) -> str | None:
     if value is None:
         return None
     text = str(value).strip()
+    if not text:
+        return None
+    # drom иногда подмешивает кириллические «двойники» латиницы (О/О, Р/P…)
+    text = text.translate(
+        str.maketrans(
+            {
+                "А": "A",
+                "В": "B",
+                "Е": "E",
+                "К": "K",
+                "М": "M",
+                "Н": "H",
+                "О": "O",
+                "Р": "P",
+                "С": "C",
+                "Т": "T",
+                "Х": "X",
+                "У": "Y",
+                "а": "a",
+                "е": "e",
+                "о": "o",
+                "р": "p",
+                "с": "c",
+                "у": "y",
+                "х": "x",
+                "І": "I",
+                "і": "i",
+            }
+        )
+    )
     return text or None
 
 

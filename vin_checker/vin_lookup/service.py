@@ -1,30 +1,35 @@
-"""Сервис поиска по VIN: drom + NHTSA (параллельно, максимум полей)."""
+"""Сервис поиска по VIN: онлайн-базы (drom + NHTSA)."""
 
 from __future__ import annotations
 
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 
 from vin_validator.iso3779 import VIN_LENGTH, normalize_vin
 
-from .drom import drom_cooling_down, lookup_drom, lookup_drom_plate, rate_limited_result
+from .drom import (
+    cooldown_remaining,
+    drom_cooling_down,
+    lookup_drom,
+    lookup_drom_plate,
+)
 from .models import VehicleInfo
 from .nhtsa import lookup_nhtsa
 from .sravni import lookup_sravni_plate
 from .vin_corrections import find_corrected_vin, format_correction_message, is_rate_limited
-from .wmi_offline import lookup_wmi_offline
 
-DROM_TIMEOUT = int(os.environ.get("DROM_TIMEOUT", "35"))
+DROM_TIMEOUT = int(os.environ.get("DROM_TIMEOUT", "45"))
 SRAVNI_TIMEOUT = int(os.environ.get("SRAVNI_TIMEOUT", "25"))
 NHTSA_TIMEOUT = int(os.environ.get("NHTSA_TIMEOUT", "8"))
+# Сколько максимум ждать снятия cooldown, чтобы всё же сходить в онлайн-базу
+DROM_WAIT_COOLDOWN = float(os.environ.get("DROM_WAIT_COOLDOWN", "90"))
 VIN_CORRECTION_ENABLED = os.environ.get("VIN_CORRECTION", "0").lower() not in (
     "0",
     "false",
     "no",
 )
-# ponytail: NHTSA on by default; set USE_NHTSA=0 to disable
 USE_NHTSA = os.environ.get("USE_NHTSA", "1").lower() not in ("0", "false", "no")
-# ponytail: vin.drom.ru часто 429 по IP — по умолчанию не долбим в cooldown
 USE_DROM_VIN = os.environ.get("DROM_FOR_VIN", "1").lower() not in ("0", "false", "no")
 
 
@@ -71,12 +76,17 @@ def _lookup_nhtsa_timed(vin: str, normalized: str) -> VehicleInfo:
             )
 
 
-def _has_vehicle_data(info: VehicleInfo) -> bool:
+def _has_vehicle_data(info: VehicleInfo | None) -> bool:
     if not info:
         return False
-    if not info.found and not (info.make or info.model or info.model_year):
-        return False
     return bool(info.make or info.model or info.model_year or info.vehicle_type)
+
+
+def _wait_drom_cooldown() -> None:
+    """Если база в cooldown — подождать (с потолком), затем пробовать онлайн."""
+    wait = cooldown_remaining()
+    if wait > 0:
+        time.sleep(min(wait, DROM_WAIT_COOLDOWN))
 
 
 def _attach_correction(
@@ -136,22 +146,13 @@ def _merge_vehicle(base: VehicleInfo, other: VehicleInfo) -> VehicleInfo:
         "gvwr",
     )
     for name in fields:
-        if not getattr(base, name, None) and getattr(other, name, None):
+        if not getattr(base, name) and getattr(other, name):
             setattr(base, name, getattr(other, name))
-
-    for key, value in (other.extra or {}).items():
-        if value and key not in base.extra:
-            base.extra[key] = value
-
-    vin_from_other = (other.extra or {}).get("VIN") or (
-        other.normalized if other.normalized and len(other.normalized) == 17 else None
-    )
-    if vin_from_other and len(str(vin_from_other)) == 17:
-        if not base.extra.get("VIN"):
-            base.extra["VIN"] = str(vin_from_other)
-        if not base.normalized or len(base.normalized) != 17:
-            base.normalized = str(vin_from_other)
-
+    if other.extra:
+        merged = dict(base.extra or {})
+        for k, v in other.extra.items():
+            merged.setdefault(k, v)
+        base.extra = merged
     base.sources_used = list(
         dict.fromkeys([*(base.sources_used or []), *(other.sources_used or [])])
     )
@@ -167,15 +168,18 @@ USE_DROM_PLATE = os.environ.get("DROM_FOR_PLATE", "0").lower() in ("1", "true", 
 
 
 def _enrich_by_vin(result: VehicleInfo, vin: str) -> VehicleInfo:
-    """Дополняет карточку по VIN: drom + NHTSA."""
+    """Дополняет карточку по VIN из онлайн-баз."""
     normalized = normalize_vin(vin)
-    if not drom_cooling_down():
-        drom = _lookup_drom_timed(vin, normalized)
-        if _has_vehicle_data(drom):
-            result = _merge_vehicle(result, drom)
+    if USE_DROM_VIN:
+        if drom_cooling_down():
+            _wait_drom_cooldown()
+        if not drom_cooling_down():
+            drom = _lookup_drom_timed(vin, normalized)
+            if _has_vehicle_data(drom):
+                result = _merge_vehicle(result, drom)
     if USE_NHTSA:
         nhtsa = _lookup_nhtsa_timed(vin, normalized)
-        if _has_vehicle_data(nhtsa) or nhtsa.extra:
+        if _has_vehicle_data(nhtsa) or (nhtsa and nhtsa.extra):
             result = _merge_vehicle(result, nhtsa)
     return result
 
@@ -193,7 +197,6 @@ def lookup_plate(plate: str) -> VehicleInfo:
             lookup_error=err,
         )
 
-    # Госномер: Сравни. Drom — только по флагу и вне cooldown.
     sravni = lookup_sravni_plate(plate, normalized)
     drom = None
     if USE_DROM_PLATE and not drom_cooling_down():
@@ -247,64 +250,46 @@ def lookup_query(query: str, *, try_corrections: bool = True) -> VehicleInfo:
 
 
 def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
+    """Онлайн-поиск по VIN в базах (drom / NHTSA). Без локального WMI."""
     pre = _preflight(vin)
     if pre:
         return pre
 
     normalized = normalize_vin(vin)
-    offline = lookup_wmi_offline(vin, normalized)
 
-    # NHTSA — без лимита drom
     nhtsa = _lookup_nhtsa_timed(vin, normalized) if USE_NHTSA else None
-    if nhtsa and _has_vehicle_data(nhtsa):
-        result = _merge_vehicle(nhtsa, offline)
-        if os.environ.get("DROM_ALWAYS", "0").lower() not in ("1", "true", "yes"):
-            result.found = True
-            result.lookup_error = None
-            return result
 
-    # Drom только вне cooldown — иначе QRATOR снова отдаст 429
     drom = None
-    if USE_DROM_VIN and not drom_cooling_down():
+    if USE_DROM_VIN:
+        if drom_cooling_down():
+            _wait_drom_cooldown()
         drom = _lookup_drom_timed(vin, normalized)
-    elif USE_DROM_VIN and drom_cooling_down():
-        drom = rate_limited_result(vin, normalized)
 
-    result = offline
     if drom and _has_vehicle_data(drom):
-        result = _merge_vehicle(drom, result)
-        if nhtsa:
-            result = _merge_vehicle(result, nhtsa)
+        result = _merge_vehicle(drom, nhtsa) if nhtsa else drom
         result.found = True
         result.lookup_error = None
         return result
 
     if nhtsa and _has_vehicle_data(nhtsa):
-        result = _merge_vehicle(nhtsa, result)
-        if drom:
-            result = _merge_vehicle(result, drom)
+        result = nhtsa if not drom else _merge_vehicle(nhtsa, drom)
         result.found = True
         result.lookup_error = None
-        return result
-
-    # Есть хотя бы марка/год из WMI — не показываем 429 как единственный ответ
-    if _has_vehicle_data(offline) or offline.make or offline.model_year:
-        result = offline
-        if nhtsa:
-            result = _merge_vehicle(result, nhtsa)
-        result.found = True
-        result.lookup_error = None
-        if not result.model:
-            result.extra = {
-                **(result.extra or {}),
-                "Примечание": "Модель уточняется по полной базе; сейчас определены марка и год по VIN",
-            }
         return result
 
     if drom and is_rate_limited(drom):
         return drom
 
-    base = drom if (drom and drom.lookup_error) else (nhtsa or offline)
+    base = drom if (drom and drom.lookup_error) else (
+        nhtsa
+        if nhtsa
+        else VehicleInfo(
+            vin=vin,
+            normalized=normalized,
+            found=False,
+            lookup_error="По этому VIN данных о марке и модели не найдено",
+        )
+    )
     if not base.lookup_error:
         base.lookup_error = "По этому VIN данных о марке и модели не найдено"
 
@@ -314,8 +299,6 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
 
 
 def lookup_batch(queries: list[str]) -> list[VehicleInfo]:
-    import time
-
     try_corrections = len(queries) == 1
     out: list[VehicleInfo] = []
     for i, q in enumerate(queries):
