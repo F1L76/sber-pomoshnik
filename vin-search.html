@@ -180,12 +180,20 @@
         }
         .search-loading.active { display: flex; }
         .loader-gif {
-            width: 88px;
-            height: 88px;
+            width: 112px;
+            height: 112px;
             flex-shrink: 0;
             border-radius: 14px;
             object-fit: contain;
             background: #fff;
+            animation: vin-cat-bob 1.8s ease-in-out infinite;
+        }
+        @keyframes vin-cat-bob {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .loader-gif { animation: none; }
         }
         .search-loading-body {
             flex: 1;
@@ -282,11 +290,11 @@
             <img
                 class="loader-gif"
                 id="searchLoaderGif"
-                src="/assets/loading-sbercat.gif"
-                width="88"
-                height="88"
-                alt="Сберкот ищет VIN"
-                onerror="this.onerror=null;this.src='https://gifs.obs.ru-moscow-1.hc.sbercloud.ru/f61fbd71aa1b7d2456a24782a6af8553657c341a6d7e02d28f23205097d4b44b.gif'"
+                src="/assets/loading-dancing-cat.gif"
+                width="112"
+                height="112"
+                alt="Котик ищет VIN"
+                onerror="this.onerror=null;this.src='https://media1.tenor.com/m/2YJ8ecS0GBkAAAAC/cat-cats.gif'"
             >
             <div class="search-loading-body">
                 <p class="search-loading-title" id="loadingTitle">Ищем данные по VIN…</p>
@@ -327,7 +335,7 @@
         const alertBox = document.getElementById("alertBox");
 
         const LOADING_MESSAGES = [
-            "Сберкот заглядывает под капот vin.drom.ru…",
+            "Котик заглядывает под капот vin.drom.ru…",
             "Считаем буквы VIN — I, O и Q в отпуске",
             "Спрашиваем у базы: кто ты, железный друг?",
             "Расшифровываем 17 символов, как шифр дня",
@@ -335,17 +343,17 @@
             "Проверяем, не перепутали ли 0 с буквой O",
             "Сверяем год выпуска с заводской табличкой",
             "Уточняем объём двигателя и мощность в л.с.",
-            "Котик мурлычет — данные уже в пути",
+            "Котик танцует — данные уже в пути",
             "Смотрим, не Toyota ли это на самом деле",
             "Копаемся в характеристиках, как в бардачке",
             "Собираем карточку: кузов, КПП, топливо",
             "Если VIN с опечаткой — попробуем угадать правильный",
-            "Drom отвечает медленно — терпение, скоро всё будет",
+            "Drom отвечает медленно — котик верит в успех",
             "Почти готово: осталось подписать «найдено» лапкой"
         ];
         const LOADING_TITLES = [
             "Ищем данные по VIN…",
-            "Сберкот на автомобильной разведке",
+            "Котик на автомобильной разведке",
             "Расшифровываем номер кузова",
             "Собираем паспорт автомобиля"
         ];
@@ -360,7 +368,7 @@
             loadingTitleIndex = 0;
             loadingMessageIndex = 0;
             title.textContent = vinCount > 1
-                ? `Сберкот проверяет ${vinCount} VIN…`
+                ? `Котик проверяет ${vinCount} VIN…`
                 : LOADING_TITLES[0];
             text.textContent = LOADING_MESSAGES[0];
             searchLoading.classList.add("active");
