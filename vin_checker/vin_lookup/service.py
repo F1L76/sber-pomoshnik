@@ -13,10 +13,10 @@ from .nhtsa import lookup_nhtsa
 from .sravni import lookup_sravni_plate
 from .vin_corrections import find_corrected_vin, format_correction_message, is_rate_limited
 
-DROM_TIMEOUT = int(os.environ.get("DROM_TIMEOUT", "35"))
+DROM_TIMEOUT = int(os.environ.get("DROM_TIMEOUT", "90"))
 SRAVNI_TIMEOUT = int(os.environ.get("SRAVNI_TIMEOUT", "25"))
 NHTSA_TIMEOUT = int(os.environ.get("NHTSA_TIMEOUT", "15"))
-VIN_CORRECTION_ENABLED = os.environ.get("VIN_CORRECTION", "1").lower() not in (
+VIN_CORRECTION_ENABLED = os.environ.get("VIN_CORRECTION", "0").lower() not in (
     "0",
     "false",
     "no",
@@ -248,25 +248,13 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
 
     normalized = normalize_vin(vin)
 
-    # Сначала NHTSA (без лимита drom). Drom — только если NHTSA пуст и нет cooldown.
+    # Сначала NHTSA (без лимита drom). Drom — если NHTSA пуст (с паузой/retry внутри).
     nhtsa = _lookup_nhtsa_timed(vin, normalized) if USE_NHTSA else None
     if nhtsa and _has_vehicle_data(nhtsa):
-        # ponytail: skip drom when NHTSA already enough; set DROM_ALWAYS=1 to always merge
         if os.environ.get("DROM_ALWAYS", "0").lower() not in ("1", "true", "yes"):
             nhtsa.found = True
             nhtsa.lookup_error = None
             return nhtsa
-        if drom_cooling_down():
-            nhtsa.found = True
-            nhtsa.lookup_error = None
-            return nhtsa
-
-    if drom_cooling_down():
-        if nhtsa and _has_vehicle_data(nhtsa):
-            nhtsa.found = True
-            nhtsa.lookup_error = None
-            return nhtsa
-        return rate_limited_result(vin, normalized)
 
     drom = _lookup_drom_timed(vin, normalized)
 
@@ -283,12 +271,13 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
         return result
 
     if is_rate_limited(drom):
-        return rate_limited_result(vin, normalized)
+        return drom
 
     base = drom if drom.lookup_error else (nhtsa or drom)
     if not base.lookup_error:
         base.lookup_error = "По этому VIN данных о марке и модели не найдено"
 
+    # ponytail: corrections multiply drom calls — only when not rate-limited
     if try_corrections and not is_rate_limited(base):
         return _attach_correction(base, vin, normalized)
     return base

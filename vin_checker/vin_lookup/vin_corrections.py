@@ -29,7 +29,11 @@ CORRECTION_DELAY = float(os.environ.get("VIN_CORRECTION_DELAY", "0.8"))
 
 def is_rate_limited(info: VehicleInfo) -> bool:
     err = (info.lookup_error or "").lower()
-    return "429" in err or "слишком много запросов" in err
+    return (
+        "429" in err
+        or "слишком много запросов" in err
+        or "временно ограничил" in err
+    )
 
 
 def _build_alt_map() -> dict[str, frozenset[str]]:

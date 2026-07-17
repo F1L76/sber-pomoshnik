@@ -565,7 +565,7 @@
             if (activeTab === "batch" && !payload.text?.trim()) { vinBatch.focus(); return; }
 
             const vinCount = estimateVinCount(payload);
-            const timeoutMs = vinCount <= 1 ? 120000 : Math.min(900000, 30000 + vinCount * 15000);
+            const timeoutMs = vinCount <= 1 ? 180000 : Math.min(900000, 60000 + vinCount * 20000);
             const timeoutSec = Math.round(timeoutMs / 1000);
 
             alertBox.innerHTML = "";
