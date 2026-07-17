@@ -1,4 +1,4 @@
-"""Сервис поиска по VIN через Drom (быстро, без долгого NHTSA)."""
+"""Сервис поиска по VIN: drom + NHTSA (параллельно, максимум полей)."""
 
 from __future__ import annotations
 
@@ -9,21 +9,20 @@ from vin_validator.iso3779 import VIN_LENGTH, normalize_vin
 
 from .drom import lookup_drom, lookup_drom_plate
 from .models import VehicleInfo
+from .nhtsa import lookup_nhtsa
 from .sravni import lookup_sravni_plate
 from .vin_corrections import find_corrected_vin, format_correction_message, is_rate_limited
 
 DROM_TIMEOUT = int(os.environ.get("DROM_TIMEOUT", "35"))
 SRAVNI_TIMEOUT = int(os.environ.get("SRAVNI_TIMEOUT", "25"))
+NHTSA_TIMEOUT = int(os.environ.get("NHTSA_TIMEOUT", "15"))
 VIN_CORRECTION_ENABLED = os.environ.get("VIN_CORRECTION", "1").lower() not in (
     "0",
     "false",
     "no",
 )
-USE_NHTSA_FALLBACK = os.environ.get("USE_NHTSA_FALLBACK", "").lower() in (
-    "1",
-    "true",
-    "yes",
-)
+# ponytail: NHTSA on by default; set USE_NHTSA=0 to disable
+USE_NHTSA = os.environ.get("USE_NHTSA", "1").lower() not in ("0", "false", "no")
 
 
 def _preflight(vin: str) -> VehicleInfo | None:
@@ -54,6 +53,21 @@ def _lookup_drom_timed(vin: str, normalized: str) -> VehicleInfo:
             )
 
 
+def _lookup_nhtsa_timed(vin: str, normalized: str) -> VehicleInfo:
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(lookup_nhtsa, vin, normalized)
+        try:
+            return future.result(timeout=NHTSA_TIMEOUT)
+        except FuturesTimeout:
+            return VehicleInfo(
+                vin=vin,
+                normalized=normalized,
+                found=False,
+                source="nhtsa",
+                sources_used=["nhtsa"],
+            )
+
+
 def _has_vehicle_data(info: VehicleInfo) -> bool:
     if not info.found:
         return False
@@ -78,18 +92,43 @@ def _attach_correction(
 
 def _merge_vehicle(base: VehicleInfo, other: VehicleInfo) -> VehicleInfo:
     """Дополняет base полями из other (пустое ← другое)."""
-    if not other or not other.found:
-        if other and other.sources_used:
-            base.sources_used = list(dict.fromkeys([*(base.sources_used or []), *other.sources_used]))
+    if not other:
+        return base
+    if not other.found and not (other.extra or other.make or other.model):
+        if other.sources_used:
+            base.sources_used = list(
+                dict.fromkeys([*(base.sources_used or []), *other.sources_used])
+            )
         return base
 
     fields = (
-        "make", "model", "model_year", "manufacturer", "series", "trim",
-        "body_class", "vehicle_type", "doors", "drive_type", "fuel_type",
-        "color", "category", "body_number", "engine_number", "power_hp", "power_kw",
-        "engine_cylinders", "displacement_l", "engine_model", "engine_configuration",
-        "transmission_style", "transmission_speeds",
-        "plant_country", "plant_city", "plant_state", "gvwr",
+        "make",
+        "model",
+        "model_year",
+        "manufacturer",
+        "series",
+        "trim",
+        "body_class",
+        "vehicle_type",
+        "doors",
+        "drive_type",
+        "fuel_type",
+        "color",
+        "category",
+        "body_number",
+        "engine_number",
+        "power_hp",
+        "power_kw",
+        "engine_cylinders",
+        "displacement_l",
+        "engine_model",
+        "engine_configuration",
+        "transmission_style",
+        "transmission_speeds",
+        "plant_country",
+        "plant_city",
+        "plant_state",
+        "gvwr",
     )
     for name in fields:
         if not getattr(base, name, None) and getattr(other, name, None):
@@ -116,6 +155,19 @@ def _merge_vehicle(base: VehicleInfo, other: VehicleInfo) -> VehicleInfo:
         base.lookup_error = None
         base.source = other.source
     return base
+
+
+def _enrich_by_vin(result: VehicleInfo, vin: str) -> VehicleInfo:
+    """Дополняет карточку по VIN: drom + NHTSA."""
+    normalized = normalize_vin(vin)
+    drom = _lookup_drom_timed(vin, normalized)
+    if _has_vehicle_data(drom):
+        result = _merge_vehicle(result, drom)
+    if USE_NHTSA:
+        nhtsa = _lookup_nhtsa_timed(vin, normalized)
+        if _has_vehicle_data(nhtsa) or nhtsa.extra:
+            result = _merge_vehicle(result, nhtsa)
+    return result
 
 
 def lookup_plate(plate: str) -> VehicleInfo:
@@ -167,14 +219,11 @@ def lookup_plate(plate: str) -> VehicleInfo:
             result.lookup_error = "По этому госномеру данных о марке и модели не найдено"
         return result
 
-    # Если нашли VIN — дотягиваем теххарактеристики по VIN.
     vin = result.extra.get("VIN") or (
         result.normalized if result.normalized and len(result.normalized) == 17 else None
     )
     if vin and len(str(vin)) == 17:
-        by_vin = _lookup_drom_timed(str(vin), str(vin))
-        if _has_vehicle_data(by_vin):
-            result = _merge_vehicle(result, by_vin)
+        result = _enrich_by_vin(result, str(vin))
 
     result.found = True
     result.lookup_error = None
@@ -196,30 +245,55 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
         return pre
 
     normalized = normalize_vin(vin)
-    drom = _lookup_drom_timed(vin, normalized)
+
+    # drom + NHTSA параллельно — больше техполей в карточке.
+    workers = 2 if USE_NHTSA else 1
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        f_drom = pool.submit(lookup_drom, vin, normalized)
+        f_nhtsa = pool.submit(lookup_nhtsa, vin, normalized) if USE_NHTSA else None
+        try:
+            drom = f_drom.result(timeout=DROM_TIMEOUT)
+        except FuturesTimeout:
+            drom = VehicleInfo(
+                vin=vin,
+                normalized=normalized,
+                found=False,
+                source="drom",
+                sources_used=["drom"],
+                lookup_error=f"Превышено время ожидания ({DROM_TIMEOUT} с). Повторите позже.",
+            )
+        nhtsa = None
+        if f_nhtsa is not None:
+            try:
+                nhtsa = f_nhtsa.result(timeout=NHTSA_TIMEOUT)
+            except FuturesTimeout:
+                nhtsa = VehicleInfo(
+                    vin=vin,
+                    normalized=normalized,
+                    found=False,
+                    source="nhtsa",
+                    sources_used=["nhtsa"],
+                )
+
     if _has_vehicle_data(drom):
-        return drom
+        result = _merge_vehicle(drom, nhtsa) if nhtsa else drom
+        result.found = True
+        result.lookup_error = None
+        return result
 
-    if USE_NHTSA_FALLBACK:
-        from .nhtsa import lookup_nhtsa
+    if nhtsa and _has_vehicle_data(nhtsa):
+        result = _merge_vehicle(nhtsa, drom)
+        result.found = True
+        result.lookup_error = None
+        return result
 
-        nhtsa = lookup_nhtsa(vin, normalized)
-        if _has_vehicle_data(nhtsa):
-            return nhtsa
-        if drom.lookup_error:
-            base = drom
-        else:
-            base = nhtsa
-        if try_corrections:
-            return _attach_correction(base, vin, normalized)
-        return base
+    base = drom if drom.lookup_error else (nhtsa or drom)
+    if not base.lookup_error:
+        base.lookup_error = "По этому VIN данных о марке и модели не найдено"
 
-    if not drom.lookup_error:
-        drom.lookup_error = "По этому VIN данных о марке и модели не найдено"
-
-    if try_corrections and not is_rate_limited(drom):
-        return _attach_correction(drom, vin, normalized)
-    return drom
+    if try_corrections and not is_rate_limited(base):
+        return _attach_correction(base, vin, normalized)
+    return base
 
 
 def lookup_batch(queries: list[str]) -> list[VehicleInfo]:

@@ -38,25 +38,41 @@ _FIELD_MAP: dict[str, str] = {
     "Plant City": "plant_city",
     "Plant State": "plant_state",
     "Gross Vehicle Weight Rating From": "gvwr",
+    "Engine Brake (hp) From": "power_hp",
     "Error Code": "nhtsa_error_code",
     "Error Text": "nhtsa_error_text",
 }
 
-_EXTRA_LABELS: tuple[str, ...] = (
-    "Vehicle Descriptor",
-    "Series2",
-    "Trim2",
-    "Note",
-    "Base Price ($)",
-    "Windows",
-    "Wheel Base (inches) From",
-    "Curb Weight (pounds)",
-    "Engine Brake (hp) From",
-    "Fuel Type - Secondary",
-    "Turbo",
-    "Anti-lock Braking System (ABS)",
-    "Electronic Stability Control (ESC)",
-)
+# ponytail: show richer NHTSA extras under Russian labels in UI
+_EXTRA_LABELS: dict[str, str] = {
+    "Vehicle Descriptor": "Дескриптор",
+    "Series2": "Серия 2",
+    "Trim2": "Комплектация 2",
+    "Note": "Примечание",
+    "Base Price ($)": "Базовая цена ($)",
+    "Windows": "Окна",
+    "Wheel Base (inches) From": "Колёсная база (дюймы)",
+    "Curb Weight (pounds)": "Снаряжённая масса (фунты)",
+    "Engine Brake (hp) From": "Мощность (л.с.)",
+    "Fuel Type - Secondary": "Топливо (вторичное)",
+    "Turbo": "Турбо",
+    "Anti-lock Braking System (ABS)": "ABS",
+    "Electronic Stability Control (ESC)": "ESC",
+    "Traction Control": "Антипробуксовка",
+    "Air Bag Loc Front": "Подушки спереди",
+    "Air Bag Loc Side": "Подушки сбоку",
+    "Seat Belt Type": "Ремни безопасности",
+    "Entertainment System": "Мультимедиа",
+    "Steering Location": "Расположение руля",
+    "Number of Seats": "Число мест",
+    "Number of Rows": "Число рядов",
+    "Bed Type": "Тип кузова (пикап)",
+    "Cab Type": "Тип кабины",
+    "Trailer Type Connection": "Тип прицепа",
+    "Battery Type": "Тип батареи",
+    "EV Drive Unit": "Электропривод",
+    "Electrification Level": "Уровень электрификации",
+}
 
 
 def _clean(value: Any) -> str | None:
@@ -85,7 +101,10 @@ def _parse_nhtsa_row(raw_vin: str, variables: list[dict]) -> VehicleInfo:
         val = _clean(item.get("Value"))
         by_name[name] = val
         if val and name in _EXTRA_LABELS:
-            extra[name] = val
+            # skip duplicate if already mapped to power_hp
+            if name == "Engine Brake (hp) From":
+                continue
+            extra[_EXTRA_LABELS[name]] = val
 
     normalized = normalize_vin(raw_vin)
     data: dict[str, str | None] = {}
@@ -118,6 +137,7 @@ def _parse_nhtsa_row(raw_vin: str, variables: list[dict]) -> VehicleInfo:
         doors=data.get("doors"),
         drive_type=data.get("drive_type"),
         fuel_type=data.get("fuel_type"),
+        power_hp=data.get("power_hp"),
         engine_cylinders=data.get("engine_cylinders"),
         displacement_l=data.get("displacement_l"),
         engine_model=data.get("engine_model"),
@@ -146,7 +166,7 @@ def lookup_nhtsa(raw_vin: str, normalized: str) -> VehicleInfo:
             found=False,
             source="nhtsa",
             sources_used=["nhtsa"],
-            lookup_error=f"Таймаут или ошибка NHTSA: {reason}",
+            lookup_error=f"Таймаут или ошибка сети: {reason}",
         )
 
     results = payload.get("Results") or []
@@ -157,7 +177,7 @@ def lookup_nhtsa(raw_vin: str, normalized: str) -> VehicleInfo:
             found=False,
             source="nhtsa",
             sources_used=["nhtsa"],
-            lookup_error="NHTSA не вернула данных по этому VIN",
+            lookup_error="Нет данных по этому VIN",
         )
 
     return _parse_nhtsa_row(raw_vin, results)
