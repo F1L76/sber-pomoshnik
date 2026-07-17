@@ -15,6 +15,7 @@ import crypto from "crypto";
 import { fileURLToPath } from "url";
 import { WebSocketServer } from "ws";
 import { searchByCadastralNumber, streamCadastralSearch } from "./lib/cadastral-search.mjs";
+import { checkVinHealth, lookupVins } from "./lib/vin-lookup.mjs";
 import { getPanoramaCachePath } from "./lib/yandex-panorama-screenshot.mjs";
 import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
 import { searchDealsByQuarter, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
@@ -558,6 +559,36 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/deals") {
         serveStatic(req, res, path.join(__dirname, "deals-search.html"));
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/vin") {
+        serveStatic(req, res, path.join(__dirname, "vin-search.html"));
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/vin/health") {
+        const health = await checkVinHealth();
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify(health));
+        return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/vin/lookup") {
+        try {
+            const raw = await readBody(req);
+            const body = JSON.parse(raw || "{}");
+            const result = await lookupVins({
+                vins: Array.isArray(body.vins) ? body.vins : undefined,
+                text: body.text
+            });
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+            res.end(JSON.stringify(result));
+        } catch (err) {
+            const status = /Укажите|Не более/.test(err.message || "") ? 400 : 500;
+            res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+            res.end(JSON.stringify({ error: err.message || "Ошибка поиска по VIN" }));
+        }
         return;
     }
 

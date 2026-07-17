@@ -276,22 +276,24 @@
         }
         .module-stamp {
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 0.55rem;
+            right: 0.55rem;
+            left: auto;
             z-index: 2;
-            transform: translate(-50%, -50%) rotate(-18deg);
-            border: 3px solid #E53935;
+            transform: rotate(-12deg);
+            border: 2px solid #E53935;
             color: #E53935;
-            background: rgba(255, 255, 255, 0.92);
+            background: rgba(255, 255, 255, 0.94);
             font-weight: 800;
-            font-size: clamp(0.9rem, 2.4vw, 1.15rem);
-            letter-spacing: 0.08em;
+            font-size: 0.62rem;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
-            padding: 0.4rem 0.85rem;
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(229, 57, 53, 0.35);
+            padding: 0.18rem 0.42rem;
+            border-radius: 5px;
+            box-shadow: 0 2px 6px rgba(229, 57, 53, 0.28);
             pointer-events: none;
             white-space: nowrap;
+            line-height: 1.2;
         }
         .badge-sber {
             background: rgba(33, 160, 56, 0.14);
@@ -1571,6 +1573,7 @@
         { id: "cadastral", name: "Поиск информации по кадастровому номеру", icon: "fas fa-map-location-dot", href: "/cadastral", desc: "" },
         { id: "zalog", name: "Конвертер заключения", icon: "fas fa-file-import", href: "/zalog", desc: "PDF + XLSX → сводный отчёт без GigaChat" },
         { id: "deals", name: "Данные о сделках с недвижимостью", icon: "fas fa-handshake", href: "/deals", desc: "Продажа по кадастровому кварталу" },
+        { id: "vin", name: "Поиск информации по VIN номеру", icon: "fas fa-car", href: "/vin", desc: "Марка, модель, год по VIN (vin.drom.ru)" },
         { id: "express", name: "Экспресс оценка", icon: "fas fa-bolt", modal: "#expressModal", desc: "Оценка по минимальным параметрам", inDev: true },
         { id: "reportVerification", name: "Верификация отчетов об оценке", icon: "fas fa-clipboard-check", modal: "#reportVerificationModal", desc: "Проверка отчёта оценщика по документам", inDev: true },
         { id: "memorandum", name: "Служебная записка", icon: "fas fa-pen-alt", modal: "#memorandumModal", desc: "AI-подготовка СЗ по документу-основанию", inDev: true },
