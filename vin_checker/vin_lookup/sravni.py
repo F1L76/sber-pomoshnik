@@ -80,7 +80,7 @@ def _parse_prev_policy(
             found=False,
             source="sravni",
             sources_used=["sravni"],
-            lookup_error="По этому госномеру на Сравни данных не найдено",
+            lookup_error="По этому госномеру данных не найдено",
         )
 
     extra: dict[str, str] = {"Госномер": car_number}
@@ -130,17 +130,17 @@ def lookup_sravni_plate(raw_plate: str, normalized: str | None = None) -> Vehicl
     except urllib.error.HTTPError as exc:
         if exc.code == 429:
             msg = (
-                "Слишком много запросов к Сравни (HTTP 429). "
+                "Слишком много запросов к источнику данных (HTTP 429). "
                 "Подождите 1–2 минуты и повторите."
             )
         elif exc.code in (403, 401):
-            msg = "Сравни временно недоступен (антибот). Повторите позже."
+            msg = "Источник временно недоступен. Повторите позже."
         else:
             try:
                 detail = json.loads(exc.read().decode("utf-8")).get("message")
             except Exception:
                 detail = None
-            msg = detail or f"Ошибка Сравни (HTTP {exc.code})"
+            msg = detail or f"Ошибка сервера (HTTP {exc.code})"
         return VehicleInfo(
             vin=raw_plate,
             normalized=normalized,
@@ -156,7 +156,7 @@ def lookup_sravni_plate(raw_plate: str, normalized: str | None = None) -> Vehicl
             found=False,
             source="sravni",
             sources_used=["sravni"],
-            lookup_error=f"Ошибка сети Сравни: {exc}",
+            lookup_error=f"Ошибка сети: {exc}",
         )
 
 

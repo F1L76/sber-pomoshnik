@@ -88,7 +88,7 @@ def _lookup_sravni_plate_timed(plate: str, normalized: str) -> VehicleInfo:
                 found=False,
                 source="sravni",
                 sources_used=["sravni"],
-                lookup_error=f"Превышено время ожидания Сравни ({SRAVNI_TIMEOUT} с).",
+                lookup_error=f"Превышено время ожидания ({SRAVNI_TIMEOUT} с).",
             )
 
 

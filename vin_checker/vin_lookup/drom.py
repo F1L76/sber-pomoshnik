@@ -92,10 +92,10 @@ def _parse_car_data(
         # ponytail: drom free preview often returns state=no-data for plates with no public cache
         if payload.get("state") == "no-data":
             msg = (
-                "По этому госномеру бесплатных данных нет (vin.drom.ru). "
+                "По этому госномеру бесплатных данных нет. "
                 "Попробуйте VIN, если он известен."
                 if plate
-                else "По этому VIN бесплатных данных нет (vin.drom.ru)."
+                else "По этому VIN бесплатных данных нет."
             )
         else:
             msg = (
