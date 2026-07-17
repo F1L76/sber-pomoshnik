@@ -58,7 +58,7 @@ def _mark_rate_limited() -> None:
     _cooldown_until = time.time() + _COOLDOWN_SEC
 
 
-def _rate_limited_result(raw: str, normalized: str) -> VehicleInfo:
+def rate_limited_result(raw: str, normalized: str) -> VehicleInfo:
     return VehicleInfo(
         vin=raw,
         normalized=normalized,
@@ -70,6 +70,10 @@ def _rate_limited_result(raw: str, normalized: str) -> VehicleInfo:
             "Подождите 1–2 минуты и повторите."
         ),
     )
+
+
+def _rate_limited_result(raw: str, normalized: str) -> VehicleInfo:
+    return rate_limited_result(raw, normalized)
 
 
 def _split_make_model(full_model: str) -> tuple[str | None, str | None]:

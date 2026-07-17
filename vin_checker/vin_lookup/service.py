@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 
 from vin_validator.iso3779 import VIN_LENGTH, normalize_vin
 
-from .drom import drom_cooling_down, lookup_drom, lookup_drom_plate
+from .drom import drom_cooling_down, lookup_drom, lookup_drom_plate, rate_limited_result
 from .models import VehicleInfo
 from .nhtsa import lookup_nhtsa
 from .sravni import lookup_sravni_plate
@@ -297,8 +297,8 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
         return result
 
     # Не маскируем 429, но не гоняем коррекцию VIN при лимите.
-    if is_rate_limited(drom):
-        return drom
+    if is_rate_limited(drom) or skip_drom:
+        return rate_limited_result(vin, normalized)
 
     base = drom if drom.lookup_error else (nhtsa or drom)
     if not base.lookup_error:
