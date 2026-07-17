@@ -9,9 +9,11 @@ from vin_validator.iso3779 import VIN_LENGTH, normalize_vin
 
 from .drom import lookup_drom, lookup_drom_plate
 from .models import VehicleInfo
+from .sravni import lookup_sravni_plate
 from .vin_corrections import find_corrected_vin, format_correction_message, is_rate_limited
 
 DROM_TIMEOUT = int(os.environ.get("DROM_TIMEOUT", "35"))
+SRAVNI_TIMEOUT = int(os.environ.get("SRAVNI_TIMEOUT", "25"))
 VIN_CORRECTION_ENABLED = os.environ.get("VIN_CORRECTION", "1").lower() not in (
     "0",
     "false",
@@ -74,7 +76,23 @@ def _attach_correction(
     return result
 
 
-def _lookup_plate_timed(plate: str, normalized: str) -> VehicleInfo:
+def _lookup_sravni_plate_timed(plate: str, normalized: str) -> VehicleInfo:
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(lookup_sravni_plate, plate, normalized)
+        try:
+            return future.result(timeout=SRAVNI_TIMEOUT)
+        except FuturesTimeout:
+            return VehicleInfo(
+                vin=plate,
+                normalized=normalized,
+                found=False,
+                source="sravni",
+                sources_used=["sravni"],
+                lookup_error=f"Превышено время ожидания Сравни ({SRAVNI_TIMEOUT} с).",
+            )
+
+
+def _lookup_drom_plate_timed(plate: str, normalized: str) -> VehicleInfo:
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(lookup_drom_plate, plate, normalized)
         try:
@@ -103,11 +121,23 @@ def lookup_plate(plate: str) -> VehicleInfo:
             lookup_error=err,
         )
 
-    result = _lookup_plate_timed(plate, normalized)
-    if result.found:
+    # Основной источник госномера — Сравни; drom — запасной, если превью пустое.
+    result = _lookup_sravni_plate_timed(plate, normalized)
+    if _has_vehicle_data(result):
         return result
-    if not result.lookup_error:
-        result.lookup_error = "По этому госномеру данных о марке и модели не найдено"
+
+    fallback = _lookup_drom_plate_timed(plate, normalized)
+    if _has_vehicle_data(fallback):
+        fallback.sources_used = list(
+            dict.fromkeys([*(result.sources_used or []), *(fallback.sources_used or [])])
+        )
+        return fallback
+
+    if result.lookup_error:
+        return result
+    if fallback.lookup_error:
+        return fallback
+    result.lookup_error = "По этому госномеру данных о марке и модели не найдено"
     return result
 
 
