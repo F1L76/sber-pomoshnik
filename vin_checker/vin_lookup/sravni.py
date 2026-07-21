@@ -178,7 +178,15 @@ def lookup_sravni_plate(raw_plate: str, normalized: str | None = None) -> Vehicl
                 detail = json.loads(exc.read().decode("utf-8")).get("message")
             except Exception:
                 detail = None
-            msg = detail or f"Ошибка сервера (HTTP {exc.code})"
+            # sravni: 404 "Not found policy for prolongation!" = нет прежнего ОСАГО по номеру
+            if detail and "not found policy for prolongation" in str(detail).lower():
+                msg = (
+                    "По этому госномеру не найден действующий или недавний полис ОСАГО "
+                    "для продления. Данные доступны только если номер уже есть в базе "
+                    "страховых расчётов."
+                )
+            else:
+                msg = detail or f"Ошибка сервера (HTTP {exc.code})"
         return VehicleInfo(
             vin=raw_plate,
             normalized=normalized,
