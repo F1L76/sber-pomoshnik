@@ -23,8 +23,9 @@ def _parse_risk_number_from_question(text: str) -> str:
     return match.group(1).rstrip(".")
 
 
-@lru_cache(maxsize=4)
-def load_minimization_index(xlsx_path: str) -> dict[str, str]:
+@lru_cache(maxsize=8)
+def load_minimization_index(xlsx_path: str, mtime: float = 0.0) -> dict[str, str]:
+    # ponytail: mtime в ключе кэша — иначе правки XLSX не подхватываются до рестарта
     path = Path(xlsx_path)
     if not path.is_file():
         return {}
@@ -48,11 +49,16 @@ def load_minimization_index(xlsx_path: str) -> dict[str, str]:
     return index
 
 
+def _index_for(path: Path) -> dict[str, str]:
+    mtime = path.stat().st_mtime if path.is_file() else 0.0
+    return load_minimization_index(str(path), mtime)
+
+
 def lookup_minimization(risk_number: str, xlsx_path: Path | None = None) -> str:
     if not risk_number:
         return "—"
     path = xlsx_path or DEFAULT_RAG_XLSX
-    index = load_minimization_index(str(path))
+    index = _index_for(path)
     normalized = risk_number.strip().rstrip(".")
     return index.get(normalized) or index.get(f"{normalized}.") or "—"
 
@@ -62,10 +68,19 @@ def enrich_risks_with_minimization(
     xlsx_path: Path | None = None,
 ) -> None:
     path = xlsx_path or DEFAULT_RAG_XLSX
-    index = load_minimization_index(str(path))
+    index = _index_for(path)
     for risk in risks:
         if not risk.risk_number:
             # Минимизация уже могла быть извлечена из текста PDF (краткая форма АСЗ)
             continue
         normalized = risk.risk_number.strip().rstrip(".")
         risk.minimization = index.get(normalized) or index.get(f"{normalized}.") or "—"
+
+
+if __name__ == "__main__":
+    # ponytail: один быстрый check на типичную правку падежа
+    text = lookup_minimization("3.4")
+    assert "после проведения межевания" in text, text
+    assert "после проведение межевания" not in text, text
+    assert "и отражения актуальных" in text, text
+    print("ok", text[:120])
