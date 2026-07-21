@@ -59,6 +59,13 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.65rem;
+  text-decoration: none;
+}
+
+.navbar-brand-custom:hover,
+.navbar-brand-custom:focus {
+  color: #fff !important;
+  text-decoration: none;
 }
 
 .sber-logo {

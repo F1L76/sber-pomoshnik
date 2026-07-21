@@ -66,6 +66,12 @@
             display: inline-flex;
             align-items: center;
             gap: 0.65rem;
+            text-decoration: none;
+        }
+        .navbar-brand-custom:hover,
+        .navbar-brand-custom:focus {
+            color: #fff !important;
+            text-decoration: none;
         }
         .sber-logo {
             width: 36px;
@@ -876,13 +882,13 @@
 <nav class="navbar sber-nav sticky-top py-2 py-md-3">
     <div class="container-fluid px-3 px-md-4">
         <div class="navbar-inner d-flex flex-column flex-md-row align-items-stretch align-items-md-center justify-content-between gap-2">
-            <span class="navbar-brand-custom mb-0">
+            <a href="/" class="navbar-brand-custom mb-0">
                 <svg class="sber-logo" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <circle cx="20" cy="20" r="18" fill="#21A038" stroke="white" stroke-width="1.5"/>
                     <path d="M12 20L18 26L28 14" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 <span>СберБизнес Помощник</span>
-            </span>
+            </a>
             <div class="nav-tools ms-md-auto d-flex flex-wrap align-items-center justify-content-end gap-2">
                 <div class="gigachat-panel">
                     <div class="form-check form-switch theme-toggle-wrap mb-0" title="Светлая или тёмная тема">
