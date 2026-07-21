@@ -145,6 +145,11 @@ html[data-theme="dark"] .alert-warning {
   border-color: #8a6a1b !important;
   color: #f5e6b8 !important;
 }
+html[data-theme="dark"] .alert-danger {
+  background: #2a1418 !important;
+  border-color: #8a2a2a !important;
+  color: #ffc9c9 !important;
+}
 html[data-theme="dark"] .table {
   --bs-table-bg: #1a2330 !important;
   --bs-table-color: #e8eef4 !important;
@@ -345,6 +350,67 @@ html[data-theme="dark"] .expertise-timeline-label {
 }
 html[data-theme="dark"] .expertise-timeline-date {
   color: #a8b4c4 !important;
+}
+html[data-theme="dark"] .expertise-timeline-dot {
+  border-color: #15241c !important;
+}
+html[data-theme="dark"] .expertise-timeline-item.is-pending .expertise-timeline-dot {
+  background: #2a4a34 !important;
+  border-color: #15241c !important;
+}
+/* Приоритет / модули: белый контекст-бар и вкладки без тёмных оверрайдов */
+html[data-theme="dark"] .module-context-fields {
+  background: #121a24 !important;
+  border-color: #334155 !important;
+  color: #e8eef4 !important;
+  box-shadow: none !important;
+}
+html[data-theme="dark"] .module-context-title {
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .module-context-hint {
+  color: #a8b4c4 !important;
+}
+html[data-theme="dark"] .module-modal-tabs .nav-link {
+  color: #a8b4c4 !important;
+  background: transparent !important;
+}
+html[data-theme="dark"] .module-modal-tabs .nav-link:hover {
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .module-modal-tabs .nav-link.active {
+  background-color: #121a24 !important;
+  color: #6fd88a !important;
+  border-bottom-color: #21a038 !important;
+}
+html[data-theme="dark"] .memorandum-preview,
+html[data-theme="dark"] .memorandum-ai-intro {
+  background: #121a24 !important;
+  background-image: none !important;
+  border-color: #334155 !important;
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .memorandum-ai-intro .memorandum-ai-title,
+html[data-theme="dark"] .memorandum-preview .memo-title {
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .table-details th,
+html[data-theme="dark"] .conclusion-risks-table th {
+  background: #121a24 !important;
+  color: #e8eef4 !important;
+  border-color: #334155 !important;
+}
+html[data-theme="dark"] .table-details td,
+html[data-theme="dark"] .conclusion-risks-table td {
+  color: #e8eef4 !important;
+  border-color: #334155 !important;
+}
+html[data-theme="dark"] .badge-sber {
+  background: rgba(33, 160, 56, 0.22) !important;
+  color: #6fd88a !important;
+}
+html[data-theme="dark"] .file-drop-name {
+  color: #6fd88a !important;
 }
 html[data-theme="dark"] .btn-outline-danger {
   color: #ff8a80 !important;
