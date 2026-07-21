@@ -152,7 +152,8 @@ SBER_REPORT_CSS = """
       width: 100%;
       max-width: 100%;
       overflow: auto;
-      max-height: min(70vh, 860px);
+      /* ponytail: раньше min(70vh,860) — слишком мелкое окно внутри iframe модалки */
+      max-height: min(92vh, 2000px);
       -webkit-overflow-scrolling: touch;
       border-radius: 12px;
       border: 1px solid var(--sber-border);
