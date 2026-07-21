@@ -2189,10 +2189,13 @@
             innInput.value = inn;
             clientBadge.innerHTML = `<i class="fas fa-check-circle text-success me-1" aria-hidden="true"></i>${currentClientData.clientName} <span class="text-muted">(ИНН: ${inn})</span>`;
             clientBadge.classList.add("bg-white", "shadow-sm");
-            const scrollY = window.scrollY;
             showClientPanels();
-            // ponytail: появление insight/панелей не должно утягивать viewport вниз
-            window.scrollTo(0, scrollY);
+            if (!skipAnim) {
+                // после появления подсказки — плавно к ней, без улёта к сервисам ниже
+                requestAnimationFrame(() => {
+                    assistantInsightEl?.scrollIntoView({ block: "start", behavior: "smooth" });
+                });
+            }
             return true;
         } finally {
             innSearchBusy = false;
