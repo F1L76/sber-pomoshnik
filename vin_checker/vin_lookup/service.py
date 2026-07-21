@@ -14,6 +14,7 @@ from .drom import (
     lookup_drom,
     lookup_drom_plate,
 )
+from .autoru import lookup_autoru_plate
 from .models import VehicleInfo
 from .nhtsa import lookup_nhtsa
 from .sravni import lookup_sravni_plate
@@ -21,6 +22,7 @@ from .vin_corrections import find_corrected_vin, format_correction_message, is_r
 
 DROM_TIMEOUT = int(os.environ.get("DROM_TIMEOUT", "45"))
 SRAVNI_TIMEOUT = int(os.environ.get("SRAVNI_TIMEOUT", "25"))
+AUTORU_TIMEOUT = int(os.environ.get("AUTORU_TIMEOUT", "30"))
 NHTSA_TIMEOUT = int(os.environ.get("NHTSA_TIMEOUT", "8"))
 # Сколько максимум ждать снятия cooldown, чтобы всё же сходить в онлайн-базу
 DROM_WAIT_COOLDOWN = float(os.environ.get("DROM_WAIT_COOLDOWN", "90"))
@@ -163,14 +165,14 @@ def _merge_vehicle(base: VehicleInfo, other: VehicleInfo) -> VehicleInfo:
     return base
 
 
-# ponytail: drom по госномеру всегда как fallback, если Сравни не нашёл полис;
-# DROM_FOR_PLATE=1 — дергать drom даже когда Сравни уже отдал марку/модель
+# ponytail: drom по госномеру как fallback; DROM_FOR_PLATE=1 — всегда вместе со Сравни
 USE_DROM_PLATE = os.environ.get("DROM_FOR_PLATE", "0").lower() in ("1", "true", "yes")
+USE_AUTORU_PLATE = os.environ.get("AUTORU_FOR_PLATE", "1").lower() not in ("0", "false", "no")
 
 
-def _sravni_no_policy(info: VehicleInfo) -> bool:
-    """True, если Сравни ответил «полиса нет», а не сетью/429."""
-    if _has_vehicle_data(info):
+def _is_soft_miss(info: VehicleInfo | None) -> bool:
+    """Пустой ответ источника (не сеть/429) — можно пробовать следующий."""
+    if not info or _has_vehicle_data(info):
         return False
     err = (info.lookup_error or "").lower()
     if "429" in err or "недоступен" in err or "сети" in err or "таймаут" in err:
@@ -208,20 +210,39 @@ def lookup_plate(plate: str) -> VehicleInfo:
             lookup_error=err,
         )
 
-    sravni = lookup_sravni_plate(plate, normalized)
-    drom = None
-    want_drom = USE_DROM_PLATE or _sravni_no_policy(sravni)
-    if want_drom and not drom_cooling_down():
-        drom = _lookup_drom_plate_safe(plate, normalized)
+    # цепочка: Сравни → Авто.ру → drom; следующий только если на предыдущем пусто
+    attempts: list[VehicleInfo] = []
+    result: VehicleInfo | None = None
 
+    sravni = lookup_sravni_plate(plate, normalized)
+    attempts.append(sravni)
     if _has_vehicle_data(sravni):
-        result = _merge_vehicle(sravni, drom) if drom else sravni
-    elif drom and _has_vehicle_data(drom):
-        result = _merge_vehicle(drom, sravni)
-    else:
-        result = sravni if (sravni.lookup_error or not drom) else drom
-        if drom and is_rate_limited(drom) and not result.lookup_error:
-            result = drom
+        result = sravni
+
+    if result is None and USE_AUTORU_PLATE:
+        autoru = _lookup_autoru_plate_safe(plate, normalized)
+        attempts.append(autoru)
+        if _has_vehicle_data(autoru):
+            result = autoru
+
+    if result is None or USE_DROM_PLATE:
+        if not drom_cooling_down():
+            drom = _lookup_drom_plate_safe(plate, normalized)
+            attempts.append(drom)
+            if _has_vehicle_data(drom):
+                result = _merge_vehicle(result, drom) if result else drom
+
+    if result is None:
+        result = next((a for a in attempts if a and is_rate_limited(a)), None)
+        if result is None:
+            result = next(
+                (a for a in attempts if a and a.lookup_error and not _is_soft_miss(a)),
+                None,
+            )
+        if result is None:
+            result = next((a for a in reversed(attempts) if a and a.lookup_error), None)
+        if result is None:
+            result = VehicleInfo(vin=plate, normalized=normalized, found=False)
         if not result.lookup_error:
             result.lookup_error = "По этому госномеру данных о марке и модели не найдено"
         return result
@@ -229,7 +250,7 @@ def lookup_plate(plate: str) -> VehicleInfo:
     vin = result.extra.get("VIN") or (
         result.normalized if result.normalized and len(result.normalized) == 17 else None
     )
-    if vin and len(str(vin)) == 17:
+    if vin and len(str(vin)) == 17 and "*" not in str(vin):
         result = _enrich_by_vin(result, str(vin))
 
     result.found = True
@@ -249,6 +270,23 @@ def _lookup_drom_plate_safe(plate: str, normalized: str) -> VehicleInfo:
                 found=False,
                 source="drom",
                 sources_used=["drom"],
+                lookup_error=f"Превышено время ожидания drom ({DROM_TIMEOUT} с)",
+            )
+
+
+def _lookup_autoru_plate_safe(plate: str, normalized: str) -> VehicleInfo:
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(lookup_autoru_plate, plate, normalized)
+        try:
+            return future.result(timeout=AUTORU_TIMEOUT)
+        except FuturesTimeout:
+            return VehicleInfo(
+                vin=plate,
+                normalized=normalized,
+                found=False,
+                source="autoru",
+                sources_used=["autoru"],
+                lookup_error=f"Превышено время ожидания Авто.ру ({AUTORU_TIMEOUT} с)",
             )
 
 
