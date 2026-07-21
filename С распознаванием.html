@@ -1949,7 +1949,15 @@
                 ${renderConclusionMaterialsBlock(conclusion)}
             `;
             const reportFrame = modalBody.querySelector(".conclusion-report-frame");
-            if (reportFrame) reportFrame.srcdoc = conclusion.reportHtml;
+            if (reportFrame) {
+                // ponytail: в старых отчётах sticky уже зашит в HTML — гасим при открытии
+                reportFrame.srcdoc = String(conclusion.reportHtml).replace(
+                    /<\/style>/i,
+                    `.objects-table thead tr.objects-header-row th,` +
+                    `.objects-table thead tr.filter-row th{position:static!important;top:auto!important;z-index:auto!important}` +
+                    `</style>`
+                );
+            }
         } else {
             modalBody.innerHTML = `
                 <div class="alert alert-info mb-4">
