@@ -595,13 +595,13 @@
             text-align: center;
         }
         .converter-busy-text {
-            font-size: 0.9rem;
+            font-size: 1.15rem;
             line-height: 1.45;
             color: var(--sber-text-dark);
-            font-weight: 500;
+            font-weight: 600;
             flex: 1 1 auto;
             min-width: 0;
-            min-height: 2.9em;
+            min-height: 0;
             display: flex;
             align-items: center;
             margin: 0;
@@ -626,11 +626,11 @@
             display: block;
         }
         #innSearchStatus .converter-busy {
-            align-items: flex-start;
+            align-items: center;
         }
         #innSearchStatus .converter-busy-text {
-            min-height: 3.6em;
-            padding-top: 0.35rem;
+            min-height: 0;
+            padding-top: 0;
         }
         .assistant-insight {
             display: none;
@@ -731,15 +731,23 @@
         .assistant-insight-upload {
             margin-top: 1.25rem;
         }
-        .assistant-insight-upload .file-drop-grid {
+        .assistant-insight-upload .file-drop-grid,
+        .convert-block .file-drop-grid {
             margin-bottom: 0.9rem;
         }
-        .assistant-insight-upload #zalogServerStatus {
+        .assistant-insight-upload [data-zalog-status],
+        .convert-block [data-zalog-status] {
             margin-bottom: 0.85rem;
         }
-        .assistant-insight-upload #importStatus {
+        .assistant-insight-upload [data-import-status],
+        .convert-block [data-import-status] {
             min-height: 1.5rem;
             margin-top: 0.85rem;
+        }
+        .convert-result:not(:empty) {
+            margin-top: 1rem;
+            padding-top: 0.85rem;
+            border-top: 1px solid rgba(33, 160, 56, 0.18);
         }
         .conclusion-detail-modal .modal-content {
             border-radius: 0;
@@ -920,6 +928,7 @@
                         <div class="card-body">
                             <div id="conclusionsList">—</div>
                         </div>
+                        <div class="card-body border-top" id="conclusionsConvertMount"></div>
                     </div>
                 </div>
             </div>
@@ -1076,7 +1085,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
-<script src="/converter-status-ui.js?v=11"></script>
+<script src="/converter-status-ui.js?v=12"></script>
 <script src="/zalog-api-client.js?v=10"></script>
 <script src="/zalog-pdf-export.js?v=4"></script>
 <script>
@@ -1287,8 +1296,12 @@
     const activeApplicationsList = document.getElementById("activeApplicationsList");
     const conclusionsListDiv = document.getElementById("conclusionsList");
 
-    function getImportStatusEl() {
-        return document.getElementById("importStatus");
+    function getImportStatusEls() {
+        return [...document.querySelectorAll("[data-import-status]")];
+    }
+
+    function getZalogStatusEls() {
+        return [...document.querySelectorAll("[data-zalog-status]")];
     }
 
     function setConverterStatus(el, phase, options) {
@@ -1296,10 +1309,18 @@
         ConverterStatusUI.setElement(el, phase, options || {});
     }
 
+    function setAllImportStatuses(phase, options) {
+        getImportStatusEls().forEach((el) => setConverterStatus(el, phase, options));
+    }
+
+    function setAllZalogStatuses(phase, options) {
+        getZalogStatusEls().forEach((el) => setConverterStatus(el, phase, options));
+    }
+
     function setConverterProgress(phase) {
         if (typeof ConverterStatusUI === "undefined") return;
         const p = ConverterStatusUI.phaseFromProgress(phase);
-        setConverterStatus(getImportStatusEl(), p, { kind: "loading" });
+        setAllImportStatuses(p, { kind: "loading" });
     }
 
     async function extractPdfText(file) {
@@ -1497,11 +1518,11 @@
         return `${file.name}${mb}`;
     }
 
-    function fileDropCardHtml(kind) {
+    function fileDropCardHtml(kind, prefix) {
         const isPdf = kind === "pdf";
         const title = isPdf ? "PDF заключение" : "Excel перечень";
         const label = isPdf ? "Загрузить PDF заключение" : "Загрузить Excel перечень залога";
-        const inputId = isPdf ? "pdfUpload" : "xlsxUpload";
+        const inputId = `${prefix}-${kind}Upload`;
         const accept = isPdf
             ? ".pdf,application/pdf"
             : ".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel";
@@ -1517,6 +1538,65 @@
             `<div class="file-drop-name" data-file-name="${kind}" hidden></div>` +
             `</div>`
         );
+    }
+
+    function convertBlockHtml(prefix, opts) {
+        const showTitle = opts?.showTitle !== false;
+        const titleHtml = showTitle
+            ? `<div class="small fw-semibold mb-2"><i class="fas fa-cloud-arrow-up me-1 text-success" aria-hidden="true"></i>Загрузить заключение и перечень залога</div>` +
+              `<p class="small text-muted mb-3">Нужны оба файла: PDF — заключение; Excel — перечень объектов. Перетащите сюда или нажмите, чтобы выбрать на компьютере.</p>`
+            : "";
+        return (
+            `<div class="upload-area convert-block" data-convert-block="${prefix}">` +
+            titleHtml +
+            `<div data-zalog-status id="${prefix}-zalogServerStatus" class="alert alert-secondary py-2 px-3 small" role="status">` +
+            `<i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Подключаемся к серверу…` +
+            `</div>` +
+            `<div class="file-drop-grid">` +
+            fileDropCardHtml("pdf", prefix) +
+            fileDropCardHtml("xlsx", prefix) +
+            `</div>` +
+            `<button type="button" class="btn btn-success rounded-pill w-100 py-2 fw-semibold" data-convert-import>` +
+            `<i class="fas fa-wand-magic-sparkles me-1" aria-hidden="true"></i>Преобразовать заключение` +
+            `</button>` +
+            `<div data-import-status id="${prefix}-importStatus" class="small text-muted"></div>` +
+            `<div data-import-result id="${prefix}-importResult" class="convert-result"></div>` +
+            `</div>`
+        );
+    }
+
+    function clearImportResults() {
+        document.querySelectorAll("[data-import-result]").forEach((el) => {
+            el.innerHTML = "";
+        });
+    }
+
+    function conclusionRowHtml(c) {
+        return (
+            `<div class="mb-0 d-flex flex-wrap justify-content-between align-items-start gap-2">` +
+            `<div class="flex-grow-1" style="min-width: 0;">` +
+            `<i class="fas fa-file-pdf me-2 text-success" aria-hidden="true"></i>` +
+            `<strong>${escapeHtml(c.id)}</strong> <span class="text-muted">от ${escapeHtml(c.date)}</span><br>` +
+            `<small class="text-muted">Объектов: ${c.objects.length}${(c.risks && c.risks.length) ? " · Рисков: " + c.risks.length : ""}</small>` +
+            `</div>` +
+            `<div class="d-flex flex-wrap gap-1 flex-shrink-0 align-items-start">` +
+            `<button type="button" class="btn btn-sm btn-outline-sber conclusion-detail-btn" data-conclusion-id="${escapeHtml(c.id)}">` +
+            `<i class="fas fa-info-circle me-1" aria-hidden="true"></i>Подробнее</button>` +
+            (c.reportHtml
+                ? `<button type="button" class="btn btn-sm btn-success conclusion-pdf-btn" data-conclusion-id="${escapeHtml(c.id)}" title="Скачать заключение в PDF">` +
+                  `<i class="fas fa-file-pdf me-1" aria-hidden="true"></i>PDF</button>`
+                : "") +
+            `<button type="button" class="btn btn-sm btn-outline-danger conclusion-delete-btn" data-conclusion-id="${escapeHtml(c.id)}" title="Удалить заключение">` +
+            `<i class="fas fa-trash-alt" aria-hidden="true"></i><span class="visually-hidden"> Удалить</span></button>` +
+            `</div></div>`
+        );
+    }
+
+    function renderImportResults(conclusion) {
+        document.querySelectorAll("[data-import-result]").forEach((el) => {
+            el.innerHTML = conclusionRowHtml(conclusion);
+        });
+        bindConclusionActionButtons();
     }
 
     function syncUploadLabels() {
@@ -1549,8 +1629,9 @@
             else pendingXlsxFile = materialized;
         } catch (e) {
             alert(ConverterStatusUI?.friendlyError?.(e?.message) || e?.message || "Ошибка чтения файла");
-            const input = document.getElementById(isPdf ? "pdfUpload" : "xlsxUpload");
-            if (input) input.value = "";
+            document.querySelectorAll(`[data-file-drop="${kind}"] input[type="file"]`).forEach((input) => {
+                input.value = "";
+            });
             if (isPdf) pendingPdfFile = null;
             else pendingXlsxFile = null;
         }
@@ -1564,9 +1645,7 @@
             zone.dataset.dropBound = "1";
             const kind = zone.getAttribute("data-file-drop");
             const inputInZone = zone.querySelector('input[type="file"]');
-            const input =
-                inputInZone ||
-                document.getElementById(kind === "pdf" ? "pdfUpload" : "xlsxUpload");
+            const input = inputInZone;
 
             const openPicker = () => input?.click();
             zone.addEventListener("click", (e) => {
@@ -1608,7 +1687,6 @@
                 }
                 await assignUploadFile(kind, file);
             });
-            // change только у зоны с input — иначе двойной listener на общий #pdfUpload
             inputInZone?.addEventListener("change", async () => {
                 const raw = inputInZone.files?.[0] || null;
                 if (kind === "pdf") pendingPdfFile = null;
@@ -1620,8 +1698,19 @@
         });
     }
 
+    function ensureConclusionsConvertBlock() {
+        const mount = document.getElementById("conclusionsConvertMount");
+        if (!mount) return;
+        if (!mount.dataset.ready) {
+            mount.innerHTML = convertBlockHtml("concl", { showTitle: true });
+            mount.dataset.ready = "1";
+            wireFileDropZones(mount);
+        }
+        refreshZalogServerStatus();
+    }
+
     function bindUploadInputs() {
-        // зоны появляются в insight после поиска ИНН — wire там
+        ensureConclusionsConvertBlock();
         syncUploadLabels();
     }
 
@@ -1630,23 +1719,23 @@
     let zalogStatusErrorText = null;
 
     async function refreshZalogServerStatus() {
-        const statusEl = document.getElementById("zalogServerStatus");
-        if (!statusEl) return;
+        const els = getZalogStatusEls();
+        if (!els.length) return;
         if (zalogStatusReadyText) {
-            setConverterStatus(statusEl, "ready", { kind: "success", text: zalogStatusReadyText });
+            setAllZalogStatuses("ready", { kind: "success", text: zalogStatusReadyText });
             return;
         }
         if (zalogStatusErrorText) {
-            setConverterStatus(statusEl, "error", { kind: "error", text: zalogStatusErrorText });
+            setAllZalogStatuses("error", { kind: "error", text: zalogStatusErrorText });
             return;
         }
         if (zalogStatusPromise) {
-            setConverterStatus(statusEl, "waiting", { kind: "loading" });
+            setAllZalogStatuses("waiting", { kind: "loading" });
             await zalogStatusPromise;
             if (zalogStatusReadyText) {
-                setConverterStatus(statusEl, "ready", { kind: "success", text: zalogStatusReadyText });
+                setAllZalogStatuses("ready", { kind: "success", text: zalogStatusReadyText });
             } else if (zalogStatusErrorText) {
-                setConverterStatus(statusEl, "error", { kind: "error", text: zalogStatusErrorText });
+                setAllZalogStatuses("error", { kind: "error", text: zalogStatusErrorText });
             }
             return;
         }
@@ -1656,12 +1745,9 @@
     async function initZalogServerStatus() {
         if (zalogStatusPromise) return zalogStatusPromise;
         zalogStatusPromise = (async () => {
-            const statusEl = document.getElementById("zalogServerStatus");
             if (typeof ZalogApiClient === "undefined") {
                 zalogStatusErrorText = "Не удалось загрузить конвертер. Обновите страницу (Ctrl+Shift+R).";
-                if (statusEl) {
-                    setConverterStatus(statusEl, "error", { kind: "error", text: zalogStatusErrorText });
-                }
+                setAllZalogStatuses("error", { kind: "error", text: zalogStatusErrorText });
                 return;
             }
             const isLocal =
@@ -1670,23 +1756,20 @@
             if (!isLocal) {
                 ZalogApiClient.startKeepAlive(GIGACHAT_API_BASE, () => {});
             }
-            if (statusEl) setConverterStatus(statusEl, "waiting", { kind: "loading" });
+            setAllZalogStatuses("waiting", { kind: "loading" });
             try {
                 await ZalogApiClient.wakeZalogServer(GIGACHAT_API_BASE, {
                     maxAttempts: isLocal ? 2 : 50,
                     delayMs: isLocal ? 400 : 2000,
                     onProgress() {
-                        const el = document.getElementById("zalogServerStatus");
-                        if (el) setConverterStatus(el, "wake", { kind: "loading" });
+                        setAllZalogStatuses("wake", { kind: "loading" });
                     }
                 });
                 zalogStatusReadyText = ConverterStatusUI.pickPhrase("ready");
-                const el = document.getElementById("zalogServerStatus");
-                if (el) setConverterStatus(el, "ready", { kind: "success", text: zalogStatusReadyText });
+                setAllZalogStatuses("ready", { kind: "success", text: zalogStatusReadyText });
             } catch (e) {
                 zalogStatusErrorText = escapeHtml(ConverterStatusUI.friendlyError(e?.message));
-                const el = document.getElementById("zalogServerStatus");
-                if (el) setConverterStatus(el, "error", { kind: "error", text: zalogStatusErrorText });
+                setAllZalogStatuses("error", { kind: "error", text: zalogStatusErrorText });
             }
         })();
         return zalogStatusPromise;
@@ -1697,13 +1780,13 @@
         return ZalogApiClient.postZalogConvert(base, pdfFile, xlsxFile, {
             onProgress(attempt, max, a, b, phase) {
                 if (phase === "retry") {
-                    setConverterStatus(getImportStatusEl(), "retry", { kind: "loading" });
+                    setAllImportStatuses("retry", { kind: "loading" });
                 } else if (phase) {
                     setConverterProgress(phase);
                 }
             },
             onRetry() {
-                setConverterStatus(getImportStatusEl(), "retry", { kind: "loading" });
+                setAllImportStatuses("retry", { kind: "loading" });
             }
         });
     }
@@ -1713,11 +1796,8 @@
             alert("Сначала загрузите клиента по ИНН");
             return;
         }
-        const pdfInput = document.getElementById("pdfUpload");
-        const xlsxInput = document.getElementById("xlsxUpload");
-        const importStatusDiv = getImportStatusEl();
-        const pdfFile = pendingPdfFile || pdfInput?.files?.[0] || null;
-        const xlsxFile = pendingXlsxFile || xlsxInput?.files?.[0] || null;
+        const pdfFile = pendingPdfFile;
+        const xlsxFile = pendingXlsxFile;
         if (!pdfFile || !xlsxFile) {
             const missing = [
                 !pdfFile ? "PDF заключение" : null,
@@ -1730,7 +1810,7 @@
             alert("Один из файлов пустой (0 байт). Выберите файлы ещё раз.");
             return;
         }
-        setConverterStatus(importStatusDiv, "start", { kind: "loading" });
+        setAllImportStatuses("start", { kind: "loading" });
 
         try {
             const payload = await convertConclusionViaApi(pdfFile, xlsxFile);
@@ -1740,24 +1820,42 @@
             }
             currentClientData.conclusions.push(newConclusion);
             updateInfoPanel();
+            renderImportResults(newConclusion);
             const successText = `${ConverterStatusUI.pickPhrase("success")} (${escapeHtml(newConclusion.id)})`;
-            setConverterStatus(importStatusDiv, "success", { kind: "success", text: successText });
-            if (pdfInput) pdfInput.value = "";
-            if (xlsxInput) xlsxInput.value = "";
+            setAllImportStatuses("success", { kind: "success", text: successText });
+            document.querySelectorAll('[data-file-drop] input[type="file"]').forEach((input) => {
+                input.value = "";
+            });
             pendingPdfFile = null;
             pendingXlsxFile = null;
             syncUploadLabels();
             setTimeout(() => {
-                const el = getImportStatusEl();
-                if (el) el.innerHTML = "";
+                getImportStatusEls().forEach((el) => {
+                    el.innerHTML = "";
+                });
             }, 8000);
         } catch (err) {
             console.error(err);
             const msg = typeof ConverterStatusUI !== "undefined"
                 ? ConverterStatusUI.friendlyError(err?.message)
                 : "Ошибка конвертации";
-            setConverterStatus(importStatusDiv, "error", { kind: "error", text: escapeHtml(msg) });
+            setAllImportStatuses("error", { kind: "error", text: escapeHtml(msg) });
         }
+    }
+
+    function bindConclusionActionButtons() {
+        document.querySelectorAll(".conclusion-detail-btn").forEach((btn) => {
+            btn.removeEventListener("click", detailHandler);
+            btn.addEventListener("click", detailHandler);
+        });
+        document.querySelectorAll(".conclusion-pdf-btn").forEach((btn) => {
+            btn.removeEventListener("click", conclusionPdfHandler);
+            btn.addEventListener("click", conclusionPdfHandler);
+        });
+        document.querySelectorAll(".conclusion-delete-btn").forEach((btn) => {
+            btn.removeEventListener("click", deleteConclusionHandler);
+            btn.addEventListener("click", deleteConclusionHandler);
+        });
     }
 
     function updateInfoPanel() {
@@ -1765,39 +1863,11 @@
         activeApplicationsList.innerHTML = (apps.length ? apps.map(app => `<div class="mb-3 pb-3 border-bottom border-light-subtle"><i class="fas fa-ticket-alt me-2 text-success" aria-hidden="true"></i><strong>${app.id}</strong> <span class="text-muted">(${app.type})</span>${app.priority ? ' <span class="badge bg-success ms-1">Приоритет</span>' : ""}<br><small class="text-muted">Осмотр: ${app.inspectionDate || "—"} · Этап: ${app.valuation || "—"}</small></div>`).join("") : '<p class="text-muted mb-0">Нет заявок</p>');
 
         const cons = currentClientData.conclusions;
-        conclusionsListDiv.innerHTML = (cons.length ? cons.map(c => `
-            <div class="mb-3 pb-3 border-bottom border-light-subtle d-flex flex-wrap justify-content-between align-items-start gap-2">
-                <div class="flex-grow-1" style="min-width: 0;">
-                    <i class="fas fa-file-pdf me-2 text-success" aria-hidden="true"></i>
-                    <strong>${c.id}</strong> <span class="text-muted">от ${c.date}</span><br>
-                    <small class="text-muted">Объектов: ${c.objects.length}${(c.risks && c.risks.length) ? " · Рисков: " + c.risks.length : ""}</small>
-                </div>
-                <div class="d-flex flex-wrap gap-1 flex-shrink-0 align-items-start">
-                    <button type="button" class="btn btn-sm btn-outline-sber conclusion-detail-btn" data-conclusion-id="${c.id}">
-                        <i class="fas fa-info-circle me-1" aria-hidden="true"></i>Подробнее
-                    </button>
-                    ${c.reportHtml ? `<button type="button" class="btn btn-sm btn-success conclusion-pdf-btn" data-conclusion-id="${c.id}" title="Скачать заключение в PDF">
-                        <i class="fas fa-file-pdf me-1" aria-hidden="true"></i>PDF
-                    </button>` : ""}
-                    <button type="button" class="btn btn-sm btn-outline-danger conclusion-delete-btn" data-conclusion-id="${c.id}" title="Удалить заключение">
-                        <i class="fas fa-trash-alt" aria-hidden="true"></i><span class="visually-hidden"> Удалить</span>
-                    </button>
-                </div>
-            </div>
-        `).join("") : '<p class="text-muted mb-0">Нет заключений</p>');
+        conclusionsListDiv.innerHTML = (cons.length
+            ? cons.map((c) => `<div class="mb-3 pb-3 border-bottom border-light-subtle">${conclusionRowHtml(c)}</div>`).join("")
+            : '<p class="text-muted mb-0">Нет заключений</p>');
 
-        document.querySelectorAll(".conclusion-detail-btn").forEach(btn => {
-            btn.removeEventListener("click", detailHandler);
-            btn.addEventListener("click", detailHandler);
-        });
-        document.querySelectorAll(".conclusion-pdf-btn").forEach(btn => {
-            btn.removeEventListener("click", conclusionPdfHandler);
-            btn.addEventListener("click", conclusionPdfHandler);
-        });
-        document.querySelectorAll(".conclusion-delete-btn").forEach(btn => {
-            btn.removeEventListener("click", deleteConclusionHandler);
-            btn.addEventListener("click", deleteConclusionHandler);
-        });
+        bindConclusionActionButtons();
     }
 
     function detailHandler(e) {
@@ -1829,6 +1899,7 @@
             delFoot.removeAttribute("data-conclusion-id");
         }
         updateInfoPanel();
+        clearImportResults();
     }
 
     function deleteConclusionHandler(e) {
@@ -1972,17 +2043,26 @@
         return `<ol class="expertise-timeline">${items}</ol>`;
     }
 
+    function timeOfDayGreeting() {
+        const h = new Date().getHours();
+        if (h >= 5 && h <= 11) return "Доброе утро";
+        if (h >= 12 && h <= 16) return "Добрый день";
+        if (h >= 17 && h <= 22) return "Добрый вечер";
+        return "Доброй ночи"; // 23–4
+    }
+
     function renderAssistantInsight() {
         if (!assistantInsightEl || !currentClientData) return;
         const scenario = currentClientData.scenario;
+        const hello = timeOfDayGreeting();
         if (scenario === "activeExpertise") {
             const app = currentClientData.applications?.[0];
             assistantInsightEl.innerHTML =
                 `<div class="assistant-insight-eyebrow">Подсказка помощника</div>` +
-                `<h2 class="assistant-insight-title">Привет! По этому клиенту сейчас идёт экспертиза в Залоговой службе.</h2>` +
+                `<h2 class="assistant-insight-title">${hello}! По этому клиенту сейчас идёт экспертиза в Залоговой службе.</h2>` +
                 `<p class="assistant-insight-lead">Я уже нашёл активную заявку` +
                 (app ? ` <strong>${escapeHtml(app.id)}</strong>` : "") +
-                ` — давай сразу посмотрим, на каком этапе она сейчас.</p>` +
+                ` — давайте сразу посмотрим, на каком этапе она сейчас.</p>` +
                 renderExpertiseTimeline(app?.stages || []);
             assistantInsightEl.classList.add("is-visible");
             return;
@@ -1992,25 +2072,14 @@
             const conclId = concl?.id || "ASZ";
             assistantInsightEl.innerHTML =
                 `<div class="assistant-insight-eyebrow">Подсказка помощника</div>` +
-                `<h2 class="assistant-insight-title">Привет! Ты недавно получил залоговое заключение № ${escapeHtml(conclId)}.</h2>` +
-                `<p class="assistant-insight-lead">Если есть вопросы по нему — давай сначала посмотрим на заключение <span class="nowrap">по-новому</span>: загрузи PDF и Excel-перечень залога, а я соберу понятный сводный отчёт.</p>` +
+                `<h2 class="assistant-insight-title">${hello}! Вы недавно получили залоговое заключение № ${escapeHtml(conclId)}.</h2>` +
+                `<p class="assistant-insight-lead">Если у Вас есть вопросы по нему — давайте сначала посмотрим на заключение <span class="nowrap">по-новому</span>: загрузите PDF и Excel-перечень залога, а я соберу понятный сводный отчёт.</p>` +
                 `<div class="assistant-insight-upload">` +
-                `<div id="zalogServerStatus" class="alert alert-secondary py-2 px-3 small" role="status">` +
-                `<i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Подключаемся к серверу…` +
-                `</div>` +
-                `<div class="file-drop-grid" id="assistantUploadGrid">` +
-                fileDropCardHtml("pdf") +
-                fileDropCardHtml("xlsx") +
-                `</div>` +
-                `<button type="button" id="importConclusionBtn" class="btn btn-success rounded-pill w-100 py-2 fw-semibold">` +
-                `<i class="fas fa-wand-magic-sparkles me-1" aria-hidden="true"></i>Преобразовать заключение` +
-                `</button>` +
-                `<div id="importStatus" class="small text-muted"></div>` +
+                convertBlockHtml("insight", { showTitle: false }) +
                 `</div>`;
             assistantInsightEl.classList.add("is-visible");
             wireFileDropZones(assistantInsightEl);
             syncUploadLabels();
-            document.getElementById("importConclusionBtn")?.addEventListener("click", importConclusionViaConverter);
             refreshZalogServerStatus();
             return;
         }
@@ -2024,19 +2093,24 @@
         ["collapseActiveApps", "collapseConclusions"].forEach((id) => {
             const el = document.getElementById(id);
             if (!el || !window.bootstrap?.Collapse) return;
-            const shouldOpen = id === "collapseActiveApps" && currentClientData?.scenario === "activeExpertise";
+            const shouldOpen =
+                (id === "collapseActiveApps" && currentClientData?.scenario === "activeExpertise") ||
+                (id === "collapseConclusions" && currentClientData?.scenario === "recentConclusion");
             const inst = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
             if (shouldOpen) inst.show();
             else inst.hide();
         });
+        ensureConclusionsConvertBlock();
         updateInfoPanel();
         renderModules();
         renderAssistantInsight();
+        syncUploadLabels();
+        refreshZalogServerStatus();
     }
 
     async function playInnSearchAnimation() {
         if (!innSearchStatusEl || typeof ConverterStatusUI === "undefined") {
-            await new Promise((r) => setTimeout(r, 3500));
+            await new Promise((r) => setTimeout(r, 7000));
             return;
         }
         innSearchStatusEl.classList.add("is-visible");
@@ -2052,20 +2126,22 @@
             catEl.loading = "eager";
             catEl.removeAttribute("loading");
         }
-        const durationMs = 3500 + Math.floor(Math.random() * 1500); // 3.5–5 с
+        const durationMs = 7000;
+        const intervalMs = 1500;
+        const fadeMs = 280;
         const started = Date.now();
-        let first = true;
+        let nextChangeAt = started + intervalMs;
         while (Date.now() - started < durationMs) {
-            await new Promise((r) => setTimeout(r, first ? 1200 : 1300));
-            first = false;
-            if (!textEl || Date.now() - started >= durationMs) break;
-            // полное исчезновение перед сменой — иначе фразы визуально накладываются
+            const wait = Math.min(nextChangeAt, started + durationMs) - Date.now();
+            if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+            if (Date.now() - started >= durationMs || !textEl) break;
             textEl.classList.add("is-fading");
-            await new Promise((r) => setTimeout(r, 300));
+            await new Promise((r) => setTimeout(r, fadeMs));
+            if (Date.now() - started >= durationMs) break;
             textEl.textContent = ConverterStatusUI.pickPhrase("inn");
-            // reflow, затем fade-in
             void textEl.offsetWidth;
             textEl.classList.remove("is-fading");
+            nextChangeAt += intervalMs;
         }
         innSearchStatusEl.classList.remove("is-visible");
         innSearchStatusEl.innerHTML = "";
@@ -2089,6 +2165,10 @@
         modulesPanel.style.display = "none";
         assistantInsightEl?.classList.remove("is-visible");
         if (assistantInsightEl) assistantInsightEl.innerHTML = "";
+        pendingPdfFile = null;
+        pendingXlsxFile = null;
+        clearImportResults();
+        syncUploadLabels();
 
         try {
             if (!skipAnim) await playInnSearchAnimation();
@@ -2910,6 +2990,12 @@
     loadGigaChatConfig().then(() => checkGigaChatHealth(true));
     bindUploadInputs();
     initZalogServerStatus();
+    document.addEventListener("click", (e) => {
+        if (e.target.closest("[data-convert-import]")) {
+            e.preventDefault();
+            importConclusionViaConverter();
+        }
+    });
 
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") checkGigaChatHealth(false);

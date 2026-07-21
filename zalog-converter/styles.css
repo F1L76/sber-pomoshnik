@@ -297,10 +297,10 @@ body.has-results-focus main.app-main {
 }
 
 .converter-busy-text {
-  font-size: 0.9rem;
+  font-size: 1.15rem;
   line-height: 1.45;
   color: var(--sber-text-dark);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 @keyframes converter-cat-bob {
