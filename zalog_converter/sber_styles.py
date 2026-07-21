@@ -167,16 +167,10 @@ SBER_REPORT_CSS = """
       border-spacing: 0;
     }
     .objects-table thead tr.objects-header-row th {
-      position: sticky;
-      top: 0;
-      z-index: 4;
       background: #EEF4F9;
       box-shadow: 0 1px 0 var(--sber-border);
     }
     .objects-table thead tr.filter-row th {
-      position: sticky;
-      top: var(--objects-header-h, 3rem);
-      z-index: 3;
       background: #f8fafc;
       box-shadow: 0 1px 0 var(--sber-border);
     }
