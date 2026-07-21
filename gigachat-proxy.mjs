@@ -57,6 +57,10 @@ loadEnvFile();
 
 /** Кеш access_token (Bearer), не путать с GIGACHAT_CREDENTIALS в .env */
 let tokenCache = { access_token: null, expires_at: 0 };
+/** Кеш ошибки OAuth — иначе /health каждый раз ждёт 5–15 с у Сбера */
+let authFailCache = { error: null, until: 0 };
+/** Короткий кеш ответа health, чтобы UI не долбил OAuth */
+let healthCache = { payload: null, until: 0 };
 
 function invalidateTokenCache() {
     tokenCache = { access_token: null, expires_at: 0 };
@@ -66,6 +70,7 @@ function requestJson(url, options, body) {
     return new Promise((resolve, reject) => {
         const u = new URL(url);
         const lib = u.protocol === "https:" ? https : http;
+        const timeoutMs = options.timeoutMs ?? 8_000;
         const req = lib.request(
             {
                 hostname: u.hostname,
@@ -73,7 +78,8 @@ function requestJson(url, options, body) {
                 path: u.pathname + u.search,
                 method: options.method || "GET",
                 headers: options.headers || {},
-                agent: u.protocol === "https:" ? httpsAgent : undefined
+                agent: u.protocol === "https:" ? httpsAgent : undefined,
+                timeout: timeoutMs
             },
             (res) => {
                 let data = "";
@@ -87,6 +93,10 @@ function requestJson(url, options, body) {
                 });
             }
         );
+        req.on("timeout", () => {
+            req.destroy();
+            reject(new Error(`Таймаут запроса (${Math.round(timeoutMs / 1000)} с)`));
+        });
         req.on("error", reject);
         if (body) req.write(body);
         req.end();
@@ -101,21 +111,39 @@ async function getAccessToken() {
     if (tokenCache.access_token && Date.now() < tokenCache.expires_at - 60_000) {
         return tokenCache.access_token;
     }
+    if (authFailCache.error && Date.now() < authFailCache.until) {
+        throw new Error(authFailCache.error);
+    }
     const scope = process.env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS";
     const body = new URLSearchParams({ scope }).toString();
-    const { status, json } = await requestJson(OAUTH_URL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            Accept: "application/json",
-            Authorization: `Basic ${credentials}`,
-            RqUID: crypto.randomUUID()
-        }
-    }, body);
+    let status;
+    let json;
+    try {
+        ({ status, json } = await requestJson(
+            OAUTH_URL,
+            {
+                method: "POST",
+                timeoutMs: 6_000,
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    Accept: "application/json",
+                    Authorization: `Basic ${credentials}`,
+                    RqUID: crypto.randomUUID()
+                }
+            },
+            body
+        ));
+    } catch (e) {
+        authFailCache = { error: e.message || String(e), until: Date.now() + 120_000 };
+        throw e;
+    }
 
     if (status !== 200 || !json.access_token) {
-        throw new Error(json.message || json.error_description || `OAuth ошибка HTTP ${status}`);
+        const err = json.message || json.error_description || `OAuth ошибка HTTP ${status}`;
+        authFailCache = { error: err, until: Date.now() + 120_000 };
+        throw new Error(err);
     }
+    authFailCache = { error: null, until: 0 };
     // Ответ может содержать expires_at (unix s) или expires_in (секунды ответа от OAuth)
     let expiresMs;
     if (json.expires_at != null && !isNaN(Number(json.expires_at))) {
@@ -331,6 +359,11 @@ const server = http.createServer(async (req, res) => {
             );
             return;
         }
+        if (healthCache.payload && Date.now() < healthCache.until) {
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(healthCache.payload));
+            return;
+        }
         const hasCreds = cfg.hasCredentials;
         let ok = false;
         let error = null;
@@ -344,17 +377,18 @@ const server = http.createServer(async (req, res) => {
         } else {
             error = "Нет GIGACHAT_CREDENTIALS в .env";
         }
+        const payload = {
+            ok,
+            enabled: true,
+            serverEnabled: true,
+            hasCreds,
+            error,
+            model: cfg.model
+        };
+        // Успех — короткий кеш; ошибка ключа — подольше, чтобы не тормозить UI
+        healthCache = { payload, until: Date.now() + (ok ? 30_000 : 120_000) };
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(
-            JSON.stringify({
-                ok,
-                enabled: true,
-                serverEnabled: true,
-                hasCreds,
-                error,
-                model: cfg.model
-            })
-        );
+        res.end(JSON.stringify(payload));
         return;
     }
 
@@ -481,7 +515,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/api/zalog/health") {
         const base = getZalogConverterHealth();
-        const probe = await probeZalogPythonDeps();
+        const probe = await probeZalogPythonDepsCached();
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(
             JSON.stringify({

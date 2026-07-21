@@ -2,7 +2,7 @@
  * Клиент API конвертера: keep-alive, пробуждение Render, async + JSON fallback.
  */
 (function (global) {
-    const VERSION = 5;
+    const VERSION = 6;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     let keepAliveWs = null;
@@ -68,7 +68,13 @@
         keepAliveWs.onopen = () => onStatus?.("ws-open");
         keepAliveWs.onclose = () => {
             onStatus?.("ws-closed");
-            setTimeout(() => startKeepAlive(base, onStatus), 5000);
+            // localhost: не долбить reconnect каждые 5 с
+            const local =
+                /^(localhost|127\.0\.0\.1)$/i.test(location.hostname) ||
+                String(base).includes("localhost") ||
+                String(base).includes("127.0.0.1");
+            if (local) return;
+            setTimeout(() => startKeepAlive(base, onStatus), 15_000);
         };
         keepAliveWs.onerror = () => onStatus?.("ws-error");
         setInterval(() => {

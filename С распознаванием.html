@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous">
     <link href="https://fonts.cdnfonts.com/css/sb-sans-interface" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
     <style>
         :root {
             --sber-green: #21A038;
@@ -880,8 +880,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
-<script src="/converter-status-ui.js?v=6"></script>
-<script src="/zalog-api-client.js?v=5"></script>
+<script src="/converter-status-ui.js?v=7"></script>
+<script src="/zalog-api-client.js?v=6"></script>
 <script src="/zalog-pdf-export.js?v=4"></script>
 <script>
     const mockData = {
@@ -1003,10 +1003,17 @@
         applyGigaChatToggleUi();
     }
 
-    async function checkGigaChatHealth() {
+    let gigaChatHealthAt = 0;
+    let gigaChatHealthInFlight = null;
+
+    async function checkGigaChatHealth(force) {
         const btn = document.getElementById("gigachatStatusBtn");
         const dot = document.getElementById("gigachatStatusDot");
         const label = document.getElementById("gigachatStatusBadge");
+        if (!force && Date.now() - gigaChatHealthAt < 60_000 && label && !/Проверка/.test(label.textContent || "")) {
+            return;
+        }
+        if (gigaChatHealthInFlight) return gigaChatHealthInFlight;
         if (!isGigaChatActive()) {
             gigaChatOnline = false;
             if (label) {
@@ -1028,35 +1035,49 @@
             dot.className = "rounded-circle gigachat-status-dot bg-secondary";
         }
         if (btn) btn.disabled = true;
-        try {
-            const res = await fetch(`${GIGACHAT_API_BASE}/api/gigachat/health`, { cache: "no-store" });
-            const data = await res.json();
-            if (data.serverEnabled === false) {
-                gigaChatServerEnabled = false;
-                applyGigaChatToggleUi();
-                return checkGigaChatHealth();
+
+        gigaChatHealthInFlight = (async () => {
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 3500);
+            try {
+                const res = await fetch(`${GIGACHAT_API_BASE}/api/gigachat/health`, {
+                    cache: "no-store",
+                    signal: ctrl.signal
+                });
+                const data = await res.json();
+                if (data.serverEnabled === false) {
+                    gigaChatServerEnabled = false;
+                    applyGigaChatToggleUi();
+                    return;
+                }
+                gigaChatOnline = !!data.ok;
+                gigaChatHealthAt = Date.now();
+                if (label) {
+                    label.textContent = gigaChatOnline ? "Онлайн" : "Ошибка ключа";
+                }
+                if (dot) {
+                    dot.className = "rounded-circle gigachat-status-dot " + (gigaChatOnline ? "bg-success" : "bg-warning");
+                }
+                if (btn) {
+                    btn.title = gigaChatOnline
+                        ? ("Модель: " + (data.model || "GigaChat") + " · нажмите для повторной проверки")
+                        : (data.error || "Проверьте GIGACHAT_CREDENTIALS в .env и перезапустите прокси");
+                }
+            } catch (_) {
+                gigaChatOnline = false;
+                gigaChatHealthAt = Date.now();
+                if (label) label.textContent = "Офлайн";
+                if (dot) dot.className = "rounded-circle gigachat-status-dot bg-secondary";
+                if (btn) {
+                    btn.title = "Запустите прокси: node gigachat-proxy.mjs в папке проекта, затем откройте http://localhost:8787/";
+                }
+            } finally {
+                clearTimeout(timer);
+                if (btn) btn.disabled = false;
+                gigaChatHealthInFlight = null;
             }
-            gigaChatOnline = !!data.ok;
-            if (label) {
-                label.textContent = gigaChatOnline ? "Онлайн" : "Ошибка ключа";
-            }
-            if (dot) {
-                dot.className = "rounded-circle gigachat-status-dot " + (gigaChatOnline ? "bg-success" : "bg-warning");
-            }
-            if (btn) {
-                btn.title = gigaChatOnline
-                    ? ("Модель: " + (data.model || "GigaChat") + " · нажмите для повторной проверки")
-                    : (data.error || "Проверьте GIGACHAT_CREDENTIALS в .env и перезапустите прокси");
-            }
-        } catch (_) {
-            gigaChatOnline = false;
-            if (label) label.textContent = "Офлайн";
-            if (dot) dot.className = "rounded-circle gigachat-status-dot bg-secondary";
-            if (btn) {
-                btn.title = "Запустите прокси: node gigachat-proxy.mjs в папке проекта, затем откройте http://localhost:8787/";
-            }
-        }
-        if (btn) btn.disabled = false;
+        })();
+        return gigaChatHealthInFlight;
     }
 
     function escapeHtml(s) {
@@ -2345,13 +2366,13 @@
         gigaChatUserEnabled = !!e.target.checked;
         localStorage.setItem(GIGACHAT_STORAGE_KEY, gigaChatUserEnabled ? "true" : "false");
         applyGigaChatToggleUi();
-        checkGigaChatHealth();
+        checkGigaChatHealth(true);
     });
 
     document.getElementById("gigachatStatusBtn")?.addEventListener("click", () => {
-        checkGigaChatHealth();
+        checkGigaChatHealth(true);
     });
-    loadGigaChatConfig().then(() => checkGigaChatHealth());
+    loadGigaChatConfig().then(() => checkGigaChatHealth(true));
 
     (async function initZalogServerStatus() {
         const statusEl = document.getElementById("zalogServerStatus");
@@ -2364,12 +2385,17 @@
             }
             return;
         }
-        ZalogApiClient.startKeepAlive(GIGACHAT_API_BASE, () => {});
+        const isLocal =
+            location.hostname === "localhost" ||
+            location.hostname === "127.0.0.1";
+        if (!isLocal) {
+            ZalogApiClient.startKeepAlive(GIGACHAT_API_BASE, () => {});
+        }
         setConverterStatus(statusEl, "waiting", { kind: "loading" });
         try {
             await ZalogApiClient.wakeZalogServer(GIGACHAT_API_BASE, {
-                maxAttempts: 50,
-                delayMs: 2000,
+                maxAttempts: isLocal ? 2 : 50,
+                delayMs: isLocal ? 400 : 2000,
                 onProgress() {
                     setConverterStatus(statusEl, "wake", { kind: "loading" });
                 }
@@ -2381,7 +2407,7 @@
         }
     })();
     document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") checkGigaChatHealth();
+        if (document.visibilityState === "visible") checkGigaChatHealth(false);
     });
 
     if (new URLSearchParams(location.search).get("view") === "services") {

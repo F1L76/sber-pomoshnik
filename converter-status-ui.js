@@ -61,9 +61,22 @@
         const opts = options || {};
         const text = opts.text || pickPhrase(phase);
         const kind = opts.kind || "loading";
+        // ponytail: idle-статусы без 1 МБ GIF — иначе главная тормозит
+        const light = phase === "waiting" || phase === "ready" || phase === "wake";
+        if (light && !opts.forceCat) {
+            const icon =
+                kind === "success"
+                    ? "fa-circle-check text-success"
+                    : "fa-spinner fa-spin text-success";
+            return (
+                `<div class="converter-busy converter-busy--${kind}" role="status" aria-live="polite">` +
+                `<i class="fas ${icon} converter-busy-icon" aria-hidden="true"></i>` +
+                `<p class="converter-busy-text mb-0">${text}</p></div>`
+            );
+        }
         return (
             `<div class="converter-busy converter-busy--${kind}" role="status" aria-live="polite">` +
-            `<img class="converter-busy-cat" src="${CAT_GIF}" alt="" width="140" height="140" decoding="async" onerror="this.onerror=null;this.src='${CAT_GIF_FALLBACK}'">` +
+            `<img class="converter-busy-cat" src="${CAT_GIF}" alt="" width="140" height="140" decoding="async" loading="lazy" onerror="this.onerror=null;this.src='${CAT_GIF_FALLBACK}'">` +
             `<p class="converter-busy-text mb-0">${text}</p>` +
             `</div>`
         );
