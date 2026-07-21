@@ -451,13 +451,22 @@
         let loadingMessageTimer = null;
         let loadingMessageIndex = 0;
 
+        function pluralRu(n, one, few, many) {
+            const abs = Math.abs(Number(n)) % 100;
+            const d = abs % 10;
+            if (abs > 10 && abs < 20) return many;
+            if (d === 1) return one;
+            if (d >= 2 && d <= 4) return few;
+            return many;
+        }
+
         function showSearchLoading(vinCount) {
             const title = document.getElementById("loadingTitle");
             const text = document.getElementById("searchLoadingText");
             loadingTitleIndex = 0;
             loadingMessageIndex = 0;
             title.textContent = vinCount > 1
-                ? `Котик проверяет ${vinCount} номеров…`
+                ? `Котик проверяет ${vinCount} ${pluralRu(vinCount, "номер", "номера", "номеров")}…`
                 : activeTab === "plate"
                     ? "Ищем авто по госномеру…"
                     : LOADING_TITLES[0];
