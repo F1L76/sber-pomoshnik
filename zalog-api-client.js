@@ -2,7 +2,7 @@
  * Клиент API конвертера: keep-alive, пробуждение Render, async + JSON fallback.
  */
 (function (global) {
-    const VERSION = 7;
+    const VERSION = 8;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     let keepAliveWs = null;
@@ -22,18 +22,30 @@
         if (controller && timeoutMs > 0) {
             timer = setTimeout(() => controller.abort(), timeoutMs);
         }
+        const isFormData =
+            typeof FormData !== "undefined" && opts.body instanceof FormData;
         try {
-            return await fetch(withCacheBust(url), {
+            // FormData: не задаём Content-Type/Cache-Control вручную — иначе boundary ломается
+            // и сервер получает пустое тело («нет полей»).
+            const init = {
                 method: opts.method || "GET",
                 body: opts.body,
                 cache: "no-store",
-                signal: controller?.signal,
-                headers: {
+                signal: controller?.signal
+            };
+            if (!isFormData) {
+                init.headers = {
                     "Cache-Control": "no-cache, no-store",
                     Pragma: "no-cache",
                     ...(opts.headers || {})
-                }
-            });
+                };
+            } else if (opts.headers) {
+                const headers = { ...opts.headers };
+                delete headers["Content-Type"];
+                delete headers["content-type"];
+                if (Object.keys(headers).length) init.headers = headers;
+            }
+            return await fetch(withCacheBust(url), init);
         } finally {
             if (timer) clearTimeout(timer);
         }
@@ -233,7 +245,8 @@
         const onProgress = opts.onProgress;
 
         let lastErr;
-        let useJson = false;
+        // ponytail: JSON/base64 по умолчанию — multipart из браузера иногда уходит с пустым телом
+        let useJson = opts.useJson !== false;
 
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             if (attempt > 1) {
@@ -258,7 +271,7 @@
                         if (onProgress) onProgress(attempt, maxAttempts, wakeTry, wakeMax, "wake", status);
                     }
                 });
-                await sleep(800);
+                await sleep(300);
 
                 if (onProgress) onProgress(attempt, maxAttempts, null, null, useJson ? "upload-json" : "upload");
                 const res = await submitConvertJob(apiBase, pdfFile, xlsxFile, useJson);
@@ -288,13 +301,15 @@
             } catch (e) {
                 lastErr = e;
                 const msg = String(e.message || e);
+                const emptyMultipart = /нет полей|multipart|оба файла/i.test(msg);
                 const retryable =
                     e.name === "AbortError" ||
                     e.code === "JOB_LOST" ||
+                    emptyMultipart ||
                     /503|502|504|проснулся|Render|network|fetch|HTTP 5|не найдена|истекла|прервалась|перезапуск/i.test(
                         msg
                     );
-                if (!useJson && retryable) useJson = true;
+                if (!useJson && (retryable || emptyMultipart)) useJson = true;
                 if (attempt < maxAttempts && retryable) continue;
                 throw e;
             }
