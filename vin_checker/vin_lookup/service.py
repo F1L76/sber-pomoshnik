@@ -163,8 +163,19 @@ def _merge_vehicle(base: VehicleInfo, other: VehicleInfo) -> VehicleInfo:
     return base
 
 
-# ponytail: plate uses Sravni; drom plate off by default to avoid 429 (DROM_FOR_PLATE=1 to enable)
+# ponytail: drom по госномеру всегда как fallback, если Сравни не нашёл полис;
+# DROM_FOR_PLATE=1 — дергать drom даже когда Сравни уже отдал марку/модель
 USE_DROM_PLATE = os.environ.get("DROM_FOR_PLATE", "0").lower() in ("1", "true", "yes")
+
+
+def _sravni_no_policy(info: VehicleInfo) -> bool:
+    """True, если Сравни ответил «полиса нет», а не сетью/429."""
+    if _has_vehicle_data(info):
+        return False
+    err = (info.lookup_error or "").lower()
+    if "429" in err or "недоступен" in err or "сети" in err or "таймаут" in err:
+        return False
+    return True
 
 
 def _enrich_by_vin(result: VehicleInfo, vin: str) -> VehicleInfo:
@@ -199,7 +210,8 @@ def lookup_plate(plate: str) -> VehicleInfo:
 
     sravni = lookup_sravni_plate(plate, normalized)
     drom = None
-    if USE_DROM_PLATE and not drom_cooling_down():
+    want_drom = USE_DROM_PLATE or _sravni_no_policy(sravni)
+    if want_drom and not drom_cooling_down():
         drom = _lookup_drom_plate_safe(plate, normalized)
 
     if _has_vehicle_data(sravni):

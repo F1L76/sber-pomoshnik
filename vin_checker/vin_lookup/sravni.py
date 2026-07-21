@@ -145,6 +145,31 @@ def _parse_prev_policy(
     )
 
 
+def _friendly_http_error(exc: urllib.error.HTTPError) -> str:
+    detail = None
+    try:
+        body = exc.read().decode("utf-8")
+        detail = json.loads(body).get("message") if body else None
+    except Exception:
+        detail = None
+    text = str(detail or "").strip()
+    lower = text.lower()
+    # sravni: нет полиса ОСАГО для продления → не «ошибка», а пустой результат
+    if exc.code == 404 or "not found policy" in lower or "prolongation" in lower:
+        return (
+            "По этому госномеру нет данных ОСАГО на Сравни.ру "
+            "(полис для продления не найден). Укажите VIN или другой номер."
+        )
+    if exc.code == 429:
+        return (
+            "Слишком много запросов к источнику данных (HTTP 429). "
+            "Подождите 1–2 минуты и повторите."
+        )
+    if exc.code in (403, 401):
+        return "Источник временно недоступен. Повторите позже."
+    return text or f"Ошибка сервера (HTTP {exc.code})"
+
+
 def lookup_sravni_plate(raw_plate: str, normalized: str | None = None) -> VehicleInfo:
     """Бесплатные данные по госномеру из превью полиса ОСАГО на sravni.ru."""
     from vin_validator.plate import normalize_plate, plate_error
@@ -166,26 +191,13 @@ def lookup_sravni_plate(raw_plate: str, normalized: str | None = None) -> Vehicl
         payload = _post_json(opener, SRAVNI_PREV_POLICY_URL, {"carNumber": normalized})
         return _parse_prev_policy(raw_plate, normalized, payload)
     except urllib.error.HTTPError as exc:
-        if exc.code == 429:
-            msg = (
-                "Слишком много запросов к источнику данных (HTTP 429). "
-                "Подождите 1–2 минуты и повторите."
-            )
-        elif exc.code in (403, 401):
-            msg = "Источник временно недоступен. Повторите позже."
-        else:
-            try:
-                detail = json.loads(exc.read().decode("utf-8")).get("message")
-            except Exception:
-                detail = None
-            msg = detail or f"Ошибка сервера (HTTP {exc.code})"
         return VehicleInfo(
             vin=raw_plate,
             normalized=normalized,
             found=False,
             source="sravni",
             sources_used=["sravni"],
-            lookup_error=msg,
+            lookup_error=_friendly_http_error(exc),
         )
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError) as exc:
         return VehicleInfo(
@@ -203,3 +215,8 @@ if __name__ == "__main__":
     info = lookup_sravni_plate("А123АА77")
     assert info.source == "sravni"
     print("sravni self-check:", info.found, info.make, info.model, info.lookup_error)
+    missing = lookup_sravni_plate("Е777КХ777")
+    assert missing.found is False
+    assert "Not found policy" not in (missing.lookup_error or "")
+    assert "ОСАГО" in (missing.lookup_error or "")
+    print("sravni missing-policy check ok")
