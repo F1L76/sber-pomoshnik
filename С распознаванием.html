@@ -775,15 +775,17 @@
             padding: 0.75rem 1rem;
             flex: 1 1 auto;
             overflow-x: hidden;
+            overflow-y: auto;
         }
         .conclusion-detail-modal .conclusion-report-frame {
-            flex: 1 1 auto;
+            flex: 0 0 auto;
             width: 100%;
-            min-height: calc(100vh - 9rem);
+            min-height: 0;
+            height: auto;
             border: none !important;
             border-radius: 8px;
             background: #fff;
-            overflow-x: hidden;
+            overflow: hidden;
         }
         .conclusion-detail-modal .conclusion-materials-block {
             flex-shrink: 0;
@@ -1937,6 +1939,35 @@
         </div>`;
     }
 
+    function prepareConclusionReportHtml(html) {
+        // ponytail: в модалке перечень скроллится со страницей, не во внутреннем окне
+        return String(html || "").replace(
+            /<\/style>/i,
+            `.objects-table thead tr.objects-header-row th,` +
+            `.objects-table thead tr.filter-row th{position:static!important;top:auto!important;z-index:auto!important}` +
+            `.objects-block .table-responsive-custom,` +
+            `.objects-block .objects-table-scroll{` +
+            `max-height:none!important;height:auto!important;` +
+            `overflow-y:visible!important;overflow-x:auto!important}` +
+            `html,body{overflow:visible!important;height:auto!important}` +
+            `</style>`
+        );
+    }
+
+    function fitConclusionReportFrame(frame) {
+        if (!frame) return;
+        try {
+            const doc = frame.contentDocument;
+            if (!doc) return;
+            const h = Math.max(
+                doc.body?.scrollHeight || 0,
+                doc.documentElement?.scrollHeight || 0,
+                doc.body?.offsetHeight || 0
+            );
+            if (h > 0) frame.style.height = `${h + 8}px`;
+        } catch (_) { /* cross-origin — не ожидаем для srcdoc */ }
+    }
+
     function showConclusionDetails(conclusionId) {
         const conclusion = currentClientData.conclusions.find(c => c.id === conclusionId);
         if (!conclusion) return;
@@ -1950,13 +1981,8 @@
             `;
             const reportFrame = modalBody.querySelector(".conclusion-report-frame");
             if (reportFrame) {
-                // ponytail: в старых отчётах sticky уже зашит в HTML — гасим при открытии
-                reportFrame.srcdoc = String(conclusion.reportHtml).replace(
-                    /<\/style>/i,
-                    `.objects-table thead tr.objects-header-row th,` +
-                    `.objects-table thead tr.filter-row th{position:static!important;top:auto!important;z-index:auto!important}` +
-                    `</style>`
-                );
+                reportFrame.srcdoc = prepareConclusionReportHtml(conclusion.reportHtml);
+                reportFrame.addEventListener("load", () => fitConclusionReportFrame(reportFrame));
             }
         } else {
             modalBody.innerHTML = `
