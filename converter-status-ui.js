@@ -132,11 +132,11 @@
     function friendlyError(message) {
         const msg = String(message || "").trim();
         if (!msg) return "Не удалось собрать отчёт. Попробуйте ещё раз через минуту.";
-        if (/503|502|504|проснулся|Render|HTTP|недоступен|таймаут|aborted/i.test(msg)) {
+        if (/503|502|504|проснулся|Render|таймаут|aborted/i.test(msg)) {
             return "Платформа ещё не готова — подождите минуту и повторите";
         }
-        if (msg.length > 100) return "Не удалось собрать отчёт. Попробуйте ещё раз.";
-        return msg;
+        // не прячем полезный текст про файлы / Python
+        return msg.length > 240 ? `${msg.slice(0, 240)}…` : msg;
     }
 
     global.ConverterStatusUI = {

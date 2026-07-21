@@ -2,7 +2,7 @@
  * Клиент API конвертера: keep-alive, пробуждение Render, async + JSON fallback.
  */
 (function (global) {
-    const VERSION = 8;
+    const VERSION = 9;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     let keepAliveWs = null;
@@ -139,14 +139,49 @@
     }
 
     async function fileToBase64(file) {
-        const buf = await file.arrayBuffer();
-        const bytes = new Uint8Array(buf);
-        let binary = "";
-        const chunk = 0x8000;
-        for (let i = 0; i < bytes.length; i += chunk) {
-            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+        // FileReader надёжнее ручного btoa на части PDF/кириллических именах в Safari/Chrome
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const s = String(reader.result || "");
+                const comma = s.indexOf(",");
+                resolve(comma >= 0 ? s.slice(comma + 1) : s);
+            };
+            reader.onerror = () =>
+                reject(reader.error || new Error(`Не удалось прочитать файл «${file?.name || "?"}»`));
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async function assertZalogFiles(pdfFile, xlsxFile) {
+        if (!pdfFile || !xlsxFile) {
+            throw new Error("Загрузите оба файла: PDF заключение и XLSX перечень залога");
         }
-        return btoa(binary);
+        const xname = String(xlsxFile.name || "");
+        const pname = String(pdfFile.name || "");
+        if (xname.startsWith("~$") || pname.startsWith("~$")) {
+            throw new Error(
+                "Выбран временный файл Excel (~$). Закройте книгу в Excel и укажите обычный .xlsx"
+            );
+        }
+        if (!pdfFile.size) throw new Error(`PDF пустой: «${pname || "без имени"}»`);
+        if (!xlsxFile.size) throw new Error(`XLSX пустой: «${xname || "без имени"}»`);
+        if (xlsxFile.size < 512) {
+            throw new Error(
+                `XLSX слишком маленький (${xlsxFile.size} байт). Возможно выбран не тот файл (например ~$…)`
+            );
+        }
+        const pdfHead = new Uint8Array(await pdfFile.slice(0, 5).arrayBuffer());
+        const pdfSig = String.fromCharCode(pdfHead[0], pdfHead[1], pdfHead[2], pdfHead[3], pdfHead[4]);
+        if (pdfSig !== "%PDF-") {
+            throw new Error(`«${pname}» не похож на PDF (сигнатура: ${JSON.stringify(pdfSig)})`);
+        }
+        const xHead = new Uint8Array(await xlsxFile.slice(0, 2).arrayBuffer());
+        if (xHead[0] !== 0x50 || xHead[1] !== 0x4b) {
+            throw new Error(
+                `«${xname}» не похож на .xlsx (нужен Excel 2007+, не старый .xls и не временный ~$)`
+            );
+        }
     }
 
     async function pollZalogJob(apiBase, jobId, options) {
@@ -195,13 +230,17 @@
     }
 
     async function submitConvertJob(apiBase, pdfFile, xlsxFile, useJson) {
+        await assertZalogFiles(pdfFile, xlsxFile);
         if (useJson) {
             const res = await fetchNoCache(`${apiBase}/api/zalog/convert/json`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     pdfBase64: await fileToBase64(pdfFile),
-                    xlsxBase64: await fileToBase64(xlsxFile)
+                    xlsxBase64: await fileToBase64(xlsxFile),
+                    pdfName: pdfFile.name || "conclusion.pdf",
+                    xlsxName: xlsxFile.name || "objects.xlsx",
+                    clientVersion: VERSION
                 }),
                 timeoutMs: 300_000
             });
