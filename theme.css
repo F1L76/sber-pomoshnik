@@ -271,11 +271,10 @@ html[data-theme="dark"] [data-zalog-status] .converter-busy {
   border-color: #334155 !important;
   color: #e8eef4 !important;
 }
-/* ponytail: multiply делал кота почти невидимым; мягкая светлая подложка вместо blend */
+/* ponytail: без светлой «плитки» — фон как у busy-блока; белый квадрат остаётся в самом GIF */
 html[data-theme="dark"] .converter-busy-cat {
   mix-blend-mode: normal !important;
-  background: #f5f7fa !important;
-  border-radius: 14px !important;
+  background: transparent !important;
   filter: none !important;
 }
 html[data-theme="dark"] .converter-busy-text {
