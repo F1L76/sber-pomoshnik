@@ -481,6 +481,76 @@ html[data-theme="dark"] .btn-outline-success:hover {
   border-color: #21a038 !important;
 }
 
+/* VIN: белые карточки, чипы, пустое состояние, правка VIN */
+html[data-theme="dark"] .vin-card,
+html[data-theme="dark"] .vin-card-body {
+  background: #1a2330 !important;
+  border-color: #334155 !important;
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .vin-card-header {
+  border-bottom-color: #334155 !important;
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .vin-card-header.valid {
+  background: linear-gradient(90deg, rgba(33, 160, 56, 0.18), transparent) !important;
+}
+html[data-theme="dark"] .vin-card-header.warn {
+  background: linear-gradient(90deg, rgba(240, 173, 78, 0.2), transparent) !important;
+}
+html[data-theme="dark"] .vin-card-header.invalid {
+  background: linear-gradient(90deg, rgba(229, 57, 53, 0.18), transparent) !important;
+}
+html[data-theme="dark"] .vin-title {
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .vin-code,
+html[data-theme="dark"] .info-label,
+html[data-theme="dark"] .meta-item span,
+html[data-theme="dark"] .empty-state {
+  color: #a8b4c4 !important;
+}
+html[data-theme="dark"] .meta-item strong {
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .stat-chip {
+  background: #243041 !important;
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .stat-chip.ok {
+  background: rgba(33, 160, 56, 0.22) !important;
+  color: #6fd88a !important;
+}
+html[data-theme="dark"] .stat-chip.bad {
+  background: rgba(229, 57, 53, 0.2) !important;
+  color: #ff8a80 !important;
+}
+html[data-theme="dark"] .alert-correction {
+  background: #2a2410 !important;
+  border-color: #8a6a1b !important;
+  color: #f5e6b8 !important;
+}
+html[data-theme="dark"] .vin-tabs .nav-link {
+  color: #a8b4c4 !important;
+}
+html[data-theme="dark"] .vin-tabs .nav-link.active {
+  background: rgba(33, 160, 56, 0.22) !important;
+  color: #6fd88a !important;
+}
+html[data-theme="dark"] .loader-progress {
+  background: #334155 !important;
+}
+html[data-theme="dark"] .empty-state .fw-semibold,
+html[data-theme="dark"] .empty-state p {
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .empty-state .small {
+  color: #a8b4c4 !important;
+}
+html[data-theme="dark"] .btn-link.text-muted {
+  color: #a8b4c4 !important;
+}
+
 /* Переключатель темы */
 .theme-toggle-wrap {
   display: inline-flex;
