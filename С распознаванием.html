@@ -529,6 +529,109 @@
         @media (prefers-reduced-motion: reduce) {
             .converter-busy-cat { animation: none; }
         }
+        #innSearchStatus {
+            display: none;
+            margin-top: 1.25rem;
+        }
+        #innSearchStatus.is-visible {
+            display: block;
+        }
+        .assistant-insight {
+            display: none;
+            margin: 0 0 1.75rem;
+            padding: 1.5rem 1.6rem 1.65rem;
+            border-radius: 22px;
+            background:
+                radial-gradient(ellipse 80% 60% at 100% 0%, rgba(33, 160, 56, 0.12), transparent 55%),
+                linear-gradient(165deg, #f7fbf8 0%, #eef6f1 48%, #f8fafb 100%);
+            border: 1px solid rgba(33, 160, 56, 0.18);
+            box-shadow: 0 12px 36px rgba(15, 40, 28, 0.06);
+        }
+        .assistant-insight.is-visible {
+            display: block;
+        }
+        .assistant-insight-eyebrow {
+            font-size: 0.78rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--sber-green);
+            font-weight: 700;
+            margin-bottom: 0.55rem;
+        }
+        .assistant-insight-title {
+            font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+            line-height: 1.25;
+            font-weight: 750;
+            color: var(--sber-text-dark);
+            margin: 0 0 0.85rem;
+            max-width: 42rem;
+        }
+        .assistant-insight-lead {
+            font-size: 1.05rem;
+            line-height: 1.55;
+            color: var(--sber-text-muted);
+            margin: 0 0 1.35rem;
+            max-width: 40rem;
+        }
+        .expertise-timeline {
+            list-style: none;
+            margin: 0;
+            padding: 0.25rem 0 0.25rem 0.15rem;
+            position: relative;
+            max-width: 28rem;
+        }
+        .expertise-timeline::before {
+            content: "";
+            position: absolute;
+            left: 0.72rem;
+            top: 0.35rem;
+            bottom: 0.35rem;
+            width: 3px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, #21a038 0%, #4caf50 55%, #a5d6a7 100%);
+        }
+        .expertise-timeline-item {
+            position: relative;
+            padding: 0 0 1.15rem 2.35rem;
+        }
+        .expertise-timeline-item:last-child {
+            padding-bottom: 0;
+        }
+        .expertise-timeline-dot {
+            position: absolute;
+            left: 0.35rem;
+            top: 0.2rem;
+            width: 0.9rem;
+            height: 0.9rem;
+            border-radius: 50%;
+            background: #21a038;
+            border: 3px solid #e8f5e9;
+            box-shadow: 0 0 0 2px rgba(33, 160, 56, 0.35);
+            z-index: 1;
+        }
+        .expertise-timeline-item.is-current .expertise-timeline-dot {
+            background: #148f2e;
+            box-shadow: 0 0 0 4px rgba(33, 160, 56, 0.22);
+        }
+        .expertise-timeline-item.is-pending .expertise-timeline-dot {
+            background: #c8e6c9;
+            border-color: #fff;
+            box-shadow: 0 0 0 2px rgba(33, 160, 56, 0.25);
+        }
+        .expertise-timeline-label {
+            font-weight: 700;
+            color: var(--sber-text-dark);
+            font-size: 0.98rem;
+        }
+        .expertise-timeline-date {
+            display: block;
+            margin-top: 0.15rem;
+            font-size: 0.86rem;
+            color: var(--sber-text-muted);
+        }
+        .assistant-insight-cta {
+            margin-top: 1.25rem;
+        }
         .conclusion-detail-modal .modal-content {
             border-radius: 0;
         }
@@ -670,13 +773,16 @@
                     <input type="text" id="innInput" class="form-control form-control-lg flex-grow-1" inputmode="numeric" autocomplete="off" placeholder="Введите 10 или 12 цифр" value="1234567890">
                     <button type="button" id="loadClientBtn" class="btn btn-primary btn-lg btn-search"><i class="fas fa-search me-2" aria-hidden="true"></i>Поиск</button>
                 </div>
-                <div class="form-text mt-2">Тестовые ИНН: <strong>1234567890</strong> (ООО "Тест") · <strong>9876543210</strong> (ИП Петров)</div>
+                <div class="form-text mt-2">Тестовые ИНН: <strong>1234567890</strong> (активная экспертиза) · <strong>9876543210</strong> (свежее заключение)</div>
             </div>
             <div class="client-badge-wrap ms-md-2 w-100 w-md-auto">
                 <span class="badge bg-light text-dark p-3 shadow-sm" id="clientBadge"><i class="fas fa-user-circle me-1" aria-hidden="true"></i>Клиент не выбран</span>
             </div>
         </div>
+        <div id="innSearchStatus" aria-live="polite"></div>
     </div>
+
+    <div id="assistantInsight" class="assistant-insight" aria-live="polite"></div>
 
     <div id="infoPanel" class="mt-2 mb-5" style="display: none;">
         <div class="row g-4">
@@ -884,71 +990,49 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
-<script src="/converter-status-ui.js?v=9"></script>
+<script src="/converter-status-ui.js?v=10"></script>
 <script src="/zalog-api-client.js?v=10"></script>
 <script src="/zalog-pdf-export.js?v=4"></script>
 <script>
     const mockData = {
         "1234567890": {
             clientName: 'ООО "Тест"',
+            scenario: "activeExpertise",
             applications: [
-                { id: "ASZ0000000012345", type: "Автооценка", priority: false, inspectionDate: "2026-05-20", encumbrances: "проверяется", valuation: "завершена" },
-                { id: "ASZ0000000023456", type: "Эксперт", priority: false, inspectionDate: "2026-06-01", encumbrances: "нет", valuation: "Подготовка Заключения" },
-                { id: "ASZ0000000112345", type: "Эксперт", priority: true, inspectionDate: "2026-05-10", encumbrances: "нет", valuation: "Оценка" }
+                {
+                    id: "ASZ0000000023456",
+                    type: "Эксперт",
+                    priority: false,
+                    inspectionDate: "2026-06-01",
+                    encumbrances: "нет",
+                    valuation: "Подготовка Заключения",
+                    stages: [
+                        { label: "Проверка обременений", date: "2026-05-28", state: "done" },
+                        { label: "Осмотр", date: "2026-06-01", state: "done" },
+                        { label: "Оценка", date: "2026-06-10", state: "current" },
+                        { label: "Подготовка СЗЗ", date: "2026-06-20", state: "pending" }
+                    ]
+                }
             ],
-            conclusions: [
-                { id: "ASZ1000000000456", date: "2026-04-10",
-                    risks: [
-                        { identifier: "З-01", risk: "Несоответствие площади по данным БТИ", minimization: "Запросить актуальный техпаспорт и пересчёт" },
-                        { identifier: "З-02", risk: "Обременение не отражено в тексте заключения", minimization: "Сверка с выпиской ЕГРН и корректировка формулировок" }
-                    ],
-                    materials: {
-                        encumbranceCheck: { fileName: "egrn_ASZ1000000000456.pdf", fileUrl: "/materials/demo/encumbrance-check.pdf", note: "ЕГРН: обременения не выявлены (выписка от 08.04.2026)" },
-                        inspectionResults: { fileName: "inspection_ASZ1000000000456.pdf", fileUrl: "/materials/demo/inspection-results.pdf", note: "Осмотр 05.04.2026, состояние удовлетворительное" },
-                        inspectionVerificationFile: { fileName: "verification_ASZ1000000000456_20260405.pdf", fileUrl: "/materials/demo/inspection-verification.pdf", note: "Файл верификации осмотра" }
-                    },
-                    objects: [
-                    { name: "Квартира, Москва", cost: 5200000, costType: "рыночная", klassifikator: "010101", identifier: "77:01:0001234:567", qualityCategory: "Высокая", valuationType: "Рыночная", collateralValue: 3120000, discount: 40, conditional: "ЗиС_1", bankMarketPrice: 5600000 },
-                    { name: "Коммерческое помещение", cost: 3100000, costType: "льготная", klassifikator: "020202", identifier: "77:08:0009876:321", qualityCategory: "Средняя", valuationType: "Льготная", collateralValue: 1860000, discount: 40, conditional: "ЗиС_2", bankMarketPrice: 3900000 }
-                ]},
-                { id: "ASZ1000000000789", date: "2026-02-28",
-                    materials: {
-                        encumbranceCheck: { fileName: "eisn_ASZ1000000000789.pdf", fileUrl: "/materials/demo/encumbrance-check.pdf", note: "ЕИСН: залог в пользу банка, иные обременения отсутствуют" },
-                        inspectionResults: { fileName: "inspection_ASZ1000000000789.pdf", fileUrl: "/materials/demo/inspection-results.pdf", note: "Дистанционная верификация земельного участка" },
-                        inspectionVerificationFile: null
-                    },
-                    objects: [
-                    { name: "Земельный участок, МО", cost: 2100000, costType: "рыночная", klassifikator: "201.05", identifier: "50:38:0004567:890", qualityCategory: "Стандарт", valuationType: "Рыночная", collateralValue: 1260000, discount: 40, conditional: "ЗУ_1", bankMarketPrice: 2250000 }
-                ]}
-            ]
+            conclusions: []
         },
         "9876543210": {
             clientName: "ИП Петров",
-            applications: [
-                { id: "ASZ0000000034567", type: "Эксперт", priority: false, inspectionDate: "2026-05-28", encumbrances: "ипотека", valuation: "оценка" },
-                { id: "ASZ0000000167890", type: "Автооценка", priority: false, inspectionDate: "2026-06-12", encumbrances: "нет", valuation: "фотоосмотр назначен" },
-                { id: "ASZ0000000189012", type: "Переоценка", priority: false, inspectionDate: "2026-06-20", encumbrances: "залогодержатель", valuation: "в работе у оценщика" }
-            ],
+            scenario: "recentConclusion",
+            applications: [],
             conclusions: [
-                { id: "ASZ2000000000111", date: "2026-04-20",
+                {
+                    id: "ASZ2000000000111",
+                    date: "2026-06-18",
                     materials: {
                         encumbranceCheck: { fileName: "egrn_ASZ2000000000111.pdf", fileUrl: "/materials/demo/encumbrance-check.pdf", note: "ЕГРН: ипотека ПАО Сбербанк, арестов нет" },
                         inspectionResults: { fileName: "inspection_ASZ2000000000111.pdf", fileUrl: "/materials/demo/inspection-results.pdf", note: "Фотоосмотр 18.04.2026" },
                         inspectionVerificationFile: { fileName: "verify_house_petrov_20260418.pdf", fileUrl: "/materials/demo/inspection-verification.pdf", note: "Верификация осмотра жилого дома" }
                     },
                     objects: [
-                    { name: "Жилой дом", cost: 7300000, costType: "рыночная", klassifikator: "040404", identifier: "50:12:0007777:444", qualityCategory: "Высокая", valuationType: "Рыночная", collateralValue: 4380000, discount: 40, conditional: "Объект_1", bankMarketPrice: 7900000 }
-                ]},
-                { id: "ASZ2000000000222", date: "2026-03-15",
-                    materials: {
-                        encumbranceCheck: { fileName: "egrn_eisn_ASZ2000000000222.pdf", fileUrl: "/materials/demo/encumbrance-check.pdf", note: "ЕГРН/ЕИСН: обременения по гаражу и ТС" },
-                        inspectionResults: { fileName: "inspection_ASZ2000000000222.pdf", fileUrl: "/materials/demo/inspection-results.pdf", note: "Осмотр гаража и автомобиля" },
-                        inspectionVerificationFile: { fileName: "verification_petrov_garage_auto.pdf", fileUrl: "/materials/demo/inspection-verification.pdf", note: "Сводный файл верификации" }
-                    },
-                    objects: [
-                    { name: "Гараж", cost: 850000, costType: "рыночная", klassifikator: "102.99", identifier: "77:77:0001111:222", qualityCategory: "Стандарт", valuationType: "Рыночная", collateralValue: 510000, discount: 40, conditional: "ГРЖ_1", bankMarketPrice: 920000 },
-                    { name: "Легковой автомобиль", cost: 2400000, costType: "рыночная", klassifikator: "310.01", identifier: "VIN-X7K9M2N4P1Q8R3T5", qualityCategory: "Высокая", valuationType: "Рыночная", collateralValue: 1440000, discount: 40, conditional: "АВТО_1", bankMarketPrice: 2550000 }
-                ]}
+                        { name: "Жилой дом", cost: 7300000, costType: "рыночная", klassifikator: "040404", identifier: "50:12:0007777:444", qualityCategory: "Высокая", valuationType: "Рыночная", collateralValue: 4380000, discount: 40, conditional: "Объект_1", bankMarketPrice: 7900000 }
+                    ]
+                }
             ]
         }
     };
@@ -1618,9 +1702,121 @@
     });
 
     const CLIENT_INN_STORAGE_KEY = "sber-pomoshnik-client-inn";
+    const innSearchStatusEl = document.getElementById("innSearchStatus");
+    const assistantInsightEl = document.getElementById("assistantInsight");
+    let innSearchBusy = false;
 
-    function loadClientByInn(inn, opts) {
+    function formatRuDate(iso) {
+        if (!iso) return "—";
+        const [y, m, d] = String(iso).split("-");
+        if (!y || !m || !d) return iso;
+        return `${d}.${m}.${y}`;
+    }
+
+    function renderExpertiseTimeline(stages) {
+        if (!stages?.length) return "";
+        const items = stages.map((s) => {
+            const cls =
+                s.state === "current" ? "is-current" : s.state === "pending" ? "is-pending" : "is-done";
+            return (
+                `<li class="expertise-timeline-item ${cls}">` +
+                `<span class="expertise-timeline-dot" aria-hidden="true"></span>` +
+                `<span class="expertise-timeline-label">${escapeHtml(s.label)}</span>` +
+                `<span class="expertise-timeline-date">${escapeHtml(formatRuDate(s.date))}</span>` +
+                `</li>`
+            );
+        }).join("");
+        return `<ol class="expertise-timeline">${items}</ol>`;
+    }
+
+    function renderAssistantInsight() {
+        if (!assistantInsightEl || !currentClientData) return;
+        const scenario = currentClientData.scenario;
+        if (scenario === "activeExpertise") {
+            const app = currentClientData.applications?.[0];
+            assistantInsightEl.innerHTML =
+                `<div class="assistant-insight-eyebrow">Подсказка помощника</div>` +
+                `<h2 class="assistant-insight-title">Привет! По этому клиенту сейчас идёт экспертиза в Залоговой службе.</h2>` +
+                `<p class="assistant-insight-lead">Я уже нашёл активную заявку` +
+                (app ? ` <strong>${escapeHtml(app.id)}</strong>` : "") +
+                ` — давай сразу посмотрим, на каком этапе она сейчас.</p>` +
+                renderExpertiseTimeline(app?.stages || []);
+            assistantInsightEl.classList.add("is-visible");
+            return;
+        }
+        if (scenario === "recentConclusion") {
+            const concl = currentClientData.conclusions?.[0];
+            const conclId = concl?.id || "ASZ";
+            assistantInsightEl.innerHTML =
+                `<div class="assistant-insight-eyebrow">Подсказка помощника</div>` +
+                `<h2 class="assistant-insight-title">Привет! Ты недавно получил залоговое заключение № ${escapeHtml(conclId)}.</h2>` +
+                `<p class="assistant-insight-lead">Если есть вопросы по нему — давай сначала посмотрим на заключение по-новому: загрузи PDF и Excel-перечень залога, а я соберу понятный сводный отчёт.</p>` +
+                `<div class="assistant-insight-cta">` +
+                `<button type="button" class="btn btn-success rounded-pill px-4" id="assistantOpenUploadBtn">` +
+                `<i class="fas fa-cloud-arrow-up me-2" aria-hidden="true"></i>Загрузить PDF и Excel</button>` +
+                `</div>`;
+            assistantInsightEl.classList.add("is-visible");
+            document.getElementById("assistantOpenUploadBtn")?.addEventListener("click", () => {
+                const collapse = document.getElementById("collapseConclusions");
+                if (collapse && window.bootstrap?.Collapse) {
+                    bootstrap.Collapse.getOrCreateInstance(collapse, { toggle: false }).show();
+                }
+                document.getElementById("pdfUpload")?.scrollIntoView({ block: "center", behavior: "smooth" });
+                document.getElementById("pdfUpload")?.focus();
+            });
+            return;
+        }
+        assistantInsightEl.classList.remove("is-visible");
+        assistantInsightEl.innerHTML = "";
+    }
+
+    function showClientPanels() {
+        infoPanel.style.display = "block";
+        modulesPanel.style.display = "block";
+        ["collapseActiveApps", "collapseConclusions"].forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el || !window.bootstrap?.Collapse) return;
+            const shouldOpen =
+                (id === "collapseActiveApps" && currentClientData?.scenario === "activeExpertise") ||
+                (id === "collapseConclusions" && currentClientData?.scenario === "recentConclusion");
+            const inst = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+            if (shouldOpen) inst.show();
+            else inst.hide();
+        });
+        updateInfoPanel();
+        renderModules();
+        renderAssistantInsight();
+        const importBtn = document.getElementById("importConclusionBtn");
+        importBtn.removeEventListener("click", importConclusionViaConverter);
+        importBtn.addEventListener("click", importConclusionViaConverter);
+    }
+
+    async function playInnSearchAnimation() {
+        if (!innSearchStatusEl || typeof ConverterStatusUI === "undefined") {
+            await new Promise((r) => setTimeout(r, 3500));
+            return;
+        }
+        innSearchStatusEl.classList.add("is-visible");
+        const durationMs = 3500 + Math.floor(Math.random() * 1500); // 3.5–5 с
+        const started = Date.now();
+        let tick = 0;
+        while (Date.now() - started < durationMs) {
+            const phrase = ConverterStatusUI.pickPhrase("inn");
+            innSearchStatusEl.innerHTML = ConverterStatusUI.renderBusy("inn", {
+                text: phrase,
+                kind: "loading",
+                forceCat: true
+            });
+            tick += 1;
+            await new Promise((r) => setTimeout(r, tick === 1 ? 900 : 1100));
+        }
+        innSearchStatusEl.classList.remove("is-visible");
+        innSearchStatusEl.innerHTML = "";
+    }
+
+    async function loadClientByInn(inn, opts) {
         const silent = opts?.silent;
+        const skipAnim = opts?.skipAnim || silent;
         if (!inn) {
             if (!silent) alert("Введите ИНН");
             return false;
@@ -1629,31 +1825,42 @@
             if (!silent) alert("Клиент не найден. Доступные ИНН: 1234567890, 9876543210");
             return false;
         }
-        currentClientInn = inn;
-        currentClientData = JSON.parse(JSON.stringify(mockData[inn]));
-        sessionStorage.setItem(CLIENT_INN_STORAGE_KEY, inn);
-        innInput.value = inn;
-        clientBadge.innerHTML = `<i class="fas fa-check-circle text-success me-1" aria-hidden="true"></i>${currentClientData.clientName} <span class="text-muted">(ИНН: ${inn})</span>`;
-        clientBadge.classList.add("bg-white", "shadow-sm");
-        infoPanel.style.display = "block";
-        modulesPanel.style.display = "block";
-        ["collapseActiveApps", "collapseConclusions"].forEach((id) => {
-            const el = document.getElementById(id);
-            if (el && window.bootstrap?.Collapse) {
-                bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).hide();
-            }
-        });
-        updateInfoPanel();
-        renderModules();
+        if (innSearchBusy) return false;
+        innSearchBusy = true;
+        loadBtn.disabled = true;
+        infoPanel.style.display = "none";
+        modulesPanel.style.display = "none";
+        assistantInsightEl?.classList.remove("is-visible");
+        if (assistantInsightEl) assistantInsightEl.innerHTML = "";
 
-        const importBtn = document.getElementById("importConclusionBtn");
-        importBtn.removeEventListener("click", importConclusionViaConverter);
-        importBtn.addEventListener("click", importConclusionViaConverter);
-        return true;
+        try {
+            if (!skipAnim) await playInnSearchAnimation();
+
+            currentClientInn = inn;
+            currentClientData = JSON.parse(JSON.stringify(mockData[inn]));
+            sessionStorage.setItem(CLIENT_INN_STORAGE_KEY, inn);
+            innInput.value = inn;
+            clientBadge.innerHTML = `<i class="fas fa-check-circle text-success me-1" aria-hidden="true"></i>${currentClientData.clientName} <span class="text-muted">(ИНН: ${inn})</span>`;
+            clientBadge.classList.add("bg-white", "shadow-sm");
+            showClientPanels();
+            if (!skipAnim) {
+                assistantInsightEl?.scrollIntoView({ block: "start", behavior: "smooth" });
+            }
+            return true;
+        } finally {
+            innSearchBusy = false;
+            loadBtn.disabled = false;
+        }
     }
 
     loadBtn.addEventListener("click", () => {
         loadClientByInn(innInput.value.trim().replace(/\D/g, ""));
+    });
+    innInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            loadClientByInn(innInput.value.trim().replace(/\D/g, ""));
+        }
     });
 
     const modules = [
@@ -2484,9 +2691,9 @@
 
     if (new URLSearchParams(location.search).get("view") === "services") {
         const savedInn = sessionStorage.getItem(CLIENT_INN_STORAGE_KEY);
-        if (loadClientByInn(savedInn, { silent: true })) {
-            modulesPanel?.scrollIntoView({ block: "start" });
-        }
+        loadClientByInn(savedInn, { silent: true, skipAnim: true }).then((ok) => {
+            if (ok) modulesPanel?.scrollIntoView({ block: "start" });
+        });
     }
 </script>
 
