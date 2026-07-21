@@ -2,7 +2,7 @@
  * Дружелюбный UI статуса конвертера (без технических деталей).
  */
 (function (global) {
-    const CAT_GIF = "/assets/loading-dancing-cat.gif";
+    const CAT_GIF = "/assets/loading-dancing-cat.gif?v=2";
     const CAT_GIF_FALLBACK = "https://media1.tenor.com/m/2YJ8ecS0GBkAAAAC/cat-cats.gif";
 
     const PHRASES = {
