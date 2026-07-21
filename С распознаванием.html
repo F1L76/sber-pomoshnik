@@ -2150,8 +2150,11 @@
             textEl.textContent = ConverterStatusUI.pickPhrase("inn");
             nextChangeAt += intervalMs;
         }
+        // ponytail: фиксируем scroll до снятия высокого блока с котиком — иначе страница скачет
+        const scrollY = window.scrollY;
         innSearchStatusEl.classList.remove("is-visible");
         innSearchStatusEl.innerHTML = "";
+        window.scrollTo(0, scrollY);
     }
 
     async function loadClientByInn(inn, opts) {
@@ -2186,10 +2189,10 @@
             innInput.value = inn;
             clientBadge.innerHTML = `<i class="fas fa-check-circle text-success me-1" aria-hidden="true"></i>${currentClientData.clientName} <span class="text-muted">(ИНН: ${inn})</span>`;
             clientBadge.classList.add("bg-white", "shadow-sm");
+            const scrollY = window.scrollY;
             showClientPanels();
-            if (!skipAnim) {
-                assistantInsightEl?.scrollIntoView({ block: "start", behavior: "smooth" });
-            }
+            // ponytail: появление insight/панелей не должно утягивать viewport вниз
+            window.scrollTo(0, scrollY);
             return true;
         } finally {
             innSearchBusy = false;
