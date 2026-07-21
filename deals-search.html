@@ -104,6 +104,25 @@
             color: var(--sber-muted);
             font-size: 0.8rem;
         }
+        .deals-table th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+        .deals-table th.sortable:hover {
+            color: var(--sber-green);
+        }
+        .deals-table th .sort-ind {
+            display: inline-block;
+            margin-left: 0.2em;
+            font-size: 0.7em;
+            opacity: 0.35;
+            line-height: 1;
+        }
+        .deals-table th.sort-asc .sort-ind,
+        .deals-table th.sort-desc .sort-ind {
+            opacity: 1;
+            color: var(--sber-green);
+        }
         .filter-row th {
             background: #f8fafc;
             font-weight: normal;
@@ -228,7 +247,7 @@
             100% { transform: translateX(320%); }
         }
     </style>
-    <link rel="stylesheet" href="/theme.css?v=6">
+    <link rel="stylesheet" href="/theme.css?v=7">
 </head>
 <body>
     <header class="hero">
@@ -367,7 +386,8 @@
             objectTypes: [],
             operationKinds: ["deal", "rent"],
             meta: {},
-            filters: {}
+            filters: {},
+            sort: { key: null, dir: "asc" }
         };
 
         function getSelectedObjectTypes() {
@@ -660,6 +680,52 @@
             });
         }
 
+        // ponytail: client-side sort of already-filtered rows; nulls last
+        function sortValue(d, col) {
+            if (col.key === "periodShortLabel") {
+                const m = String(periodDisplay(d)).match(/^(\d)\s+кв\s+(\d{4})$/);
+                return m ? Number(m[2]) * 10 + Number(m[1]) : null;
+            }
+            if (col.format === "purpose") return objectKindLabel(d) || "";
+            if (
+                col.format === "money" ||
+                col.format === "moneyMuted" ||
+                col.format === "area" ||
+                col.format === "year" ||
+                col.format === "number"
+            ) {
+                const n = Number(d[col.key]);
+                return Number.isFinite(n) ? n : null;
+            }
+            if (col.format === "date") {
+                const m = String(d[col.key] || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+                return m ? Number(m[1] + m[2] + m[3]) : null;
+            }
+            const v = d[col.key];
+            return v == null || v === "" ? "" : String(v);
+        }
+
+        function compareSortValues(a, b, col) {
+            const va = sortValue(a, col);
+            const vb = sortValue(b, col);
+            const aEmpty = va == null || va === "";
+            const bEmpty = vb == null || vb === "";
+            if (aEmpty && bEmpty) return 0;
+            if (aEmpty) return 1;
+            if (bEmpty) return -1;
+            if (typeof va === "number" && typeof vb === "number") return va - vb;
+            return String(va).localeCompare(String(vb), "ru", { numeric: true, sensitivity: "base" });
+        }
+
+        function applySort(deals) {
+            const key = searchState.sort?.key;
+            if (!key) return deals;
+            const col = TABLE_COLUMNS.find((c) => c.key === key);
+            if (!col) return deals;
+            const mult = searchState.sort.dir === "desc" ? -1 : 1;
+            return [...deals].sort((a, b) => mult * compareSortValues(a, b, col));
+        }
+
         function renderCategoryCard(cat) {
             if (!cat?.count) return "";
             return `<div class="col-md-6 col-xl-4">
@@ -797,7 +863,18 @@
             const headerRow = TABLE_COLUMNS.map((col) => {
                 const align = col.align === "end" ? " text-end" : "";
                 const colClass = col.colClass ? ` ${col.colClass}` : "";
-                return `<th class="${(colClass + align).trim()}">${escapeHtml(col.title)}</th>`;
+                const active = searchState.sort?.key === col.key;
+                const sortClass = active
+                    ? searchState.sort.dir === "desc"
+                        ? " sort-desc"
+                        : " sort-asc"
+                    : "";
+                const ind = active
+                    ? searchState.sort.dir === "desc"
+                        ? "▼"
+                        : "▲"
+                    : "▲";
+                return `<th class="sortable${colClass}${align}${sortClass}" data-sort-key="${escapeHtml(col.key)}" title="Сортировка" role="columnheader" tabindex="0">${escapeHtml(col.title)}<span class="sort-ind" aria-hidden="true">${ind}</span></th>`;
             }).join("");
 
             const rows = deals.map((d) => {
@@ -904,6 +981,30 @@
             document.getElementById("exportExcelBtn")?.addEventListener("click", exportExcel);
         }
 
+        function bindSortHandlers() {
+            document.querySelectorAll("#dealsTable th.sortable").forEach((th) => {
+                const activate = () => {
+                    const key = th.dataset.sortKey;
+                    if (searchState.sort?.key === key) {
+                        searchState.sort = {
+                            key,
+                            dir: searchState.sort.dir === "asc" ? "desc" : "asc"
+                        };
+                    } else {
+                        searchState.sort = { key, dir: "asc" };
+                    }
+                    refreshResultsView();
+                };
+                th.addEventListener("click", activate);
+                th.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        activate();
+                    }
+                });
+            });
+        }
+
         function getNextYearToLoad() {
             return YEAR_LOAD_ORDER.find(
                 (y) => searchState.availableYears.includes(y) && !searchState.loadedYears.has(y)
@@ -944,7 +1045,7 @@
         }
 
         function renderResultsView() {
-            const filtered = getFilteredDeals();
+            const filtered = applySort(getFilteredDeals());
             const stats = buildClientStats(filtered);
             const results = document.getElementById("results");
             results.innerHTML =
@@ -954,6 +1055,7 @@
                 renderDealsTable(filtered);
             results.classList.remove("d-none");
             bindFilterHandlers();
+            bindSortHandlers();
             bindLoadYearBtn();
         }
 
@@ -1050,7 +1152,7 @@
                 alert("Библиотека Excel не загружена");
                 return;
             }
-            const deals = getFilteredDeals();
+            const deals = applySort(getFilteredDeals());
             if (!deals.length) {
                 alert("Нет данных для экспорта");
                 return;
@@ -1073,7 +1175,8 @@
                 objectTypes: objectTypes || [],
                 operationKinds: operationKinds || ["deal", "rent"],
                 meta: data.meta || {},
-                filters: {}
+                filters: {},
+                sort: { key: null, dir: "asc" }
             };
             renderResultsView();
         }

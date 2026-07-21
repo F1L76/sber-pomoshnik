@@ -363,6 +363,57 @@ html[data-theme="dark"] .stat-card {
   border-color: #334155 !important;
   color: #e8eef4 !important;
 }
+/* thead.table-light задаёт свои --bs-table-* → ячейки остаются светлыми */
+html[data-theme="dark"] .table-light,
+html[data-theme="dark"] thead.table-light {
+  --bs-table-color: #e8eef4 !important;
+  --bs-table-bg: #121a24 !important;
+  --bs-table-border-color: #334155 !important;
+  --bs-table-striped-bg: #1a2330 !important;
+  --bs-table-striped-color: #e8eef4 !important;
+  --bs-table-active-bg: #243041 !important;
+  --bs-table-active-color: #e8eef4 !important;
+  --bs-table-hover-bg: #243041 !important;
+  --bs-table-hover-color: #e8eef4 !important;
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .filter-row th {
+  background: #121a24 !important;
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .object-type-filters {
+  border-top-color: #334155 !important;
+}
+html[data-theme="dark"] .form-check-label,
+html[data-theme="dark"] fieldset legend {
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .search-loading-title {
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .search-loading-text {
+  color: #a8b4c4 !important;
+}
+html[data-theme="dark"] .btn-outline-primary {
+  color: #7ec8ff !important;
+  border-color: #3a5a78 !important;
+  background: transparent !important;
+}
+html[data-theme="dark"] .btn-outline-primary:hover {
+  background: #1a3048 !important;
+  color: #fff !important;
+  border-color: #5a8ab0 !important;
+}
+html[data-theme="dark"] .btn-outline-success {
+  color: #6fd88a !important;
+  border-color: #1b8a32 !important;
+  background: transparent !important;
+}
+html[data-theme="dark"] .btn-outline-success:hover {
+  background: #163024 !important;
+  color: #c8f0d4 !important;
+  border-color: #21a038 !important;
+}
 
 /* Переключатель темы */
 .theme-toggle-wrap {
