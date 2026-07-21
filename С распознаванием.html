@@ -640,6 +640,8 @@
                 linear-gradient(165deg, #f7fbf8 0%, #eef6f1 48%, #f8fafb 100%);
             border: 1px solid rgba(33, 160, 56, 0.18);
             box-shadow: 0 12px 36px rgba(15, 40, 28, 0.06);
+            /* sticky-nav: scrollIntoView / scrollTo учитывают отступ */
+            scroll-margin-top: 5.75rem;
         }
         .assistant-insight.is-visible {
             display: block;
@@ -2060,6 +2062,15 @@
         return "Доброй ночи"; // 23–4
     }
 
+    function scrollAssistantInsightToTop() {
+        if (!assistantInsightEl?.classList.contains("is-visible")) return;
+        const nav = document.querySelector(".navbar.sber-nav");
+        const navH = nav ? nav.getBoundingClientRect().height : 0;
+        const gap = 10;
+        const y = window.scrollY + assistantInsightEl.getBoundingClientRect().top - navH - gap;
+        window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+    }
+
     function renderAssistantInsight() {
         if (!assistantInsightEl || !currentClientData) return;
         const scenario = currentClientData.scenario;
@@ -2191,9 +2202,9 @@
             clientBadge.classList.add("bg-white", "shadow-sm");
             showClientPanels();
             if (!skipAnim) {
-                // после появления подсказки — плавно к ней, без улёта к сервисам ниже
+                // подсказка к верхней границе под sticky-шапкой — без улёта ниже
                 requestAnimationFrame(() => {
-                    assistantInsightEl?.scrollIntoView({ block: "start", behavior: "smooth" });
+                    requestAnimationFrame(() => scrollAssistantInsightToTop());
                 });
             }
             return true;
