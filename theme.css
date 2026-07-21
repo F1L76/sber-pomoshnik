@@ -261,14 +261,20 @@ html[data-theme="dark"] .file-drop.has-file {
 html[data-theme="dark"] .converter-busy,
 html[data-theme="dark"] .converter-busy--warning,
 html[data-theme="dark"] .converter-busy--success,
-html[data-theme="dark"] .converter-busy--error {
+html[data-theme="dark"] .converter-busy--error,
+html[data-theme="dark"] #innSearchStatus .converter-busy,
+html[data-theme="dark"] #importStatus .converter-busy,
+html[data-theme="dark"] [data-import-status] .converter-busy,
+html[data-theme="dark"] [data-zalog-status] .converter-busy {
   background: #16202c !important;
   background-image: none !important;
   border-color: #334155 !important;
   color: #e8eef4 !important;
 }
+/* ponytail: у GIF белый фон — multiply «съедает» белое на тёмном фоне блока */
 html[data-theme="dark"] .converter-busy-cat {
-  mix-blend-mode: normal !important;
+  mix-blend-mode: multiply !important;
+  background: transparent !important;
   filter: none !important;
 }
 html[data-theme="dark"] .converter-busy-text {
@@ -276,6 +282,28 @@ html[data-theme="dark"] .converter-busy-text {
 }
 html[data-theme="dark"] .module-icon-bg {
   background: #1a2a22 !important;
+}
+html[data-theme="dark"] .module-card-indev {
+  background: #1a2330 !important;
+  border-color: #334155 !important;
+  opacity: 1 !important;
+}
+html[data-theme="dark"] .module-card-indev .module-icon-bg {
+  background: #243041 !important;
+}
+html[data-theme="dark"] .module-card-indev .module-icon-bg i {
+  color: #8b9aab !important;
+}
+html[data-theme="dark"] .module-card-indev h3,
+html[data-theme="dark"] .module-card-indev p {
+  color: #a8b4c4 !important;
+}
+html[data-theme="dark"] .module-stamp {
+  color: #ff6b6b !important;
+  border-color: #ff6b6b !important;
+  background: rgba(20, 28, 40, 0.92) !important;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.35) !important;
+  z-index: 5 !important;
 }
 html[data-theme="dark"] .badge.bg-light,
 html[data-theme="dark"] #clientBadge {
@@ -306,9 +334,6 @@ html[data-theme="dark"] .expertise-timeline-label {
 }
 html[data-theme="dark"] .expertise-timeline-date {
   color: #a8b4c4 !important;
-}
-html[data-theme="dark"] .module-stamp {
-  color: #f5e6b8 !important;
 }
 html[data-theme="dark"] .btn-outline-danger {
   color: #ff8a80 !important;
