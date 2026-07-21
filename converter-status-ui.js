@@ -83,7 +83,7 @@
         }
         return (
             `<div class="converter-busy converter-busy--${kind}" role="status" aria-live="polite">` +
-            `<img class="converter-busy-cat" src="${CAT_GIF}" alt="" width="140" height="140" decoding="async" loading="lazy" onerror="this.onerror=null;this.src='${CAT_GIF_FALLBACK}'">` +
+            `<img class="converter-busy-cat" src="${CAT_GIF}" alt="" width="140" height="140" decoding="async" loading="eager" fetchpriority="high" onerror="this.onerror=null;this.src='${CAT_GIF_FALLBACK}'">` +
             `<p class="converter-busy-text mb-0">${text}</p>` +
             `</div>`
         );

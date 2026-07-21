@@ -283,7 +283,10 @@ body.has-results-focus main.app-main {
   object-fit: contain;
   background: transparent;
   mix-blend-mode: darken;
-  animation: converter-cat-bob 1.8s ease-in-out infinite;
+  animation: converter-cat-bob 2.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .converter-busy-icon {
@@ -301,8 +304,8 @@ body.has-results-focus main.app-main {
 }
 
 @keyframes converter-cat-bob {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -7px, 0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
