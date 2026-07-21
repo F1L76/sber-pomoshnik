@@ -376,11 +376,17 @@
             return fixCyrillicKeyboard(String(raw || "")).toUpperCase().replace(/[\s-]/g, "");
         }
 
-        function bindVinKeyboardFix(input, hintEl) {
+        // Групповой ввод: кириллица→латиница, но пробелы и переносы строк сохраняем
+        function normalizeVinBatchText(raw) {
+            return fixCyrillicKeyboard(String(raw || "")).toUpperCase().replace(/-/g, "");
+        }
+
+        function bindVinKeyboardFix(input, hintEl, { keepWhitespace = false } = {}) {
             if (!input) return;
+            const normalize = keepWhitespace ? normalizeVinBatchText : normalizeVinInput;
             input.addEventListener("input", () => {
                 const before = input.value;
-                const after = normalizeVinInput(before);
+                const after = normalize(before);
                 if (after !== before) {
                     const pos = input.selectionStart;
                     input.value = after;
@@ -399,8 +405,11 @@
                 const text = (e.clipboardData || window.clipboardData).getData("text");
                 const start = input.selectionStart || 0;
                 const end = input.selectionEnd || 0;
-                const next = normalizeVinInput(input.value.slice(0, start) + text + input.value.slice(end));
-                input.value = next.slice(0, input.maxLength || 32);
+                let next = normalize(input.value.slice(0, start) + text + input.value.slice(end));
+                if (!keepWhitespace && input.maxLength) {
+                    next = next.slice(0, input.maxLength);
+                }
+                input.value = next;
                 if (hintEl && /[^\u0000-\u007f]/.test(text)) {
                     hintEl.hidden = false;
                     clearTimeout(hintEl._hideTimer);
@@ -410,7 +419,7 @@
         }
 
         bindVinKeyboardFix(vinSingle, vinLayoutHint);
-        bindVinKeyboardFix(vinBatch, null);
+        bindVinKeyboardFix(vinBatch, null, { keepWhitespace: true });
 
         const LOADING_MESSAGES = [
             "Котик заглядывает под капот…",
