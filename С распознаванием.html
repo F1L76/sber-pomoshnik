@@ -884,8 +884,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
-<script src="/converter-status-ui.js?v=8"></script>
-<script src="/zalog-api-client.js?v=9"></script>
+<script src="/converter-status-ui.js?v=9"></script>
+<script src="/zalog-api-client.js?v=10"></script>
 <script src="/zalog-pdf-export.js?v=4"></script>
 <script>
     const mockData = {
@@ -1340,12 +1340,31 @@
     function bindUploadInputs() {
         const pdfInput = document.getElementById("pdfUpload");
         const xlsxInput = document.getElementById("xlsxUpload");
-        pdfInput?.addEventListener("change", () => {
-            pendingPdfFile = pdfInput.files?.[0] || null;
+        // ponytail: сразу копируем в RAM — иначе при «Импорт» File даёт I/O (Excel/~$/iCloud)
+        pdfInput?.addEventListener("change", async () => {
+            const raw = pdfInput.files?.[0] || null;
+            pendingPdfFile = null;
+            syncUploadLabels();
+            if (!raw) return;
+            try {
+                pendingPdfFile = await ZalogApiClient.materializeFile(raw);
+            } catch (e) {
+                alert(ConverterStatusUI?.friendlyError?.(e?.message) || e?.message || "Ошибка чтения PDF");
+                pdfInput.value = "";
+            }
             syncUploadLabels();
         });
-        xlsxInput?.addEventListener("change", () => {
-            pendingXlsxFile = xlsxInput.files?.[0] || null;
+        xlsxInput?.addEventListener("change", async () => {
+            const raw = xlsxInput.files?.[0] || null;
+            pendingXlsxFile = null;
+            syncUploadLabels();
+            if (!raw) return;
+            try {
+                pendingXlsxFile = await ZalogApiClient.materializeFile(raw);
+            } catch (e) {
+                alert(ConverterStatusUI?.friendlyError?.(e?.message) || e?.message || "Ошибка чтения XLSX");
+                xlsxInput.value = "";
+            }
             syncUploadLabels();
         });
     }

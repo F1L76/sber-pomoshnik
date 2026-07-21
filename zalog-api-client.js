@@ -2,7 +2,7 @@
  * Клиент API конвертера: keep-alive, пробуждение Render, async + JSON fallback.
  */
 (function (global) {
-    const VERSION = 9;
+    const VERSION = 10;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     let keepAliveWs = null;
@@ -138,19 +138,56 @@
         );
     }
 
+    function ioReadHint(fileName) {
+        return (
+            `Не удалось прочитать «${fileName || "файл"}» (браузер: I/O). ` +
+            "Закройте файл в Excel/Preview, дождитесь полной загрузки с iCloud/Диска и выберите его снова."
+        );
+    }
+
+    function mapIoError(err, fileName) {
+        const msg = String(err?.message || err || "");
+        if (
+            err?.name === "NotReadableError" ||
+            /I\/O read operation failed|could not be read|NotReadable/i.test(msg)
+        ) {
+            return new Error(ioReadHint(fileName));
+        }
+        return err instanceof Error ? err : new Error(msg || ioReadHint(fileName));
+    }
+
+    /** Читает File в память сразу — иначе позже FileReader падает (Excel lock / iCloud). */
+    async function materializeFile(file) {
+        if (!file) return null;
+        try {
+            const buf = await file.arrayBuffer();
+            return new File([buf], file.name, {
+                type: file.type || "application/octet-stream",
+                lastModified: file.lastModified || Date.now()
+            });
+        } catch (e) {
+            throw mapIoError(e, file.name);
+        }
+    }
+
+    function bytesToBase64(bytes) {
+        const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+        const chunk = 0x8000;
+        let binary = "";
+        for (let i = 0; i < u8.length; i += chunk) {
+            binary += String.fromCharCode.apply(null, u8.subarray(i, i + chunk));
+        }
+        return btoa(binary);
+    }
+
     async function fileToBase64(file) {
-        // FileReader надёжнее ручного btoa на части PDF/кириллических именах в Safari/Chrome
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                const s = String(reader.result || "");
-                const comma = s.indexOf(",");
-                resolve(comma >= 0 ? s.slice(comma + 1) : s);
-            };
-            reader.onerror = () =>
-                reject(reader.error || new Error(`Не удалось прочитать файл «${file?.name || "?"}»`));
-            reader.readAsDataURL(file);
-        });
+        // ponytail: arrayBuffer+btoa вместо FileReader — тот даёт «The I/O read operation failed»
+        try {
+            const buf = await file.arrayBuffer();
+            return bytesToBase64(buf);
+        } catch (e) {
+            throw mapIoError(e, file?.name);
+        }
     }
 
     async function assertZalogFiles(pdfFile, xlsxFile) {
@@ -171,12 +208,18 @@
                 `XLSX слишком маленький (${xlsxFile.size} байт). Возможно выбран не тот файл (например ~$…)`
             );
         }
-        const pdfHead = new Uint8Array(await pdfFile.slice(0, 5).arrayBuffer());
+        let pdfHead;
+        let xHead;
+        try {
+            pdfHead = new Uint8Array(await pdfFile.slice(0, 5).arrayBuffer());
+            xHead = new Uint8Array(await xlsxFile.slice(0, 2).arrayBuffer());
+        } catch (e) {
+            throw mapIoError(e, !pdfFile.size ? pname : xname || pname);
+        }
         const pdfSig = String.fromCharCode(pdfHead[0], pdfHead[1], pdfHead[2], pdfHead[3], pdfHead[4]);
         if (pdfSig !== "%PDF-") {
             throw new Error(`«${pname}» не похож на PDF (сигнатура: ${JSON.stringify(pdfSig)})`);
         }
-        const xHead = new Uint8Array(await xlsxFile.slice(0, 2).arrayBuffer());
         if (xHead[0] !== 0x50 || xHead[1] !== 0x4b) {
             throw new Error(
                 `«${xname}» не похож на .xlsx (нужен Excel 2007+, не старый .xls и не временный ~$)`
@@ -230,16 +273,19 @@
     }
 
     async function submitConvertJob(apiBase, pdfFile, xlsxFile, useJson) {
-        await assertZalogFiles(pdfFile, xlsxFile);
+        // копия в RAM до сетевого wake — ссылка на диск часто «протухает» (Excel/~$/iCloud)
+        const pdf = await materializeFile(pdfFile);
+        const xlsx = await materializeFile(xlsxFile);
+        await assertZalogFiles(pdf, xlsx);
         if (useJson) {
             const res = await fetchNoCache(`${apiBase}/api/zalog/convert/json`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    pdfBase64: await fileToBase64(pdfFile),
-                    xlsxBase64: await fileToBase64(xlsxFile),
-                    pdfName: pdfFile.name || "conclusion.pdf",
-                    xlsxName: xlsxFile.name || "objects.xlsx",
+                    pdfBase64: await fileToBase64(pdf),
+                    xlsxBase64: await fileToBase64(xlsx),
+                    pdfName: pdf.name || "conclusion.pdf",
+                    xlsxName: xlsx.name || "objects.xlsx",
                     clientVersion: VERSION
                 }),
                 timeoutMs: 300_000
@@ -247,8 +293,8 @@
             return res;
         }
         const formData = new FormData();
-        formData.append("pdf", pdfFile, pdfFile.name || "conclusion.pdf");
-        formData.append("xlsx", xlsxFile, xlsxFile.name || "objects.xlsx");
+        formData.append("pdf", pdf, pdf.name || "conclusion.pdf");
+        formData.append("xlsx", xlsx, xlsx.name || "objects.xlsx");
         return fetchNoCache(`${apiBase}/api/zalog/convert`, {
             method: "POST",
             body: formData,
@@ -364,6 +410,7 @@
         VERSION,
         wakeZalogServer,
         postZalogConvert,
+        materializeFile,
         pingZalogServer,
         pollZalogJob,
         startKeepAlive,

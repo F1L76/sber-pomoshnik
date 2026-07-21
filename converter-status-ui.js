@@ -135,6 +135,12 @@
         if (/503|502|504|проснулся|Render|таймаут|aborted/i.test(msg)) {
             return "Платформа ещё не готова — подождите минуту и повторите";
         }
+        if (/I\/O read operation failed|NotReadable|could not be read/i.test(msg)) {
+            return (
+                "Браузер не смог прочитать файл. Закройте его в Excel, убедитесь что файл на диске " +
+                "(не только в облаке) и выберите оба файла заново."
+            );
+        }
         // не прячем полезный текст про файлы / Python
         return msg.length > 240 ? `${msg.slice(0, 240)}…` : msg;
     }
