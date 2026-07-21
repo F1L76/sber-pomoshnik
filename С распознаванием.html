@@ -704,7 +704,10 @@
                     <div id="collapseConclusions" class="collapse">
                         <div class="card-body">
                             <div id="conclusionsList">—</div>
-                            <div class="upload-area mt-4">
+                        </div>
+                    </div>
+                    <div class="card-body border-top">
+                        <div class="upload-area">
                             <div class="small fw-semibold mb-2"><i class="fas fa-cloud-arrow-up me-1 text-success" aria-hidden="true"></i>Загрузить заключение и перечень залога</div>
                             <p class="small text-muted mb-3">Нужны оба файла: PDF — заключение; XLSX — перечень объектов. Преобразование через конвертер zalog-converter.</p>
                             <div id="zalogServerStatus" class="alert alert-secondary py-2 px-3 small mb-3" role="status">
@@ -713,17 +716,18 @@
                             <div class="mb-3">
                                 <label class="form-label small mb-1" for="pdfUpload">Файл заключения (PDF)</label>
                                 <input type="file" id="pdfUpload" class="form-control form-control-sm" accept=".pdf,application/pdf">
+                                <div class="form-text" id="pdfUploadName" hidden></div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label small mb-1" for="xlsxUpload">Файл перечня залога (XLSX)</label>
                                 <input type="file" id="xlsxUpload" class="form-control form-control-sm" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+                                <div class="form-text" id="xlsxUploadName" hidden></div>
                             </div>
                             <button type="button" id="importConclusionBtn" class="btn btn-success rounded-pill w-100 py-2 fw-semibold">
                                 <i class="fas fa-wand-magic-sparkles me-1" aria-hidden="true"></i>Импортировать заключение
                             </button>
                             <div id="importStatus" class="small text-muted mt-3"></div>
                         </div>
-                    </div>
                     </div>
                 </div>
             </div>
@@ -881,7 +885,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <script src="/converter-status-ui.js?v=7"></script>
-<script src="/zalog-api-client.js?v=6"></script>
+<script src="/zalog-api-client.js?v=7"></script>
 <script src="/zalog-pdf-export.js?v=4"></script>
 <script>
     const mockData = {
@@ -1311,6 +1315,41 @@
         };
     }
 
+    let pendingPdfFile = null;
+    let pendingXlsxFile = null;
+
+    function formatUploadName(file) {
+        if (!file) return "";
+        const mb = file.size ? ` (${(file.size / (1024 * 1024)).toFixed(2)} МБ)` : "";
+        return `${file.name}${mb}`;
+    }
+
+    function syncUploadLabels() {
+        const pdfLabel = document.getElementById("pdfUploadName");
+        const xlsxLabel = document.getElementById("xlsxUploadName");
+        if (pdfLabel) {
+            pdfLabel.hidden = !pendingPdfFile;
+            pdfLabel.textContent = pendingPdfFile ? `Выбран: ${formatUploadName(pendingPdfFile)}` : "";
+        }
+        if (xlsxLabel) {
+            xlsxLabel.hidden = !pendingXlsxFile;
+            xlsxLabel.textContent = pendingXlsxFile ? `Выбран: ${formatUploadName(pendingXlsxFile)}` : "";
+        }
+    }
+
+    function bindUploadInputs() {
+        const pdfInput = document.getElementById("pdfUpload");
+        const xlsxInput = document.getElementById("xlsxUpload");
+        pdfInput?.addEventListener("change", () => {
+            pendingPdfFile = pdfInput.files?.[0] || null;
+            syncUploadLabels();
+        });
+        xlsxInput?.addEventListener("change", () => {
+            pendingXlsxFile = xlsxInput.files?.[0] || null;
+            syncUploadLabels();
+        });
+    }
+
     async function convertConclusionViaApi(pdfFile, xlsxFile) {
         const base = (typeof GIGACHAT_API_BASE !== "undefined" ? GIGACHAT_API_BASE : "") || "";
         return ZalogApiClient.postZalogConvert(base, pdfFile, xlsxFile, {
@@ -1332,10 +1371,20 @@
             alert("Сначала загрузите клиента по ИНН");
             return;
         }
-        const pdfFile = document.getElementById("pdfUpload").files[0];
-        const xlsxFile = document.getElementById("xlsxUpload").files[0];
+        const pdfInput = document.getElementById("pdfUpload");
+        const xlsxInput = document.getElementById("xlsxUpload");
+        const pdfFile = pendingPdfFile || pdfInput?.files?.[0] || null;
+        const xlsxFile = pendingXlsxFile || xlsxInput?.files?.[0] || null;
         if (!pdfFile || !xlsxFile) {
-            alert("Загрузите оба файла: PDF заключение и XLSX перечень залога");
+            const missing = [
+                !pdfFile ? "PDF заключение" : null,
+                !xlsxFile ? "XLSX перечень залога" : null
+            ].filter(Boolean).join(" и ");
+            alert(`Не выбран файл: ${missing}. Выберите оба файла заново.`);
+            return;
+        }
+        if (!pdfFile.size || !xlsxFile.size) {
+            alert("Один из файлов пустой (0 байт). Выберите файлы ещё раз.");
             return;
         }
         setConverterStatus(importStatusDiv, "start", { kind: "loading" });
@@ -1350,8 +1399,11 @@
             updateInfoPanel();
             const successText = `${ConverterStatusUI.pickPhrase("success")} (${escapeHtml(newConclusion.id)})`;
             setConverterStatus(importStatusDiv, "success", { kind: "success", text: successText });
-            document.getElementById("pdfUpload").value = "";
-            document.getElementById("xlsxUpload").value = "";
+            if (pdfInput) pdfInput.value = "";
+            if (xlsxInput) xlsxInput.value = "";
+            pendingPdfFile = null;
+            pendingXlsxFile = null;
+            syncUploadLabels();
             setTimeout(() => { importStatusDiv.innerHTML = ""; }, 8000);
         } catch (err) {
             console.error(err);
@@ -2373,6 +2425,7 @@
         checkGigaChatHealth(true);
     });
     loadGigaChatConfig().then(() => checkGigaChatHealth(true));
+    bindUploadInputs();
 
     (async function initZalogServerStatus() {
         const statusEl = document.getElementById("zalogServerStatus");

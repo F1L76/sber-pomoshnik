@@ -2,7 +2,7 @@
  * Клиент API конвертера: keep-alive, пробуждение Render, async + JSON fallback.
  */
 (function (global) {
-    const VERSION = 6;
+    const VERSION = 7;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     let keepAliveWs = null;
@@ -196,8 +196,8 @@
             return res;
         }
         const formData = new FormData();
-        formData.append("pdf", pdfFile);
-        formData.append("xlsx", xlsxFile);
+        formData.append("pdf", pdfFile, pdfFile.name || "conclusion.pdf");
+        formData.append("xlsx", xlsxFile, xlsxFile.name || "objects.xlsx");
         return fetchNoCache(`${apiBase}/api/zalog/convert`, {
             method: "POST",
             body: formData,
@@ -244,8 +244,16 @@
             try {
                 if (onProgress) onProgress(attempt, maxAttempts, null, null, "wake");
                 await wakeZalogServer(apiBase, {
-                    maxAttempts: 50,
-                    delayMs: 2000,
+                    maxAttempts:
+                        /localhost|127\.0\.0\.1/i.test(String(apiBase)) ||
+                        /^(localhost|127\.0\.0\.1)$/i.test(location.hostname)
+                            ? 2
+                            : 50,
+                    delayMs:
+                        /localhost|127\.0\.0\.1/i.test(String(apiBase)) ||
+                        /^(localhost|127\.0\.0\.1)$/i.test(location.hostname)
+                            ? 400
+                            : 2000,
                     onProgress(wakeTry, wakeMax, status) {
                         if (onProgress) onProgress(attempt, maxAttempts, wakeTry, wakeMax, "wake", status);
                     }
