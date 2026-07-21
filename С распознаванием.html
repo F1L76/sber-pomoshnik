@@ -705,28 +705,28 @@
                         <div class="card-body">
                             <div id="conclusionsList">—</div>
                         </div>
-                    </div>
-                    <div class="card-body border-top">
-                        <div class="upload-area">
-                            <div class="small fw-semibold mb-2"><i class="fas fa-cloud-arrow-up me-1 text-success" aria-hidden="true"></i>Загрузить заключение и перечень залога</div>
-                            <p class="small text-muted mb-3">Нужны оба файла: PDF — заключение; XLSX — перечень объектов. Преобразование через конвертер zalog-converter.</p>
-                            <div id="zalogServerStatus" class="alert alert-secondary py-2 px-3 small mb-3" role="status">
-                                <i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Подключаемся к серверу…
+                        <div class="card-body border-top">
+                            <div class="upload-area">
+                                <div class="small fw-semibold mb-2"><i class="fas fa-cloud-arrow-up me-1 text-success" aria-hidden="true"></i>Загрузить заключение и перечень залога</div>
+                                <p class="small text-muted mb-3">Нужны оба файла: PDF — заключение; XLSX — перечень объектов. Преобразование через конвертер zalog-converter.</p>
+                                <div id="zalogServerStatus" class="alert alert-secondary py-2 px-3 small mb-3" role="status">
+                                    <i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Подключаемся к серверу…
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small mb-1" for="pdfUpload">Файл заключения (PDF)</label>
+                                    <input type="file" id="pdfUpload" class="form-control form-control-sm" accept=".pdf,application/pdf">
+                                    <div class="form-text" id="pdfUploadName" hidden></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small mb-1" for="xlsxUpload">Файл перечня залога (XLSX)</label>
+                                    <input type="file" id="xlsxUpload" class="form-control form-control-sm" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+                                    <div class="form-text" id="xlsxUploadName" hidden></div>
+                                </div>
+                                <button type="button" id="importConclusionBtn" class="btn btn-success rounded-pill w-100 py-2 fw-semibold">
+                                    <i class="fas fa-wand-magic-sparkles me-1" aria-hidden="true"></i>Импортировать заключение
+                                </button>
+                                <div id="importStatus" class="small text-muted mt-3"></div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label small mb-1" for="pdfUpload">Файл заключения (PDF)</label>
-                                <input type="file" id="pdfUpload" class="form-control form-control-sm" accept=".pdf,application/pdf">
-                                <div class="form-text" id="pdfUploadName" hidden></div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label small mb-1" for="xlsxUpload">Файл перечня залога (XLSX)</label>
-                                <input type="file" id="xlsxUpload" class="form-control form-control-sm" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
-                                <div class="form-text" id="xlsxUploadName" hidden></div>
-                            </div>
-                            <button type="button" id="importConclusionBtn" class="btn btn-success rounded-pill w-100 py-2 fw-semibold">
-                                <i class="fas fa-wand-magic-sparkles me-1" aria-hidden="true"></i>Импортировать заключение
-                            </button>
-                            <div id="importStatus" class="small text-muted mt-3"></div>
                         </div>
                     </div>
                 </div>
