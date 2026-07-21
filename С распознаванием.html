@@ -609,16 +609,9 @@
             font-weight: 600;
             width: 100%;
             margin: 0;
-            opacity: 1;
         }
         #innSearchStatus .converter-busy-phrase {
             min-height: 3.8em;
-        }
-        #innSearchStatus .converter-busy-text {
-            transition: opacity 0.22s ease;
-        }
-        #innSearchStatus .converter-busy-text.is-fading {
-            opacity: 0;
         }
         @keyframes converter-cat-bob {
             0%, 100% { transform: translate3d(0, 0, 0); }
@@ -626,7 +619,6 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .converter-busy-cat { animation: none; }
-            #innSearchStatus .converter-busy-text { transition: none; }
         }
         #innSearchStatus {
             display: none;
@@ -1562,16 +1554,11 @@
         );
     }
 
-    function convertBlockHtml(prefix, opts) {
-        const showTitle = opts?.showTitle !== false;
-        const titleHtml = showTitle
-            ? `<div class="small fw-semibold mb-2"><i class="fas fa-cloud-arrow-up me-1 text-success" aria-hidden="true"></i>Загрузить заключение и перечень залога</div>` +
-              `<p class="small text-muted mb-3">Нужны оба файла: PDF — заключение; Excel — перечень объектов. Перетащите сюда или нажмите, чтобы выбрать на компьютере.</p>`
-            : "";
+    function convertBlockHtml(prefix) {
+        // ponytail: без фиксированного заголовка — иконки и кнопка сами объясняют действие
         return (
             `<div class="upload-area convert-block" data-convert-block="${prefix}">` +
-            titleHtml +
-            `<div data-zalog-status id="${prefix}-zalogServerStatus" class="alert alert-secondary py-2 px-3 small" role="status">` +
+            `<div data-zalog-status id="${prefix}-zalogServerStatus" class="alert alert-secondary py-2 px-3 small mb-3" role="status">` +
             `<i class="fas fa-spinner fa-spin me-1" aria-hidden="true"></i>Подключаемся к серверу…` +
             `</div>` +
             `<div class="file-drop-grid">` +
@@ -1724,7 +1711,7 @@
         const mount = document.getElementById("conclusionsConvertMount");
         if (!mount) return;
         if (!mount.dataset.ready) {
-            mount.innerHTML = convertBlockHtml("concl", { showTitle: true });
+            mount.innerHTML = convertBlockHtml("concl");
             mount.dataset.ready = "1";
             wireFileDropZones(mount);
         }
@@ -2098,7 +2085,7 @@
                 `<p class="assistant-insight-accent">Если у Вас есть вопросы по нему — давайте сначала посмотрим на заключение <span class="nowrap">по-новому</span>.</p>` +
                 `<p class="assistant-insight-lead">Загрузите PDF и Excel-перечень залога, а я соберу понятный сводный отчёт.</p>` +
                 `<div class="assistant-insight-upload">` +
-                convertBlockHtml("insight", { showTitle: false }) +
+                convertBlockHtml("insight") +
                 `</div>`;
             assistantInsightEl.classList.add("is-visible");
             wireFileDropZones(assistantInsightEl);
@@ -2137,12 +2124,14 @@
             return;
         }
         innSearchStatusEl.classList.add("is-visible");
-        // ponytail: GIF один раз; фразы меняем только после полного fade-out — без наложений
+        // ponytail: без fade — мгновенная смена textContent, иначе фразы визуально наплывают
         innSearchStatusEl.innerHTML = ConverterStatusUI.renderBusy("inn", {
             text: ConverterStatusUI.pickPhrase("inn"),
             kind: "loading",
             forceCat: true
         });
+        const busy = innSearchStatusEl.querySelector(".converter-busy");
+        if (busy) busy.removeAttribute("aria-live");
         const textEl = innSearchStatusEl.querySelector(".converter-busy-text");
         const catEl = innSearchStatusEl.querySelector(".converter-busy-cat");
         if (catEl) {
@@ -2150,39 +2139,15 @@
             catEl.removeAttribute("loading");
         }
 
-        const waitMs = (ms) => new Promise((r) => setTimeout(r, ms));
-        const waitFadeOut = () =>
-            new Promise((resolve) => {
-                if (!textEl) return resolve();
-                let done = false;
-                const finish = () => {
-                    if (done) return;
-                    done = true;
-                    textEl.removeEventListener("transitionend", onEnd);
-                    resolve();
-                };
-                const onEnd = (e) => {
-                    if (e.target === textEl && e.propertyName === "opacity") finish();
-                };
-                textEl.addEventListener("transitionend", onEnd);
-                setTimeout(finish, 280);
-            });
-
         const durationMs = 7000;
         const intervalMs = 1500;
         const started = Date.now();
         let nextChangeAt = started + intervalMs;
         while (Date.now() - started < durationMs) {
             const wait = Math.min(nextChangeAt, started + durationMs) - Date.now();
-            if (wait > 0) await waitMs(wait);
+            if (wait > 0) await new Promise((r) => setTimeout(r, wait));
             if (Date.now() - started >= durationMs || !textEl) break;
-            textEl.classList.add("is-fading");
-            await waitFadeOut();
-            if (Date.now() - started >= durationMs) break;
             textEl.textContent = ConverterStatusUI.pickPhrase("inn");
-            // следующий кадр — иначе браузер схлопывает fade-in
-            await waitMs(32);
-            textEl.classList.remove("is-fading");
             nextChangeAt += intervalMs;
         }
         innSearchStatusEl.classList.remove("is-visible");
