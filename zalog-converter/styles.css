@@ -301,6 +301,17 @@ body.has-results-focus main.app-main {
   line-height: 1.45;
   color: var(--sber-text-dark);
   font-weight: 600;
+  width: 100%;
+  margin: 0;
+}
+
+.converter-busy-phrase {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 3.6em;
+  display: flex;
+  align-items: center;
 }
 
 @keyframes converter-cat-bob {

@@ -594,20 +594,30 @@
             width: 72px;
             text-align: center;
         }
+        .converter-busy-phrase {
+            position: relative;
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 3.6em;
+            display: flex;
+            align-items: center;
+        }
         .converter-busy-text {
             font-size: 1.15rem;
             line-height: 1.45;
             color: var(--sber-text-dark);
             font-weight: 600;
-            flex: 1 1 auto;
-            min-width: 0;
-            min-height: 0;
-            display: flex;
-            align-items: center;
+            width: 100%;
             margin: 0;
-            transition: opacity 0.28s ease;
+            opacity: 1;
         }
-        .converter-busy-text.is-fading {
+        #innSearchStatus .converter-busy-phrase {
+            min-height: 3.8em;
+        }
+        #innSearchStatus .converter-busy-text {
+            transition: opacity 0.22s ease;
+        }
+        #innSearchStatus .converter-busy-text.is-fading {
             opacity: 0;
         }
         @keyframes converter-cat-bob {
@@ -616,7 +626,7 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .converter-busy-cat { animation: none; }
-            .converter-busy-text { transition: none; }
+            #innSearchStatus .converter-busy-text { transition: none; }
         }
         #innSearchStatus {
             display: none;
@@ -627,10 +637,6 @@
         }
         #innSearchStatus .converter-busy {
             align-items: center;
-        }
-        #innSearchStatus .converter-busy-text {
-            min-height: 0;
-            padding-top: 0;
         }
         .assistant-insight {
             display: none;
@@ -668,6 +674,22 @@
             color: var(--sber-text-muted);
             margin: 0 0 1.35rem;
             max-width: 40rem;
+        }
+        .assistant-insight-accent {
+            font-size: clamp(1.18rem, 2.1vw, 1.42rem);
+            line-height: 1.4;
+            font-weight: 750;
+            color: var(--sber-text-dark);
+            margin: 0 0 0.85rem;
+            max-width: 42rem;
+            padding: 0.9rem 1.05rem;
+            border-left: 4px solid var(--sber-green);
+            background: rgba(33, 160, 56, 0.1);
+            border-radius: 0 14px 14px 0;
+        }
+        .assistant-insight-accent .nowrap {
+            white-space: nowrap;
+            color: #148f2e;
         }
         .expertise-timeline {
             list-style: none;
@@ -1085,7 +1107,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
-<script src="/converter-status-ui.js?v=12"></script>
+<script src="/converter-status-ui.js?v=13"></script>
 <script src="/zalog-api-client.js?v=10"></script>
 <script src="/zalog-pdf-export.js?v=4"></script>
 <script>
@@ -2073,7 +2095,8 @@
             assistantInsightEl.innerHTML =
                 `<div class="assistant-insight-eyebrow">Подсказка помощника</div>` +
                 `<h2 class="assistant-insight-title">${hello}! Вы недавно получили залоговое заключение № ${escapeHtml(conclId)}.</h2>` +
-                `<p class="assistant-insight-lead">Если у Вас есть вопросы по нему — давайте сначала посмотрим на заключение <span class="nowrap">по-новому</span>: загрузите PDF и Excel-перечень залога, а я соберу понятный сводный отчёт.</p>` +
+                `<p class="assistant-insight-accent">Если у Вас есть вопросы по нему — давайте сначала посмотрим на заключение <span class="nowrap">по-новому</span>.</p>` +
+                `<p class="assistant-insight-lead">Загрузите PDF и Excel-перечень залога, а я соберу понятный сводный отчёт.</p>` +
                 `<div class="assistant-insight-upload">` +
                 convertBlockHtml("insight", { showTitle: false }) +
                 `</div>`;
@@ -2114,7 +2137,7 @@
             return;
         }
         innSearchStatusEl.classList.add("is-visible");
-        // ponytail: GIF монтируем один раз — смена фразы только текстом
+        // ponytail: GIF один раз; фразы меняем только после полного fade-out — без наложений
         innSearchStatusEl.innerHTML = ConverterStatusUI.renderBusy("inn", {
             text: ConverterStatusUI.pickPhrase("inn"),
             kind: "loading",
@@ -2126,20 +2149,39 @@
             catEl.loading = "eager";
             catEl.removeAttribute("loading");
         }
+
+        const waitMs = (ms) => new Promise((r) => setTimeout(r, ms));
+        const waitFadeOut = () =>
+            new Promise((resolve) => {
+                if (!textEl) return resolve();
+                let done = false;
+                const finish = () => {
+                    if (done) return;
+                    done = true;
+                    textEl.removeEventListener("transitionend", onEnd);
+                    resolve();
+                };
+                const onEnd = (e) => {
+                    if (e.target === textEl && e.propertyName === "opacity") finish();
+                };
+                textEl.addEventListener("transitionend", onEnd);
+                setTimeout(finish, 280);
+            });
+
         const durationMs = 7000;
         const intervalMs = 1500;
-        const fadeMs = 280;
         const started = Date.now();
         let nextChangeAt = started + intervalMs;
         while (Date.now() - started < durationMs) {
             const wait = Math.min(nextChangeAt, started + durationMs) - Date.now();
-            if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+            if (wait > 0) await waitMs(wait);
             if (Date.now() - started >= durationMs || !textEl) break;
             textEl.classList.add("is-fading");
-            await new Promise((r) => setTimeout(r, fadeMs));
+            await waitFadeOut();
             if (Date.now() - started >= durationMs) break;
             textEl.textContent = ConverterStatusUI.pickPhrase("inn");
-            void textEl.offsetWidth;
+            // следующий кадр — иначе браузер схлопывает fade-in
+            await waitMs(32);
             textEl.classList.remove("is-fading");
             nextChangeAt += intervalMs;
         }

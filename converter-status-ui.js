@@ -78,13 +78,13 @@
             return (
                 `<div class="converter-busy converter-busy--${kind}" role="status" aria-live="polite">` +
                 `<i class="fas ${icon} converter-busy-icon" aria-hidden="true"></i>` +
-                `<p class="converter-busy-text mb-0">${text}</p></div>`
+                `<div class="converter-busy-phrase"><p class="converter-busy-text mb-0">${text}</p></div></div>`
             );
         }
         return (
             `<div class="converter-busy converter-busy--${kind}" role="status" aria-live="polite">` +
             `<img class="converter-busy-cat" src="${CAT_GIF}" alt="" width="140" height="140" decoding="async" loading="eager" fetchpriority="high" onerror="this.onerror=null;this.src='${CAT_GIF_FALLBACK}'">` +
-            `<p class="converter-busy-text mb-0">${text}</p>` +
+            `<div class="converter-busy-phrase"><p class="converter-busy-text mb-0">${text}</p></div>` +
             `</div>`
         );
     }
@@ -98,17 +98,17 @@
             return (
                 `<div class="converter-busy converter-busy--success" role="status">` +
                 `<i class="fas fa-circle-check converter-busy-icon text-success" aria-hidden="true"></i>` +
-                `<p class="converter-busy-text mb-0">${message}</p></div>`
+                `<div class="converter-busy-phrase"><p class="converter-busy-text mb-0">${message}</p></div></div>`
             );
         }
         if (k === "error" || k === "danger") {
             return (
                 `<div class="converter-busy converter-busy--error" role="alert">` +
                 `<i class="fas fa-circle-xmark converter-busy-icon text-danger" aria-hidden="true"></i>` +
-                `<p class="converter-busy-text mb-0">${message}</p></div>`
+                `<div class="converter-busy-phrase"><p class="converter-busy-text mb-0">${message}</p></div></div>`
             );
         }
-        return `<div class="converter-busy converter-busy--${k}"><p class="converter-busy-text mb-0">${message}</p></div>`;
+        return `<div class="converter-busy converter-busy--${k}"><div class="converter-busy-phrase"><p class="converter-busy-text mb-0">${message}</p></div></div>`;
     }
 
     function setElement(el, phase, options) {
