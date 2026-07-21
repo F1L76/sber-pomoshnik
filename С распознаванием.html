@@ -582,8 +582,8 @@
             height: 140px;
             border-radius: 0;
             object-fit: contain;
+            /* ponytail: прозрачный GIF — сквозь него виден фон busy (#f8fbfe/#f0f6fc) */
             background: transparent;
-            mix-blend-mode: darken;
             /* ponytail: плавный bob без ремаунта GIF — иначе анимация рвётся */
             animation: converter-cat-bob 2.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
             will-change: transform;
@@ -869,7 +869,7 @@
             letter-spacing: 0.01em;
         }
     </style>
-    <link rel="stylesheet" href="/theme.css?v=5">
+    <link rel="stylesheet" href="/theme.css?v=6">
 </head>
 <body>
 

@@ -281,8 +281,8 @@ body.has-results-focus main.app-main {
   height: 140px;
   border-radius: 0;
   object-fit: contain;
+  /* ponytail: прозрачный GIF — сквозь него виден фон busy (#f8fbfe/#f0f6fc) */
   background: transparent;
-  mix-blend-mode: darken;
   animation: converter-cat-bob 2.6s cubic-bezier(0.37, 0, 0.63, 1) infinite;
   will-change: transform;
   backface-visibility: hidden;
