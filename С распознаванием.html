@@ -2290,7 +2290,7 @@
 
     const modules = [
         { id: "priority", name: "Приоритет по заявке", icon: "fas fa-flag-checkered", modal: "#priorityModal", desc: "Установка приоритета для экспертных заявок" },
-        { id: "questions", name: "Вопросы по заключению", icon: "fas fa-question-circle", modal: "#questionsModal", desc: "База рисков, распознавание и резюме СЗЗ", inDev: true },
+        { id: "questions", name: "Вопросы по заключению", icon: "fas fa-question-circle", modal: "#questionsModal", desc: "Поиск по базе Q&A, риски и резюме СЗЗ" },
         { id: "inspection", name: "Вопросы по осмотру", icon: "fas fa-camera", modal: "#inspectionModal", desc: "Файл верификации, перепланировки", inDev: true },
         { id: "cost", name: "Не согласен со стоимостью", icon: "fas fa-hand-holding-usd", modal: "#costModal", desc: "Арбитраж стоимости, верификация рынком", inDev: true },
         { id: "where", name: "Где заявка?", icon: "fas fa-search-location", modal: "#whereModal", desc: "Статусы: осмотр, обременения, оценка", inDev: true },
@@ -2472,7 +2472,10 @@
         container.innerHTML = renderModuleContextBar({ showConclusion: true }) + `
             <ul class="nav nav-tabs module-modal-tabs mb-0" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button type="button" class="nav-link active" id="risks-tab" data-bs-toggle="tab" data-bs-target="#risksTab" role="tab" aria-controls="risksTab" aria-selected="true">База рисков</button>
+                    <button type="button" class="nav-link active" id="qa-tab" data-bs-toggle="tab" data-bs-target="#qaTab" role="tab" aria-controls="qaTab" aria-selected="true">База ответов</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button type="button" class="nav-link" id="risks-tab" data-bs-toggle="tab" data-bs-target="#risksTab" role="tab" aria-controls="risksTab" aria-selected="false">База рисков</button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button type="button" class="nav-link" id="sxz-tab" data-bs-toggle="tab" data-bs-target="#sxzTab" role="tab" aria-controls="sxzTab" aria-selected="false">Распознавание СЗЗ</button>
@@ -2482,7 +2485,21 @@
                 </li>
             </ul>
             <div class="tab-content border border-top-0 rounded-bottom-3 p-3 bg-white">
-                <div class="tab-pane fade show active" id="risksTab" role="tabpanel" aria-labelledby="risks-tab">
+                <div class="tab-pane fade show active" id="qaTab" role="tabpanel" aria-labelledby="qa-tab">
+                    <label class="form-label small text-muted" for="conclusionQaInput">Вопрос по заключению / типовой кейс</label>
+                    <textarea class="form-control" rows="3" id="conclusionQaInput" placeholder="Например: как выставить приоритет по заявке? объекты не отражаются в СБОФ…"></textarea>
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <button type="button" class="btn btn-success rounded-pill" id="conclusionQaSearchBtn">
+                            <i class="fas fa-magnifying-glass me-2" aria-hidden="true"></i>Найти в базе
+                        </button>
+                        <button type="button" class="btn btn-outline-success rounded-pill" id="conclusionQaGigaBtn" title="Ответ GigaChat с контекстом из найденных Q&A">
+                            <i class="fas fa-robot me-2" aria-hidden="true"></i>GigaChat + база
+                        </button>
+                    </div>
+                    <div id="conclusionQaMeta" class="small text-muted mt-2"></div>
+                    <div id="conclusionQaResult" class="mt-3"></div>
+                </div>
+                <div class="tab-pane fade" id="risksTab" role="tabpanel" aria-labelledby="risks-tab">
                     <div class="list-group list-group-flush">
                         <div class="list-group-item border-0 px-0"><strong>Риск: нецелевое использование</strong><br><span class="text-muted small">Минимизация: проверка документов</span></div>
                         <div class="list-group-item border-0 px-0"><strong>Риск: перепланировка</strong><br><span class="text-muted small">Минимизация: техпаспорт</span></div>
@@ -2501,6 +2518,96 @@
                     <div id="summaryResult" class="mt-3 mock-ai small"></div>
                 </div>
             </div>`;
+
+        const qaMeta = document.getElementById("conclusionQaMeta");
+        const qaOut = document.getElementById("conclusionQaResult");
+        fetch(`${GIGACHAT_API_BASE}/api/conclusion-qa/info`, { cache: "no-store" })
+            .then((r) => r.json())
+            .then((info) => {
+                if (qaMeta) {
+                    qaMeta.textContent = info.ready
+                        ? `В индексе ${info.total} пар вопрос–ответ (FTS5).`
+                        : "Индекс не найден — на сервере выполните npm run conclusion-qa:build";
+                }
+            })
+            .catch(() => {
+                if (qaMeta) qaMeta.textContent = "Не удалось проверить индекс (запущен ли node gigachat-proxy.mjs?).";
+            });
+
+        async function searchConclusionQaApi(question) {
+            const res = await fetch(`${GIGACHAT_API_BASE}/api/conclusion-qa`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question, limit: 5 })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || "Ошибка поиска");
+            return data;
+        }
+
+        function renderQaHits(hits) {
+            if (!hits.length) {
+                return '<div class="alert alert-warning mb-0">Ничего не найдено. Переформулируйте вопрос.</div>';
+            }
+            return hits.map((h, i) => {
+                const sheet = escapeHtml(h.sheet || "");
+                const q = escapeHtml(h.question || "").replace(/\n/g, "<br>");
+                const a = escapeHtml(h.answer || "").replace(/\n/g, "<br>");
+                const ref = h.refId ? `<span class="text-muted"> · ${escapeHtml(h.refId)}</span>` : "";
+                return `<div class="border-bottom border-light-subtle pb-3 mb-3">
+                    <div class="small text-muted mb-1">#${i + 1} · ${sheet}${ref}</div>
+                    <div class="fw-semibold mb-1">${q}</div>
+                    <div class="small">${a}</div>
+                </div>`;
+            }).join("");
+        }
+
+        document.getElementById("conclusionQaSearchBtn")?.addEventListener("click", async () => {
+            const question = document.getElementById("conclusionQaInput").value.trim();
+            if (!question) {
+                qaOut.innerHTML = '<span class="text-warning">Введите вопрос.</span>';
+                return;
+            }
+            qaOut.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1"></i>Ищем в базе…</span>';
+            try {
+                const data = await searchConclusionQaApi(question);
+                qaOut.innerHTML = renderQaHits(data.hits || []);
+            } catch (e) {
+                qaOut.innerHTML = `<span class="text-warning">${escapeHtml(e.message)}</span>`;
+            }
+        });
+
+        document.getElementById("conclusionQaGigaBtn")?.addEventListener("click", async () => {
+            const question = document.getElementById("conclusionQaInput").value.trim();
+            if (!question) {
+                qaOut.innerHTML = '<span class="text-warning">Введите вопрос.</span>';
+                return;
+            }
+            if (!isGigaChatActive()) {
+                qaOut.innerHTML = '<span class="text-warning">Включите GigaChat или используйте «Найти в базе».</span>';
+                return;
+            }
+            qaOut.innerHTML = '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1"></i>База + GigaChat…</span>';
+            try {
+                const data = await searchConclusionQaApi(question);
+                const ctx = (data.hits || []).map((h, i) =>
+                    `[${i + 1}] Лист: ${h.sheet}\nВопрос: ${h.question}\nОтвет: ${h.answer}`
+                ).join("\n\n").slice(0, 14000);
+                const answer = await askGigaChat(
+                    "Ниже фрагменты из внутренней базы типовых вопросов по заключениям. "
+                    + "Ответь на вопрос пользователя, опираясь на них. Если базы недостаточно — скажи об этом.\n\n"
+                    + "Вопрос пользователя:\n" + question + "\n\nКонтекст из базы:\n" + (ctx || "(пусто)"),
+                    GIGACHAT_SYSTEM,
+                    { temperature: 0.2, max_tokens: 2048 }
+                );
+                qaOut.innerHTML =
+                    `<div class="mb-3"><i class="fas fa-robot me-2 text-success" aria-hidden="true"></i><strong>GigaChat:</strong><div class="mt-2">${escapeHtml(answer).replace(/\n/g, "<br>")}</div></div>`
+                    + `<details class="small"><summary class="text-muted">Найденные фрагменты базы (${(data.hits || []).length})</summary>${renderQaHits(data.hits || [])}</details>`;
+            } catch (e) {
+                qaOut.innerHTML = `<span class="text-warning">${escapeHtml(e.message)}</span>`;
+            }
+        });
+
         const recognizeBtn = document.getElementById("recognizeRiskBtn");
         if (recognizeBtn) {
             recognizeBtn.addEventListener("click", async () => {

@@ -24,6 +24,7 @@ import { createDealsJob, getDealsJob } from "./lib/deals-jobs.mjs";
 import { getZalogConverterHealth, probeZalogPythonDeps, probeZalogPythonDepsCached, ensureZalogPythonDeps, readZalogUpload } from "./lib/zalog-convert.mjs";
 import { createZalogConvertJob, getZalogConvertJob } from "./lib/zalog-jobs.mjs";
 import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigachat-config.mjs";
+import { getConclusionQaInfo, searchConclusionQa } from "./lib/conclusion-qa.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
@@ -699,6 +700,29 @@ const server = http.createServer(async (req, res) => {
             const status = /памят|memory|heap|timeout/i.test(msg) ? 503 : 400;
             res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
             res.end(JSON.stringify({ error: msg }));
+        }
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/conclusion-qa/info") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify(getConclusionQaInfo()));
+        return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/conclusion-qa") {
+        try {
+            const raw = await readBody(req);
+            const body = JSON.parse(raw || "{}");
+            const question = body.question || body.q || body.prompt;
+            const limit = body.limit;
+            const result = searchConclusionQa(question, { limit });
+            const status = result.ok ? 200 : (result.error?.includes("обязателен") ? 400 : 503);
+            res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(result));
+        } catch (e) {
+            res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, count: 0, hits: [], error: e.message || String(e) }));
         }
         return;
     }

@@ -24,6 +24,8 @@ data/drom-rate.tmp
 *.xlsx
 *.xls
 !data/risk_minimization_rag.xlsx
+!data/conclusion_qa_rag.xlsx
+!data/conclusion_qa.sqlite
 Краткая*.pdf
 ПЕРЕСКАЗ*
 ПЛАН*

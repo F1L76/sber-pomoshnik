@@ -8,6 +8,8 @@
     "cadastral": "node scripts/cadastral-cli.mjs",
     "deals:index": "node scripts/build-deals-quarter-index.mjs",
     "deals:import": "node scripts/import-deals-sqlite.mjs",
+    "conclusion-qa:build": "PYTHONPATH=python-deps python3 scripts/build_conclusion_qa.py",
+    "conclusion-qa:check": "python3 scripts/check_conclusion_qa.py",
     "zalog:install": "python3 -m pip install -r requirements-zalog.txt -t python-deps",
     "prestart": "npm run zalog:install",
     "postinstall": "node node_modules/playwright-core/cli.js install chromium || true"
