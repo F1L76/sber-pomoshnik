@@ -392,40 +392,78 @@
         .conclusion-qa-chat {
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
-            min-height: 280px;
+            min-height: 360px;
+            max-height: min(70vh, 560px);
+            border: 1px solid var(--sber-border);
+            border-radius: 16px;
+            overflow: hidden;
+            background: var(--sber-card-bg, #fff);
         }
         .conclusion-qa-messages {
             flex: 1;
-            min-height: 160px;
-            max-height: 420px;
+            min-height: 220px;
             overflow-y: auto;
-            border: 1px solid var(--sber-border);
-            border-radius: 12px;
-            padding: 1rem;
-            background: var(--sber-bg);
+            padding: 1rem 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+            background: var(--sber-bg, #f5f8fb);
         }
         .conclusion-qa-msg {
-            margin-bottom: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            max-width: 88%;
         }
-        .conclusion-qa-msg:last-child {
-            margin-bottom: 0;
+        .conclusion-qa-msg--user {
+            align-self: flex-end;
+        }
+        .conclusion-qa-msg--agent {
+            align-self: flex-start;
         }
         .conclusion-qa-msg-role {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             color: var(--sber-text-muted);
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.2rem;
+            padding: 0 0.15rem;
+        }
+        .conclusion-qa-msg--user .conclusion-qa-msg-role {
+            text-align: right;
+        }
+        .conclusion-qa-bubble {
+            padding: 0.65rem 0.9rem;
+            border-radius: 14px;
+            line-height: 1.45;
+            word-break: break-word;
+        }
+        .conclusion-qa-msg--user .conclusion-qa-bubble {
+            background: var(--sber-green, #21A038);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        .conclusion-qa-msg--agent .conclusion-qa-bubble {
+            background: var(--sber-surface-2, #eef4f9);
+            border: 1px solid var(--sber-border);
+            color: var(--sber-text-dark, #1a2330);
+            border-bottom-left-radius: 4px;
         }
         .conclusion-qa-composer {
             display: flex;
             gap: 0.5rem;
             align-items: flex-end;
+            padding: 0.75rem 0.85rem;
+            border-top: 1px solid var(--sber-border);
+            background: var(--sber-card-bg, #fff);
         }
         .conclusion-qa-composer textarea {
             flex: 1;
-            resize: vertical;
+            resize: none;
             min-height: 2.75rem;
+            max-height: 7rem;
+        }
+        .conclusion-qa-meta {
+            padding: 0.35rem 0.85rem 0.55rem;
+            border-top: 1px solid transparent;
         }
         .table-responsive-custom {
             overflow-x: auto;
@@ -901,7 +939,7 @@
             letter-spacing: 0.01em;
         }
     </style>
-    <link rel="stylesheet" href="/theme.css?v=11">
+    <link rel="stylesheet" href="/theme.css?v=12">
 </head>
 <body>
 
@@ -1060,7 +1098,7 @@
                 <h2 class="modal-title h5 text-success mb-0"><i class="fas fa-brain me-2" aria-hidden="true"></i>Вопросы по заключению</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
             </div>
-            <div class="modal-body p-4" id="questionsModalBody"></div>
+            <div class="modal-body p-3" id="questionsModalBody"></div>
         </div>
     </div>
 </div>
@@ -2489,19 +2527,23 @@
 
     function fillQuestionsModal() {
         const container = document.getElementById("questionsModalBody");
+        // ponytail: keep session history while modal stays open; refill resets on reopen
+        if (container.dataset.qaReady === "1" && container.querySelector("#conclusionQaMessages")) {
+            document.getElementById("conclusionQaInput")?.focus();
+            return;
+        }
+        container.dataset.qaReady = "1";
         container.innerHTML = `
             <div class="conclusion-qa-chat">
-                <div id="conclusionQaMessages" class="conclusion-qa-messages" aria-live="polite">
-                    <div class="text-muted small">Задайте вопрос по заключению — ответ из базы типовых кейсов${isGigaChatActive() ? " и GigaChat" : ""}.</div>
-                </div>
+                <div id="conclusionQaMessages" class="conclusion-qa-messages" aria-live="polite"></div>
                 <div class="conclusion-qa-composer">
                     <label class="visually-hidden" for="conclusionQaInput">Вопрос</label>
-                    <textarea class="form-control" rows="2" id="conclusionQaInput" placeholder="Например: как выставить приоритет по заявке?"></textarea>
-                    <button type="button" class="btn btn-success rounded-pill px-4" id="conclusionQaSendBtn" title="Отправить">
-                        <i class="fas fa-paper-plane me-1" aria-hidden="true"></i>Спросить
+                    <textarea class="form-control" rows="2" id="conclusionQaInput" placeholder="Ваш вопрос…"></textarea>
+                    <button type="button" class="btn btn-success rounded-pill px-3 px-md-4" id="conclusionQaSendBtn" title="Отправить">
+                        <i class="fas fa-paper-plane" aria-hidden="true"></i><span class="d-none d-sm-inline ms-1">Отправить</span>
                     </button>
                 </div>
-                <div id="conclusionQaMeta" class="small text-muted"></div>
+                <div id="conclusionQaMeta" class="conclusion-qa-meta small text-muted"></div>
             </div>`;
 
         const qaMeta = document.getElementById("conclusionQaMeta");
@@ -2512,14 +2554,16 @@
         fetch(`${GIGACHAT_API_BASE}/api/conclusion-qa/info`, { cache: "no-store" })
             .then((r) => r.json())
             .then((info) => {
-                if (qaMeta) {
-                    qaMeta.textContent = info.ready
-                        ? `В индексе ${info.total} пар вопрос–ответ (FTS5).`
-                        : "Индекс не найден — на сервере выполните npm run conclusion-qa:build";
+                if (!qaMeta) return;
+                if (!info.ready) {
+                    qaMeta.textContent = "Индекс не найден — npm run conclusion-qa:build";
+                } else {
+                    qaMeta.textContent = "";
+                    qaMeta.title = `Индекс: ${info.total} пар`;
                 }
             })
             .catch(() => {
-                if (qaMeta) qaMeta.textContent = "Не удалось проверить индекс (запущен ли node gigachat-proxy.mjs?).";
+                if (qaMeta) qaMeta.textContent = "Нет связи с прокси (localhost:8787).";
             });
 
         async function searchConclusionQaApi(question) {
@@ -2550,13 +2594,15 @@
             }).join("");
         }
 
-        function appendMsg(role, html) {
+        function appendMsg(kind, roleLabel, html) {
             const wrap = document.createElement("div");
-            wrap.className = "conclusion-qa-msg";
-            wrap.innerHTML = `<div class="conclusion-qa-msg-role">${role}</div><div class="conclusion-qa-msg-body">${html}</div>`;
+            wrap.className = `conclusion-qa-msg conclusion-qa-msg--${kind}`;
+            wrap.innerHTML =
+                `<div class="conclusion-qa-msg-role">${roleLabel}</div>`
+                + `<div class="conclusion-qa-bubble">${html}</div>`;
             messagesEl.appendChild(wrap);
             messagesEl.scrollTop = messagesEl.scrollHeight;
-            return wrap.querySelector(".conclusion-qa-msg-body");
+            return wrap.querySelector(".conclusion-qa-bubble");
         }
 
         async function sendQuestion() {
@@ -2564,10 +2610,12 @@
             if (!question) return;
             if (sendBtn.disabled) return;
 
-            // ponytail: single-turn chat — clear thread each send; upgrade to history if needed
-            messagesEl.innerHTML = "";
-            appendMsg("Вы", escapeHtml(question).replace(/\n/g, "<br>"));
-            const agentBody = appendMsg("Агент", '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1"></i>Ищем в базе…</span>');
+            appendMsg("user", "Вы", escapeHtml(question).replace(/\n/g, "<br>"));
+            const agentBody = appendMsg(
+                "agent",
+                "Агент",
+                '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1"></i>Ищем…</span>'
+            );
             inputEl.value = "";
             sendBtn.disabled = true;
 
@@ -2620,6 +2668,7 @@
                 sendQuestion();
             }
         });
+        inputEl?.focus();
     }
 
     function fillInspectionModal() {

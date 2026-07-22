@@ -39,22 +39,74 @@ const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 function loadEnvFile() {
     const envPath = path.join(__dirname, ".env");
-    if (!fs.existsSync(envPath)) return;
-    for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
-        const t = line.trim();
+    if (!fs.existsSync(envPath)) return { path: envPath, loaded: false, keys: [] };
+    let text = fs.readFileSync(envPath, "utf8");
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1); // UTF-8 BOM
+    const keys = [];
+    for (const line of text.split("\n")) {
+        let t = line.trim();
         if (!t || t.startsWith("#")) continue;
+        if (t.startsWith("export ")) t = t.slice(7).trim();
         const i = t.indexOf("=");
         if (i === -1) continue;
         const key = t.slice(0, i).trim();
-        let val = t.slice(i + 1).trim();
+        let val = t.slice(i + 1).trim().replace(/\r$/, "");
         if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
             val = val.slice(1, -1);
         }
-        if (!process.env[key]) process.env[key] = val;
+        // .env wins over empty shell vars; non-empty process.env keeps priority (Render/systemd)
+        if (!process.env[key]) {
+            process.env[key] = val;
+            keys.push(key);
+        } else if (key.startsWith("GIGACHAT_") && process.env[key] !== val) {
+            keys.push(`${key}(shell)`);
+        }
     }
+    return { path: envPath, loaded: true, keys };
 }
 
-loadEnvFile();
+const envLoad = loadEnvFile();
+
+function maskSecret(raw) {
+    const s = String(raw || "");
+    if (!s) return "(пусто)";
+    if (s.length <= 8) return `*** (len ${s.length})`;
+    return `${s.slice(0, 4)}…${s.slice(-4)} (len ${s.length})`;
+}
+
+function normalizeGigaChatCredentials(raw) {
+    // ponytail: в Studio иногда копируют «Basic xxx» целиком — прокси сам добавляет Basic
+    let credentials = String(raw || "").trim().replace(/^Basic\s+/i, "");
+    if (
+        (credentials.startsWith('"') && credentials.endsWith('"')) ||
+        (credentials.startsWith("'") && credentials.endsWith("'"))
+    ) {
+        credentials = credentials.slice(1, -1).trim();
+    }
+    return credentials.replace(/\s+/g, "");
+}
+
+function logGigaChatEnvDiagnostics() {
+    const envPath = envLoad.path;
+    const exists = fs.existsSync(envPath);
+    console.log(`Env: ${envPath} ${exists ? "найден" : "НЕТ файла"} (cwd=${process.cwd()})`);
+    if (exists) {
+        try {
+            const st = fs.statSync(envPath);
+            console.log(`Env mtime: ${st.mtime.toISOString()}`);
+        } catch {
+            /* ignore */
+        }
+    }
+    const raw = process.env.GIGACHAT_CREDENTIALS;
+    const normalized = normalizeGigaChatCredentials(raw);
+    const hadBasic = /^Basic\s+/i.test(String(raw || "").trim());
+    console.log(`GIGACHAT_CREDENTIALS: ${maskSecret(normalized)}${hadBasic ? " (снят префикс Basic)" : ""}`);
+    console.log(`GIGACHAT_SCOPE: ${process.env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS (default)"}`);
+    if (!normalized) {
+        console.warn("⚠ Задайте GIGACHAT_CREDENTIALS в .env рядом с gigachat-proxy.mjs и перезапустите");
+    }
+}
 
 /** Кеш access_token (Bearer), не путать с GIGACHAT_CREDENTIALS в .env */
 let tokenCache = { access_token: null, expires_at: 0 };
@@ -102,18 +154,6 @@ function requestJson(url, options, body) {
         if (body) req.write(body);
         req.end();
     });
-}
-
-function normalizeGigaChatCredentials(raw) {
-    // ponytail: в Studio иногда копируют «Basic xxx» целиком — прокси сам добавляет Basic
-    let credentials = String(raw || "").trim().replace(/^Basic\s+/i, "");
-    if (
-        (credentials.startsWith('"') && credentials.endsWith('"')) ||
-        (credentials.startsWith("'") && credentials.endsWith("'"))
-    ) {
-        credentials = credentials.slice(1, -1).trim();
-    }
-    return credentials;
 }
 
 function friendlyOAuthError(status, json) {
@@ -414,6 +454,8 @@ const server = http.createServer(async (req, res) => {
             enabled: true,
             serverEnabled: true,
             hasCreds,
+            credsHint: hasCreds ? maskSecret(normalizeGigaChatCredentials(process.env.GIGACHAT_CREDENTIALS)) : null,
+            envFile: envLoad.loaded ? path.basename(envLoad.path) : null,
             error,
             model: cfg.model
         };
@@ -855,6 +897,7 @@ wss.on("connection", (ws) => {
     server.listen(PORT, HOST, () => {
         console.log(`GigaChat proxy: http://${HOST}:${PORT}`);
         console.log(`Откройте: http://localhost:${PORT}/ (локально) или URL вашего сервера`);
+        logGigaChatEnvDiagnostics();
         warmupDealsIndexes();
         if (!process.env.GIGACHAT_CREDENTIALS) {
             console.warn("⚠ Создайте .env из .env.example и укажите GIGACHAT_CREDENTIALS");

@@ -374,12 +374,32 @@ html[data-theme="dark"] .module-context-title {
 html[data-theme="dark"] .module-context-hint {
   color: #a8b4c4 !important;
 }
+html[data-theme="dark"] .conclusion-qa-chat {
+  background: #1a2330 !important;
+  border-color: #334155 !important;
+}
 html[data-theme="dark"] .conclusion-qa-messages {
   background: #121a24 !important;
   border-color: #334155 !important;
   color: #e8eef4 !important;
 }
 html[data-theme="dark"] .conclusion-qa-msg-role {
+  color: #a8b4c4 !important;
+}
+html[data-theme="dark"] .conclusion-qa-msg--agent .conclusion-qa-bubble {
+  background: #1a2330 !important;
+  border-color: #334155 !important;
+  color: #e8eef4 !important;
+}
+html[data-theme="dark"] .conclusion-qa-msg--user .conclusion-qa-bubble {
+  background: #21A038 !important;
+  color: #fff !important;
+}
+html[data-theme="dark"] .conclusion-qa-composer {
+  background: #1a2330 !important;
+  border-color: #334155 !important;
+}
+html[data-theme="dark"] .conclusion-qa-meta {
   color: #a8b4c4 !important;
 }
 html[data-theme="dark"] .memorandum-preview,
