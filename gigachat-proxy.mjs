@@ -123,8 +123,7 @@ function friendlyOAuthError(status, json) {
         return (
             "Ключ GIGACHAT_CREDENTIALS не принят Сбером (устарел или скопирован неверно). "
             + "Скопируйте тот же Authorization Key из Render → Environment "
-            + "или из developers.sber.ru/studio → .env и перезапустите прокси. "
-            + "Один ключ можно использовать и локально, и на Render."
+            + "или из developers.sber.ru/studio → .env и перезапустите прокси."
         );
     }
     if (status === 403 || lower.includes("scope")) {
