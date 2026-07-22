@@ -1974,12 +1974,13 @@
         if (!frame) return;
         try {
             const doc = frame.contentDocument;
-            if (!doc) return;
-            const h = Math.max(
-                doc.body?.scrollHeight || 0,
-                doc.documentElement?.scrollHeight || 0,
-                doc.body?.offsetHeight || 0
-            );
+            if (!doc?.body) return;
+            // ponytail: documentElement.scrollHeight часто = высоте viewport iframe,
+            // и Math.max залипает на пустом хвосте после перечня до «материалов»
+            const page = doc.querySelector(".report-page");
+            const h = page
+                ? Math.ceil(page.getBoundingClientRect().height)
+                : (doc.body.scrollHeight || doc.body.offsetHeight || 0);
             if (h > 0) frame.style.height = `${h + 8}px`;
         } catch (_) { /* cross-origin — не ожидаем для srcdoc */ }
     }
@@ -1998,7 +1999,11 @@
             const reportFrame = modalBody.querySelector(".conclusion-report-frame");
             if (reportFrame) {
                 reportFrame.srcdoc = prepareConclusionReportHtml(conclusion.reportHtml);
-                reportFrame.addEventListener("load", () => fitConclusionReportFrame(reportFrame));
+                reportFrame.addEventListener("load", () => {
+                    const fit = () => fitConclusionReportFrame(reportFrame);
+                    fit();
+                    [120, 400, 1000].forEach((ms) => window.setTimeout(fit, ms));
+                });
             }
         } else {
             modalBody.innerHTML = `

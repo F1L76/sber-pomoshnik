@@ -85,14 +85,12 @@ function fitReportFrame() {
   if (!doc?.body) return;
   const scrollX = window.scrollX;
   const scrollY = window.scrollY;
-  const height = Math.max(
-    doc.documentElement.scrollHeight,
-    doc.documentElement.offsetHeight,
-    doc.body.scrollHeight,
-    doc.body.offsetHeight,
-    320,
-  ) + 32;
-  reportFrame.style.height = `${height}px`;
+  // ponytail: не брать documentElement.offset/scrollHeight — это viewport iframe, не контент
+  const page = doc.querySelector(".report-page");
+  const contentH = page
+    ? Math.ceil(page.getBoundingClientRect().height)
+    : Math.max(doc.body.scrollHeight || 0, doc.body.offsetHeight || 0);
+  reportFrame.style.height = `${Math.max(contentH, 320) + 32}px`;
   window.scrollTo(scrollX, scrollY);
 }
 
