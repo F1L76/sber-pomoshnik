@@ -223,6 +223,9 @@ html[data-theme="dark"] .assistant-insight {
   border-color: rgba(33, 160, 56, 0.4) !important;
   color: #e8eef4 !important;
 }
+html[data-theme="dark"] .assistant-insight-cta {
+  border-top-color: rgba(33, 160, 56, 0.28);
+}
 html[data-theme="dark"] .assistant-insight-title,
 html[data-theme="dark"] .assistant-insight-accent,
 html[data-theme="dark"] .file-drop-title,

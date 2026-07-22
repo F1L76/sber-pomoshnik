@@ -750,7 +750,13 @@
             color: var(--sber-text-muted);
         }
         .assistant-insight-cta {
-            margin-top: 1.25rem;
+            margin-top: 1.35rem;
+            padding-top: 1.15rem;
+            border-top: 1px solid rgba(33, 160, 56, 0.16);
+        }
+        .assistant-insight-cta .assistant-insight-lead {
+            margin-bottom: 0.85rem;
+            max-width: 36rem;
         }
         .assistant-insight-upload {
             margin-top: 1.25rem;
@@ -875,7 +881,7 @@
             letter-spacing: 0.01em;
         }
     </style>
-    <link rel="stylesheet" href="/theme.css?v=9">
+    <link rel="stylesheet" href="/theme.css?v=10">
 </head>
 <body>
 
@@ -2134,14 +2140,23 @@
         const hello = timeOfDayGreeting();
         if (scenario === "activeExpertise") {
             const app = currentClientData.applications?.[0];
+            // CTA только при активной экспертизе — тот же вход, что у модуля «Приоритет по заявке»
             assistantInsightEl.innerHTML =
                 `<div class="assistant-insight-eyebrow">Подсказка помощника</div>` +
                 `<h2 class="assistant-insight-title">${hello}! По этому клиенту сейчас идёт экспертиза в Залоговой службе.</h2>` +
                 `<p class="assistant-insight-lead">Я уже нашёл активную заявку` +
                 (app ? ` <strong>${escapeHtml(app.id)}</strong>` : "") +
                 ` — давайте сразу посмотрим, на каком этапе она сейчас.</p>` +
-                renderExpertiseTimeline(app?.stages || []);
+                renderExpertiseTimeline(app?.stages || []) +
+                `<div class="assistant-insight-cta">` +
+                `<p class="assistant-insight-lead mb-3">У Вас есть возможность установить <strong>ПРИОРИТЕТ</strong> по заявке.</p>` +
+                `<button type="button" class="btn btn-outline-sber rounded-pill" id="insightPriorityBtn">` +
+                `<i class="fas fa-flag-checkered me-2" aria-hidden="true"></i>Установить приоритет</button>` +
+                `</div>`;
             assistantInsightEl.classList.add("is-visible");
+            document.getElementById("insightPriorityBtn")?.addEventListener("click", () => {
+                openModuleModal("priority");
+            });
             return;
         }
         if (scenario === "recentConclusion") {
