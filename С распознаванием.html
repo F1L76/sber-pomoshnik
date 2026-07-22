@@ -2489,7 +2489,7 @@
 
     function fillQuestionsModal() {
         const container = document.getElementById("questionsModalBody");
-        container.innerHTML = renderModuleContextBar({ showConclusion: true }) + `
+        container.innerHTML = `
             <div class="conclusion-qa-chat">
                 <div id="conclusionQaMessages" class="conclusion-qa-messages" aria-live="polite">
                     <div class="text-muted small">Задайте вопрос по заключению — ответ из базы типовых кейсов${isGigaChatActive() ? " и GigaChat" : ""}.</div>
@@ -2620,7 +2620,6 @@
                 sendQuestion();
             }
         });
-        bindModuleContextBar(container);
     }
 
     function fillInspectionModal() {
