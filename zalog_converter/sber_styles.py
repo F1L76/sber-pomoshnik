@@ -550,6 +550,168 @@ SBER_REPORT_CSS = """
       opacity: 0.55;
       cursor: default;
     }
+
+    /* Тёмная тема сводного отчёта (iframe srcdoc) */
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --sber-bg: #0e141c;
+      --sber-card-bg: #1a2330;
+      --sber-text-dark: #e8eef4;
+      --sber-text-muted: #a8b4c4;
+      --sber-border: #334155;
+      --sber-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+    }
+    html[data-theme="dark"] body {
+      background: #0e141c !important;
+      color: #e8eef4 !important;
+    }
+    html[data-theme="dark"] .report-page,
+    html[data-theme="dark"] .info-card,
+    html[data-theme="dark"] .conclusion-info-block,
+    html[data-theme="dark"] .summary-block,
+    html[data-theme="dark"] .reference-block,
+    html[data-theme="dark"] .risks-block,
+    html[data-theme="dark"] .objects-block,
+    html[data-theme="dark"] .notes-block {
+      background: #1a2330 !important;
+      color: #e8eef4 !important;
+      border-color: #334155 !important;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35) !important;
+    }
+    html[data-theme="dark"] .section-title,
+    html[data-theme="dark"] .report-block dd,
+    html[data-theme="dark"] .reference-plain,
+    html[data-theme="dark"] .mock-ai,
+    html[data-theme="dark"] .mock-ai p {
+      color: #e8eef4 !important;
+    }
+    html[data-theme="dark"] .hint,
+    html[data-theme="dark"] .muted,
+    html[data-theme="dark"] .report-block dt,
+    html[data-theme="dark"] .objects-table .filter-row .filter-hint {
+      color: #a8b4c4 !important;
+    }
+    html[data-theme="dark"] .mock-ai {
+      background: #15241c !important;
+      border-left-color: #21A038 !important;
+    }
+    html[data-theme="dark"] .table-responsive-custom,
+    html[data-theme="dark"] .objects-block .objects-table-scroll,
+    html[data-theme="dark"] .objects-block .table-responsive-custom {
+      background: #121a24 !important;
+      border-color: #334155 !important;
+    }
+    html[data-theme="dark"] .table-details th,
+    html[data-theme="dark"] .objects-table thead tr.objects-header-row th,
+    html[data-theme="dark"] .objects-table thead tr.filter-row th,
+    html[data-theme="dark"] .objects-table .filter-row th,
+    html[data-theme="dark"] .risks-table th {
+      background: #16202c !important;
+      color: #e8eef4 !important;
+      border-color: #334155 !important;
+      box-shadow: 0 1px 0 #334155 !important;
+    }
+    html[data-theme="dark"] .table-details td,
+    html[data-theme="dark"] .objects-table td,
+    html[data-theme="dark"] .risks-table td,
+    html[data-theme="dark"] .totals-row td {
+      background: #1a2330 !important;
+      color: #e8eef4 !important;
+      border-color: #334155 !important;
+    }
+    html[data-theme="dark"] .form-control,
+    html[data-theme="dark"] .form-select {
+      background: #121a24 !important;
+      color: #e8eef4 !important;
+      border-color: #334155 !important;
+    }
+    html[data-theme="dark"] .form-control::placeholder {
+      color: #7a8799 !important;
+    }
+    html[data-theme="dark"] .objects-table .th-copy-btn {
+      background: #1a2330 !important;
+      border-color: #334155 !important;
+      color: #6fd88a !important;
+    }
+    html[data-theme="dark"] .objects-table .th-copy-btn:hover,
+    html[data-theme="dark"] .objects-table .th-copy-btn:focus-visible {
+      background: #1a2a22 !important;
+    }
+    html[data-theme="dark"] .badge-sber {
+      background: rgba(33, 160, 56, 0.22) !important;
+      color: #6fd88a !important;
+    }
+    html[data-theme="dark"] .btn-clear-risk {
+      background: #1a2330 !important;
+      color: #6fd88a !important;
+      border-color: #21A038 !important;
+    }
+    html[data-theme="dark"] .btn-clear-risk:hover {
+      background: #1a2a22 !important;
+    }
+    html[data-theme="dark"] .btn-clear-risk:disabled {
+      background: #16202c !important;
+      border-color: #475569 !important;
+      color: #94a3b8 !important;
+    }
+    html[data-theme="dark"] .risks-table tr.risk-cleared td {
+      color: #94a3b8 !important;
+    }
+    html[data-theme="dark"] .risk-cleared-badge {
+      background: rgba(33, 160, 56, 0.22) !important;
+      color: #6fd88a !important;
+    }
+    html[data-theme="dark"] .risk-clear-modal__dialog {
+      background: #1a2330 !important;
+      color: #e8eef4 !important;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55) !important;
+    }
+    html[data-theme="dark"] .risk-clear-modal__dialog h4 {
+      color: #e8eef4 !important;
+    }
+    html[data-theme="dark"] .risk-clear-modal__dialog p,
+    html[data-theme="dark"] .risk-clear-modal__hint {
+      color: #a8b4c4 !important;
+    }
+    html[data-theme="dark"] .risk-clear-modal__risk {
+      background: #121a24 !important;
+      border-color: #334155 !important;
+      color: #e8eef4 !important;
+    }
+    html[data-theme="dark"] .risk-clear-modal__risk strong {
+      color: #e8eef4 !important;
+    }
+    html[data-theme="dark"] .risk-clear-modal__cancel {
+      background: #16202c !important;
+      border-color: #334155 !important;
+      color: #e8eef4 !important;
+    }
+    html[data-theme="dark"] .btn-outline-secondary {
+      color: #e8eef4 !important;
+      border-color: #475569 !important;
+      background: transparent !important;
+    }
+    html[data-theme="dark"] .text-warning-emphasis {
+      color: #f0c674 !important;
+    }
+    @media print {
+      html[data-theme="dark"] body,
+      html[data-theme="dark"] .report-page,
+      html[data-theme="dark"] .info-card,
+      html[data-theme="dark"] .mock-ai,
+      html[data-theme="dark"] .objects-table-scroll,
+      html[data-theme="dark"] .table-details th,
+      html[data-theme="dark"] .objects-table th,
+      html[data-theme="dark"] .objects-table td,
+      html[data-theme="dark"] .risks-table th,
+      html[data-theme="dark"] .risks-table td,
+      html[data-theme="dark"] .totals-row td {
+        background: #fff !important;
+        color: #1E2A3A !important;
+        border-color: #E2EAF2 !important;
+        box-shadow: none !important;
+      }
+    }
 """
 
 SBER_OBJECTS_TABLE_FILTER_SCRIPT = """(function () {

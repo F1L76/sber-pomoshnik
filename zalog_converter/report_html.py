@@ -15,7 +15,7 @@ from .name_format import format_classifier_display
 from .utils import calc_collateral_from_discount, escape_html, format_money
 from .xlsx_extract import CollateralObject
 
-REPORT_SCHEMA_VERSION = 8  # 8 = sticky thead + копирование столбцов
+REPORT_SCHEMA_VERSION = 9  # 9 = тёмная тема сводного отчёта
 
 
 def _unique_sorted(values: list[str]) -> list[str]:
@@ -314,6 +314,7 @@ def render_full_report(
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{escape_html(title)}</title>
+  <script>(function(){{try{{if(localStorage.getItem("sber-pomoshnik:theme")==="dark")document.documentElement.setAttribute("data-theme","dark");}}catch(e){{}}}})();</script>
   {SBER_REPORT_HEAD_LINKS}
   <style>{SBER_REPORT_CSS}</style>
 </head>

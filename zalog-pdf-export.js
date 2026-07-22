@@ -190,6 +190,10 @@
         overlay.textContent = "Формируем PDF…";
         document.body.appendChild(overlay);
 
+        // ponytail: PDF всегда светлый — временно снимаем тёмную тему с html, иначе селекторы html[data-theme=dark] красят mount
+        const prevTheme = document.documentElement.getAttribute("data-theme");
+        document.documentElement.removeAttribute("data-theme");
+
         const { mount, target } = mountReport(html);
         try {
             if (document.fonts?.ready) await document.fonts.ready;
@@ -225,6 +229,8 @@
         } finally {
             mount.remove();
             overlay.remove();
+            if (prevTheme) document.documentElement.setAttribute("data-theme", prevTheme);
+            else document.documentElement.removeAttribute("data-theme");
         }
     }
 

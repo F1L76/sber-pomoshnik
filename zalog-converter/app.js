@@ -167,7 +167,10 @@ function showReport(html, metaText) {
       ro.observe(doc.body);
     }
   };
-  reportFrame.srcdoc = html;
+  const themed = globalThis.SberTheme?.prepareReportHtml
+    ? SberTheme.prepareReportHtml(html)
+    : html;
+  reportFrame.srcdoc = themed;
   enterResultsFocus(metaText || "Отчёт готов");
 }
 
