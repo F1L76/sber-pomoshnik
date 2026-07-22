@@ -374,17 +374,13 @@ html[data-theme="dark"] .module-context-title {
 html[data-theme="dark"] .module-context-hint {
   color: #a8b4c4 !important;
 }
-html[data-theme="dark"] .module-modal-tabs .nav-link {
-  color: #a8b4c4 !important;
-  background: transparent !important;
-}
-html[data-theme="dark"] .module-modal-tabs .nav-link:hover {
+html[data-theme="dark"] .conclusion-qa-messages {
+  background: #121a24 !important;
+  border-color: #334155 !important;
   color: #e8eef4 !important;
 }
-html[data-theme="dark"] .module-modal-tabs .nav-link.active {
-  background-color: #121a24 !important;
-  color: #6fd88a !important;
-  border-bottom-color: #21a038 !important;
+html[data-theme="dark"] .conclusion-qa-msg-role {
+  color: #a8b4c4 !important;
 }
 html[data-theme="dark"] .memorandum-preview,
 html[data-theme="dark"] .memorandum-ai-intro {
