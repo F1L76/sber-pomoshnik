@@ -2171,9 +2171,9 @@
         ["collapseActiveApps", "collapseConclusions"].forEach((id) => {
             const el = document.getElementById(id);
             if (!el || !window.bootstrap?.Collapse) return;
+            // ponytail: заключения всегда свёрнуты; заявки открываем только в сценарии экспертизы
             const shouldOpen =
-                (id === "collapseActiveApps" && currentClientData?.scenario === "activeExpertise") ||
-                (id === "collapseConclusions" && currentClientData?.scenario === "recentConclusion");
+                id === "collapseActiveApps" && currentClientData?.scenario === "activeExpertise";
             const inst = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
             if (shouldOpen) inst.show();
             else inst.hide();
