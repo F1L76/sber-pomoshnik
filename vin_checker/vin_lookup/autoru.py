@@ -28,6 +28,49 @@ USER_AGENT = (
 )
 
 
+def _edge_bases() -> list[str]:
+    # ponytail: тот же RF-туннель, что NSPD_BASES (Render без CSRF auto.ru)
+    raw = os.environ.get("AUTORU_EDGE_BASE") or os.environ.get("NSPD_BASES") or ""
+    return [s.strip().rstrip("/") for s in raw.split(",") if s.strip()]
+
+
+def _edge_auth_headers() -> dict[str, str]:
+    key = (
+        os.environ.get("AUTORU_EDGE_KEY")
+        or os.environ.get("NSPD_PROXY_KEY")
+        or ""
+    ).strip()
+    if not key:
+        return {}
+    return {"X-NSPD-Proxy-Key": key, "Authorization": f"Bearer {key}"}
+
+
+def _edge_post_report(query: str) -> dict[str, Any]:
+    bases = _edge_bases()
+    if not bases:
+        raise RuntimeError("edge не задан")
+    body = json.dumps({"vin_or_license_plate": query}, ensure_ascii=False).encode("utf-8")
+    headers = {
+        "User-Agent": USER_AGENT,
+        "Content-Type": "application/json;charset=UTF-8",
+        "Accept": "application/json",
+        **_edge_auth_headers(),
+    }
+    last: Exception | None = None
+    for base in bases:
+        url = f"{base}/autoru/vin-report"
+        try:
+            req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+            if isinstance(payload, dict) and payload.get("error") and "report" not in payload:
+                raise RuntimeError(str(payload["error"]))
+            return payload
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+    raise RuntimeError(f"Авто.ру edge: {last}")
+
+
 def _s(value: Any) -> str | None:
     if value is None:
         return None
@@ -134,7 +177,10 @@ def _curl_post_report(query: str) -> dict[str, Any]:
 
                 csrf = _csrf_from_netscape(jar)
                 if not csrf:
-                    raise RuntimeError("Не удалось получить CSRF auto.ru")
+                    raise RuntimeError(
+                        "Не удалось получить CSRF auto.ru "
+                        "(с Render нужен RF edge: NSPD_BASES + scripts/nspd-edge-proxy.mjs)"
+                    )
 
                 body = json.dumps(
                     {"vin_or_license_plate": query}, ensure_ascii=False
@@ -206,7 +252,10 @@ def _warm_session(opener: urllib.request.OpenerDirector) -> str:
                 csrf = _csrf_from_jar(opener) or _csrf_from_set_cookie(resp.headers)
             if csrf:
                 return csrf
-            last = RuntimeError("Не удалось получить CSRF auto.ru")
+            last = RuntimeError(
+                "Не удалось получить CSRF auto.ru "
+                "(с Render нужен RF edge: NSPD_BASES + scripts/nspd-edge-proxy.mjs)"
+            )
         except Exception as exc:  # noqa: BLE001 — ретраим сеть
             last = exc
         time.sleep(0.8 + attempt * 0.5)
@@ -337,7 +386,14 @@ def lookup_autoru_plate(raw_plate: str, normalized: str | None = None) -> Vehicl
         )
 
     try:
-        # ponytail: сначала curl (cookies на Render), urllib — запасной
+        # 1) RF edge (Render) → 2) curl → 3) urllib
+        if _edge_bases():
+            try:
+                payload = _edge_post_report(normalized)
+                return _parse_report(raw_plate, normalized, payload)
+            except RuntimeError:
+                pass
+
         if _curl_bin():
             try:
                 payload = _curl_post_report(normalized)

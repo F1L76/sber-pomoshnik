@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 /**
- * Edge-прокси НСПД для запуска в РФ (домашний Mac / VPS).
+ * Edge-прокси НСПД (+ Авто.ру История) для запуска в РФ (домашний Mac / VPS).
  *
- * Зачем: Render и другие зарубежные IP часто не достучаться до nspd.gov.ru.
+ * Зачем: Render и другие зарубежные IP часто не достучаться до nspd.gov.ru
+ * и не получают CSRF cookie с auto.ru.
  * Схема (бесплатно, если ПК уже в РФ):
  *   1) на машине в РФ:  node scripts/nspd-edge-proxy.mjs
  *   2) туннель:         npx cloudflared tunnel --url http://127.0.0.1:8791
  *   3) на Render в env:  NSPD_BASES=https://xxxx.trycloudflare.com
  *                      NSPD_PROXY_KEY=<тот же ключ, что на edge-прокси>
+ *
+ * Авто.ру с Render: POST /autoru/vin-report {"vin_or_license_plate":"А123АА77"}
+ * (тот же NSPD_BASES / NSPD_PROXY_KEY).
  *
  * Публичные «бесплатные прокси из интернета» для .gov.ru обычно не работают.
  */
@@ -126,6 +130,64 @@ function readBody(req) {
     });
 }
 
+const AUTORU_UA =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+function cookieFromSetCookie(setCookieList) {
+    const parts = [];
+    let csrf = null;
+    for (const raw of setCookieList || []) {
+        const nv = String(raw).split(";")[0]?.trim();
+        if (!nv || !nv.includes("=")) continue;
+        parts.push(nv);
+        const m = nv.match(/^_csrf_token=(.*)$/);
+        if (m) csrf = m[1];
+    }
+    return { cookie: parts.join("; "), csrf };
+}
+
+/** Бесплатное превью отчёта Авто.ру (тот же ajax, что в vin_checker/autoru.py). */
+async function autoruVinReport(query) {
+    const warm = await fetch("https://auto.ru/history/", {
+        headers: {
+            "User-Agent": AUTORU_UA,
+            Accept: "text/html,application/xhtml+xml",
+            "Accept-Language": "ru-RU,ru;q=0.9"
+        },
+        redirect: "follow"
+    });
+    const setCookies =
+        typeof warm.headers.getSetCookie === "function"
+            ? warm.headers.getSetCookie()
+            : warm.headers.get("set-cookie")
+              ? [warm.headers.get("set-cookie")]
+              : [];
+    const { cookie, csrf } = cookieFromSetCookie(setCookies);
+    if (!csrf) {
+        throw new Error("Не удалось получить CSRF auto.ru на edge");
+    }
+    await warm.arrayBuffer().catch(() => null);
+
+    const resp = await fetch("https://auto.ru/-/ajax/desktop/getRichVinReport/", {
+        method: "POST",
+        headers: {
+            "User-Agent": AUTORU_UA,
+            "Content-Type": "application/json;charset=UTF-8",
+            Accept: "*/*",
+            Origin: "https://auto.ru",
+            Referer: "https://auto.ru/history/",
+            "x-csrf-token": csrf,
+            Cookie: cookie
+        },
+        body: JSON.stringify({ vin_or_license_plate: query })
+    });
+    const text = await resp.text();
+    if (!resp.ok) {
+        throw new Error(`Авто.ру HTTP ${resp.status}: ${text.slice(0, 200)}`);
+    }
+    return JSON.parse(text);
+}
+
 const server = http.createServer(async (req, res) => {
     if (req.method === "OPTIONS") {
         res.writeHead(204);
@@ -141,13 +203,41 @@ const server = http.createServer(async (req, res) => {
 
     if (req.url === "/health" || req.url === "/") {
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-        res.end(JSON.stringify({ ok: true, role: "nspd-edge-proxy", upstreams: UPSTREAMS }));
+        res.end(
+            JSON.stringify({
+                ok: true,
+                role: "nspd-edge-proxy",
+                upstreams: UPSTREAMS,
+                autoru: "/autoru/vin-report"
+            })
+        );
+        return;
+    }
+
+    // ponytail: тот же туннель, что для НСПД — Render иначе без CSRF auto.ru
+    if (req.method === "POST" && req.url?.startsWith("/autoru/vin-report")) {
+        try {
+            const raw = await readBody(req);
+            const body = JSON.parse(raw.toString("utf8") || "{}");
+            const query = String(body.vin_or_license_plate || body.plate || "").trim();
+            if (!query) {
+                res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ error: "Укажите vin_or_license_plate" }));
+                return;
+            }
+            const payload = await autoruVinReport(query);
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(payload));
+        } catch (e) {
+            res.writeHead(502, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ error: e.message || String(e) }));
+        }
         return;
     }
 
     if (!req.url?.startsWith("/api/")) {
         res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-        res.end("Only /api/* is proxied to НСПД");
+        res.end("Only /api/* (НСПД) and POST /autoru/vin-report");
         return;
     }
 
@@ -190,6 +280,7 @@ server.listen(PORT, HOST, () => {
     }
     console.log("Дальше (бесплатный туннель): npx cloudflared tunnel --url http://127.0.0.1:" + PORT);
     console.log("На Render: NSPD_BASES=<url из cloudflared>, NSPD_PROXY_KEY=<тот же ключ>");
+    console.log("Авто.ру с Render: POST /autoru/vin-report (тот же NSPD_BASES)");
 });
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
