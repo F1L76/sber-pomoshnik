@@ -175,6 +175,9 @@ def _is_soft_miss(info: VehicleInfo | None) -> bool:
     if not info or _has_vehicle_data(info):
         return False
     err = (info.lookup_error or "").lower()
+    # CSRF/блок /history/ на datacenter — как soft: не маскируем «не найдено» других источников
+    if "csrf" in err or "не открыть /history" in err:
+        return True
     if "429" in err or "недоступен" in err or "сети" in err or "таймаут" in err:
         return False
     return True

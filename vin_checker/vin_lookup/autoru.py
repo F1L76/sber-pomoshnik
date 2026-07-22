@@ -6,6 +6,9 @@ import http.cookiejar
 import json
 import os
 import re
+import shutil
+import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.request
@@ -17,6 +20,8 @@ AUTORU_HISTORY_URL = "https://auto.ru/history/"
 AUTORU_RICH_REPORT_URL = "https://auto.ru/-/ajax/desktop/getRichVinReport/"
 REQUEST_TIMEOUT = int(os.environ.get("AUTORU_HTTP_TIMEOUT", "25"))
 MAX_RETRIES = int(os.environ.get("AUTORU_HTTP_RETRIES", "4"))
+# ponytail: curl надёжнее urllib CookieJar на datacenter (Render) — иначе нет _csrf_token
+USE_CURL = os.environ.get("AUTORU_CURL", "1").lower() not in ("0", "false", "no")
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
@@ -39,9 +44,18 @@ def _field_text(block: dict[str, Any] | None, key: str) -> str | None:
     return _s(raw)
 
 
-def _open_opener() -> urllib.request.OpenerDirector:
-    jar = http.cookiejar.CookieJar()
-    return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+def _csrf_from_set_cookie(headers: Any) -> str | None:
+    """Достаёт _csrf_token из сырых Set-Cookie (если CookieJar проглотил)."""
+    try:
+        raw_list = headers.get_all("Set-Cookie")  # type: ignore[attr-defined]
+    except (AttributeError, TypeError):
+        single = headers.get("Set-Cookie") if headers else None
+        raw_list = [single] if single else []
+    for raw in raw_list or []:
+        m = re.search(r"(?:^|,\s*)_csrf_token=([^;,\s]+)", str(raw))
+        if m:
+            return m.group(1)
+    return None
 
 
 def _csrf_from_jar(opener: urllib.request.OpenerDirector) -> str | None:
@@ -58,6 +72,123 @@ def _csrf_from_jar(opener: urllib.request.OpenerDirector) -> str | None:
     return None
 
 
+def _csrf_from_netscape(path: str) -> str | None:
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if not line.strip() or line.startswith("#"):
+                    # #HttpOnly_ lines still have the name in field 5 after split
+                    if not line.startswith("#HttpOnly_"):
+                        continue
+                    line = line[len("#HttpOnly_") :]
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) >= 7 and parts[5] == "_csrf_token":
+                    return parts[6]
+    except OSError:
+        return None
+    return None
+
+
+def _curl_bin() -> str | None:
+    if not USE_CURL:
+        return None
+    return shutil.which("curl")
+
+
+def _curl_post_report(query: str) -> dict[str, Any]:
+    curl = _curl_bin()
+    if not curl:
+        raise RuntimeError("curl не найден")
+
+    last: Exception | None = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            with tempfile.TemporaryDirectory(prefix="autoru-") as td:
+                jar = os.path.join(td, "cookies.txt")
+                warm = subprocess.run(
+                    [
+                        curl,
+                        "-sS",
+                        "-L",
+                        "--compressed",
+                        "--max-time",
+                        str(REQUEST_TIMEOUT),
+                        "-A",
+                        USER_AGENT,
+                        "-H",
+                        "Accept: text/html,application/xhtml+xml",
+                        "-H",
+                        "Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+                        "-c",
+                        jar,
+                        "-b",
+                        jar,
+                        AUTORU_HISTORY_URL,
+                    ],
+                    capture_output=True,
+                    timeout=REQUEST_TIMEOUT + 5,
+                )
+                if warm.returncode != 0:
+                    err = (warm.stderr or warm.stdout or b"").decode("utf-8", "replace")
+                    raise RuntimeError(f"curl /history/: {err.strip() or warm.returncode}")
+
+                csrf = _csrf_from_netscape(jar)
+                if not csrf:
+                    raise RuntimeError("Не удалось получить CSRF auto.ru")
+
+                body = json.dumps(
+                    {"vin_or_license_plate": query}, ensure_ascii=False
+                ).encode("utf-8")
+                post = subprocess.run(
+                    [
+                        curl,
+                        "-sS",
+                        "-L",
+                        "--compressed",
+                        "--max-time",
+                        str(REQUEST_TIMEOUT),
+                        "-A",
+                        USER_AGENT,
+                        "-H",
+                        "Content-Type: application/json;charset=UTF-8",
+                        "-H",
+                        "Accept: */*",
+                        "-H",
+                        "Origin: https://auto.ru",
+                        "-H",
+                        f"Referer: {AUTORU_HISTORY_URL}",
+                        "-H",
+                        f"x-csrf-token: {csrf}",
+                        "-c",
+                        jar,
+                        "-b",
+                        jar,
+                        "--data-binary",
+                        "@-",
+                        AUTORU_RICH_REPORT_URL,
+                    ],
+                    input=body,
+                    capture_output=True,
+                    timeout=REQUEST_TIMEOUT + 5,
+                )
+                if post.returncode != 0:
+                    err = (post.stderr or post.stdout or b"").decode("utf-8", "replace")
+                    raise RuntimeError(f"curl report: {err.strip() or post.returncode}")
+                text = post.stdout.decode("utf-8", "replace").strip()
+                if not text:
+                    raise RuntimeError("Пустой ответ Авто.ру")
+                return json.loads(text)
+        except (subprocess.TimeoutExpired, OSError, json.JSONDecodeError, RuntimeError) as exc:
+            last = exc
+            time.sleep(0.8 + attempt * 0.5)
+    raise RuntimeError(f"Авто.ру (curl): сбой ({last})")
+
+
+def _open_opener() -> urllib.request.OpenerDirector:
+    jar = http.cookiejar.CookieJar()
+    return urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+
+
 def _warm_session(opener: urllib.request.OpenerDirector) -> str:
     # ponytail: CSRF из лендинга /history/ — без него ajax 403; auto.ru часто рвёт TLS
     last: Exception | None = None
@@ -65,11 +196,14 @@ def _warm_session(opener: urllib.request.OpenerDirector) -> str:
         try:
             req = urllib.request.Request(
                 AUTORU_HISTORY_URL,
-                headers={"User-Agent": USER_AGENT, "Accept": "text/html"},
+                headers={
+                    "User-Agent": USER_AGENT,
+                    "Accept": "text/html,application/xhtml+xml",
+                    "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+                },
             )
-            with opener.open(req, timeout=REQUEST_TIMEOUT):
-                pass
-            csrf = _csrf_from_jar(opener)
+            with opener.open(req, timeout=REQUEST_TIMEOUT) as resp:
+                csrf = _csrf_from_jar(opener) or _csrf_from_set_cookie(resp.headers)
             if csrf:
                 return csrf
             last = RuntimeError("Не удалось получить CSRF auto.ru")
@@ -203,6 +337,14 @@ def lookup_autoru_plate(raw_plate: str, normalized: str | None = None) -> Vehicl
         )
 
     try:
+        # ponytail: сначала curl (cookies на Render), urllib — запасной
+        if _curl_bin():
+            try:
+                payload = _curl_post_report(normalized)
+                return _parse_report(raw_plate, normalized, payload)
+            except RuntimeError:
+                pass
+
         opener = _open_opener()
         csrf = _warm_session(opener)
         payload = _post_report(opener, csrf, normalized)
@@ -237,9 +379,33 @@ def lookup_autoru_plate(raw_plate: str, normalized: str | None = None) -> Vehicl
 
 
 if __name__ == "__main__":
-    # ponytail: live check; needs network
-    info = lookup_autoru_plate("А123АА77")
-    assert info.source == "autoru"
-    assert info.found, info.lookup_error
-    assert info.make, info
-    print("autoru self-check:", info.found, info.make, info.model, info.model_year)
+    # offline: нормализация + разбор превью (без сети)
+    from vin_validator.plate import normalize_plate, plate_error
+
+    n = normalize_plate("O093HP76")
+    assert n == "О093НР76" and plate_error(n) is None, n
+    sample = {
+        "status": "SUCCESS",
+        "report": {
+            "header": {"title": "Honda CR-V, 2008"},
+            "pts_info": {
+                "mark": {"value_text": "Honda"},
+                "model": {"value_text": "CR-V"},
+                "year": {"value_text": "2008"},
+                "color": {"value_text": "Серый"},
+                "horse_power": {"value_text": "166 л.с."},
+                "vin": "SHS**************",
+            },
+        },
+    }
+    info = _parse_report("О093НР76", n, sample)
+    assert info.found and info.make == "Honda" and info.model == "CR-V"
+    assert info.model_year == "2008" and info.extra.get("VIN", "").startswith("SHS")
+    print("autoru self-check ok:", info.make, info.model, info.model_year)
+
+    if os.environ.get("AUTORU_LIVE_CHECK", "").lower() in ("1", "true", "yes"):
+        live = lookup_autoru_plate("О093НР76")
+        assert live.source == "autoru"
+        assert live.found, live.lookup_error
+        assert live.make, live
+        print("autoru live:", live.found, live.make, live.model, live.model_year)
