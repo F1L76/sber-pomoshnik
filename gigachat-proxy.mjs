@@ -104,8 +104,40 @@ function requestJson(url, options, body) {
     });
 }
 
+function normalizeGigaChatCredentials(raw) {
+    // ponytail: в Studio иногда копируют «Basic xxx» целиком — прокси сам добавляет Basic
+    let credentials = String(raw || "").trim().replace(/^Basic\s+/i, "");
+    if (
+        (credentials.startsWith('"') && credentials.endsWith('"')) ||
+        (credentials.startsWith("'") && credentials.endsWith("'"))
+    ) {
+        credentials = credentials.slice(1, -1).trim();
+    }
+    return credentials;
+}
+
+function friendlyOAuthError(status, json) {
+    const raw = String(json?.message || json?.error_description || json?.error || "").trim();
+    const lower = raw.toLowerCase();
+    if (status === 401 || lower.includes("credentials doesn't match") || lower.includes("unauthorized")) {
+        return (
+            "Ключ GIGACHAT_CREDENTIALS не принят Сбером (устарел или скопирован неверно). "
+            + "Скопируйте тот же Authorization Key из Render → Environment "
+            + "или из developers.sber.ru/studio → .env и перезапустите прокси. "
+            + "Один ключ можно использовать и локально, и на Render."
+        );
+    }
+    if (status === 403 || lower.includes("scope")) {
+        return (
+            "OAuth отклонил scope. Проверьте GIGACHAT_SCOPE "
+            + `(сейчас ${process.env.GIGACHAT_SCOPE || "GIGACHAT_API_PERS"}) — как в Studio/Render.`
+        );
+    }
+    return raw || `OAuth ошибка HTTP ${status}`;
+}
+
 async function getAccessToken() {
-    const credentials = process.env.GIGACHAT_CREDENTIALS;
+    const credentials = normalizeGigaChatCredentials(process.env.GIGACHAT_CREDENTIALS);
     if (!credentials) {
         throw new Error("Не задан GIGACHAT_CREDENTIALS в файле .env");
     }
@@ -140,7 +172,7 @@ async function getAccessToken() {
     }
 
     if (status !== 200 || !json.access_token) {
-        const err = json.message || json.error_description || `OAuth ошибка HTTP ${status}`;
+        const err = friendlyOAuthError(status, json);
         authFailCache = { error: err, until: Date.now() + 120_000 };
         throw new Error(err);
     }

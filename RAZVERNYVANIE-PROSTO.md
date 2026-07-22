@@ -60,6 +60,22 @@
 
 > Бесплатный тариф «засыпает» — первый заход может ждать 30–60 секунд.
 
+### Локально «Ошибка ключа», а на Render всё ок
+
+Да, **один и тот же** `GIGACHAT_CREDENTIALS` можно использовать и на Render, и на Mac.
+
+1. Render → ваш сервис → **Environment** → скопируйте значение `GIGACHAT_CREDENTIALS`.
+2. В папке проекта откройте `.env` (из `.env.example`, если файла нет).
+3. Вставьте:
+   ```
+   GIGACHAT_CREDENTIALS=вставленный_ключ
+   GIGACHAT_SCOPE=GIGACHAT_API_PERS
+   GIGACHAT_MODEL=GigaChat
+   ```
+4. Перезапустите `node gigachat-proxy.mjs` и откройте http://localhost:8787/ (не файл HTML напрямую).
+
+Ошибка обычно значит: в локальном `.env` лежит **старый или другой** ключ, чем на Render. IP-блокировки для этого OAuth обычно нет.
+
 ---
 
 ## Вариант 4. Yandex Cloud (если снова попробуете)
