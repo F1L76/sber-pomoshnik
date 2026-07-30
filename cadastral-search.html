@@ -962,12 +962,17 @@
                     header.outerHTML = renderListingsHeader(state.stats, state.meta.note);
                 }
                 if (!state.listings.length) {
-                    document.getElementById("listingsBlock").insertAdjacentHTML("beforeend",
-                        `<div class="card-panel p-4 text-center text-muted">
-                            <i class="fa-regular fa-folder-open fa-2x mb-3"></i>
-                            <p class="mb-2">Объявления о продаже не найдены в БазаЦООП.</p>
-                            <p class="small mb-0">Используйте ссылку поиска выше.</p>
-                        </div>`);
+                    const authBlocked = state.sourceNotices.some(
+                        (n) => n.source === "bazacoop" && n.reason === "auth"
+                    );
+                    if (!authBlocked) {
+                        document.getElementById("listingsBlock").insertAdjacentHTML("beforeend",
+                            `<div class="card-panel p-4 text-center text-muted">
+                                <i class="fa-regular fa-folder-open fa-2x mb-3"></i>
+                                <p class="mb-2">Объявления о продаже не найдены в БазаЦООП.</p>
+                                <p class="small mb-0">Используйте ссылку поиска выше.</p>
+                            </div>`);
+                    }
                 }
             }
         }
