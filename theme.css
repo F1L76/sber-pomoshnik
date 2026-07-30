@@ -270,7 +270,6 @@ html[data-theme="dark"] .converter-busy,
 html[data-theme="dark"] .converter-busy--warning,
 html[data-theme="dark"] .converter-busy--success,
 html[data-theme="dark"] .converter-busy--error,
-html[data-theme="dark"] #innSearchStatus .converter-busy,
 html[data-theme="dark"] #importStatus .converter-busy,
 html[data-theme="dark"] [data-import-status] .converter-busy,
 html[data-theme="dark"] [data-zalog-status] .converter-busy {

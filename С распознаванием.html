@@ -676,25 +676,12 @@
             width: 100%;
             margin: 0;
         }
-        #innSearchStatus .converter-busy-phrase {
-            min-height: 3.8em;
-        }
         @keyframes converter-cat-bob {
             0%, 100% { transform: translate3d(0, 0, 0); }
             50% { transform: translate3d(0, -7px, 0); }
         }
         @media (prefers-reduced-motion: reduce) {
             .converter-busy-cat { animation: none; }
-        }
-        #innSearchStatus {
-            display: none;
-            margin-top: 1.25rem;
-        }
-        #innSearchStatus.is-visible {
-            display: block;
-        }
-        #innSearchStatus .converter-busy {
-            align-items: center;
         }
         .assistant-insight {
             display: none;
@@ -995,7 +982,6 @@
                 <span class="badge bg-light text-dark p-3 shadow-sm" id="clientBadge"><i class="fas fa-user-circle me-1" aria-hidden="true"></i>Клиент не выбран</span>
             </div>
         </div>
-        <div id="innSearchStatus" aria-live="polite"></div>
     </div>
 
     <div id="assistantInsight" class="assistant-insight" aria-live="polite"></div>
@@ -2140,7 +2126,6 @@
     });
 
     const CLIENT_INN_STORAGE_KEY = "sber-pomoshnik-client-inn";
-    const innSearchStatusEl = document.getElementById("innSearchStatus");
     const assistantInsightEl = document.getElementById("assistantInsight");
     let innSearchBusy = false;
 
@@ -2251,45 +2236,6 @@
         refreshZalogServerStatus();
     }
 
-    async function playInnSearchAnimation() {
-        if (!innSearchStatusEl || typeof ConverterStatusUI === "undefined") {
-            await new Promise((r) => setTimeout(r, 7000));
-            return;
-        }
-        innSearchStatusEl.classList.add("is-visible");
-        // ponytail: без fade — мгновенная смена textContent, иначе фразы визуально наплывают
-        innSearchStatusEl.innerHTML = ConverterStatusUI.renderBusy("inn", {
-            text: ConverterStatusUI.pickPhrase("inn"),
-            kind: "loading",
-            forceCat: true
-        });
-        const busy = innSearchStatusEl.querySelector(".converter-busy");
-        if (busy) busy.removeAttribute("aria-live");
-        const textEl = innSearchStatusEl.querySelector(".converter-busy-text");
-        const catEl = innSearchStatusEl.querySelector(".converter-busy-cat");
-        if (catEl) {
-            catEl.loading = "eager";
-            catEl.removeAttribute("loading");
-        }
-
-        const durationMs = 7000;
-        const intervalMs = 1500;
-        const started = Date.now();
-        let nextChangeAt = started + intervalMs;
-        while (Date.now() - started < durationMs) {
-            const wait = Math.min(nextChangeAt, started + durationMs) - Date.now();
-            if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-            if (Date.now() - started >= durationMs || !textEl) break;
-            textEl.textContent = ConverterStatusUI.pickPhrase("inn");
-            nextChangeAt += intervalMs;
-        }
-        // ponytail: фиксируем scroll до снятия высокого блока с котиком — иначе страница скачет
-        const scrollY = window.scrollY;
-        innSearchStatusEl.classList.remove("is-visible");
-        innSearchStatusEl.innerHTML = "";
-        window.scrollTo(0, scrollY);
-    }
-
     async function loadClientByInn(inn, opts) {
         const silent = opts?.silent;
         const skipAnim = opts?.skipAnim || silent;
@@ -2314,8 +2260,6 @@
         syncUploadLabels();
 
         try {
-            if (!skipAnim) await playInnSearchAnimation();
-
             currentClientInn = inn;
             currentClientData = JSON.parse(JSON.stringify(mockData[inn]));
             sessionStorage.setItem(CLIENT_INN_STORAGE_KEY, inn);
