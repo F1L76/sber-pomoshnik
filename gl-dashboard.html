@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard ГЛ ЦООП — СберБизнес Помощник</title>
+    <script>(function(){try{if(localStorage.getItem("sber-pomoshnik:theme")==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.cdnfonts.com/css/sb-sans-interface" rel="stylesheet">
+    <script src="/vendor/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --sber-green: #21A038;
+            --sber-bg: #F0F4F8;
+            --sber-card: #FFFFFF;
+            --sber-text: #1E2A3A;
+            --sber-muted: #617188;
+            --sber-border: #E2EAF2;
+            --radius: 20px;
+        }
+        body {
+            font-family: 'SB Sans Interface', system-ui, sans-serif;
+            background: var(--sber-bg);
+            color: var(--sber-text);
+            min-height: 100vh;
+        }
+        .hero {
+            background: linear-gradient(135deg, #1E2A3A 0%, #243447 100%);
+            color: #fff;
+            border-bottom: 3px solid var(--sber-green);
+            padding: 2rem 0 2.5rem;
+        }
+        .card-panel {
+            background: var(--sber-card);
+            border: 1px solid var(--sber-border);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 24px rgba(30, 42, 58, 0.06);
+        }
+        .btn-sber {
+            background: var(--sber-green);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+        }
+        .btn-sber:hover { background: #1B8A32; color: #fff; }
+        .stat-chip {
+            background: var(--sber-bg);
+            border: 1px solid var(--sber-border);
+            border-radius: 14px;
+            padding: 0.85rem 1rem;
+        }
+        .stat-chip .lbl { font-size: 0.75rem; color: var(--sber-muted); }
+        .stat-chip .val { font-size: 1.25rem; font-weight: 700; color: var(--sber-green); }
+        .load-table { font-size: 0.9rem; }
+        .load-table th { white-space: nowrap; }
+        .load-bar {
+            height: 8px;
+            background: #e8edf2;
+            border-radius: 99px;
+            overflow: hidden;
+            min-width: 80px;
+        }
+        .load-bar > span {
+            display: block;
+            height: 100%;
+            border-radius: 99px;
+            background: var(--sber-green);
+        }
+        .load-ok { color: var(--sber-green); }
+        .load-warn { color: #c9a227; }
+        .load-over { color: #c62828; }
+        .file-pills { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .file-pills .badge { font-weight: 500; }
+    </style>
+    <link rel="stylesheet" href="/theme.css?v=13">
+</head>
+<body>
+    <header class="hero">
+        <div class="container">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <p class="small mb-1 opacity-75"><a href="/" style="color:inherit;text-decoration:none">СберБизнес Помощник</a> · ГЛ ЦООП</p>
+                    <h1 class="h3 mb-0"><i class="fa-solid fa-chart-pie me-2 text-success"></i>Dashboard ГЛ ЦООП</h1>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <div class="theme-toggle-standalone">
+                        <div class="form-check form-switch theme-toggle-wrap mb-0" title="Светлая или тёмная тема">
+                            <input class="form-check-input" type="checkbox" role="switch" id="themeToggle" data-theme-toggle>
+                            <label class="form-check-label" for="themeToggle">
+                                <i class="fas fa-moon theme-toggle-icon" data-theme-icon aria-hidden="true"></i>
+                                <span data-theme-label>Светлая</span>
+                            </label>
+                        </div>
+                    </div>
+                    <a href="/?view=services" class="btn btn-outline-light btn-sm">← СберБизнес Помощник</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container py-4">
+        <section class="card-panel p-4 mb-4">
+            <h2 class="h5 mb-2">Источники данных</h2>
+            <p class="text-muted small mb-3">Выберите до 4 файлов Excel (выгрузки БД). ФИО сотрудника — столбец <strong>Y</strong> до символа «(». План: 24 заявки за рабочий день. Нагрузка — с начала текущего квартала по сегодня.</p>
+            <div class="d-flex flex-wrap align-items-end gap-3">
+                <div class="flex-grow-1">
+                    <label class="form-label small fw-semibold mb-1" for="excelFiles">Файлы Excel</label>
+                    <input id="excelFiles" class="form-control" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" multiple>
+                </div>
+                <button type="button" class="btn btn-sber" id="buildBtn" disabled>
+                    <i class="fas fa-calculator me-1"></i>Посчитать нагрузку
+                </button>
+            </div>
+            <div id="filePills" class="file-pills mt-2"></div>
+            <div id="parseError" class="text-danger small mt-2" hidden></div>
+        </section>
+
+        <section class="card-panel p-4" id="loadBlock">
+            <h2 class="h5 mb-3">Нагрузка сотрудников</h2>
+            <p class="text-muted mb-0" id="loadEmpty">Загрузите Excel и нажмите «Посчитать нагрузку».</p>
+            <div id="loadResult" hidden>
+                <div class="row g-3 mb-4" id="loadStats"></div>
+                <p class="small text-muted" id="loadNote"></p>
+                <div class="table-responsive">
+                    <table class="table load-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>ФИО</th>
+                                <th class="text-end">Заявок</th>
+                                <th class="text-end">План</th>
+                                <th>Нагрузка</th>
+                            </tr>
+                        </thead>
+                        <tbody id="loadBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="/theme.js?v=2"></script>
+    <script type="module">
+        import { aggregateEmployeeLoad, FIO_COL } from "/lib/gl-load.mjs";
+
+        const input = document.getElementById("excelFiles");
+        const buildBtn = document.getElementById("buildBtn");
+        const pills = document.getElementById("filePills");
+        const parseError = document.getElementById("parseError");
+        const loadEmpty = document.getElementById("loadEmpty");
+        const loadResult = document.getElementById("loadResult");
+        const loadStats = document.getElementById("loadStats");
+        const loadNote = document.getElementById("loadNote");
+        const loadBody = document.getElementById("loadBody");
+
+        function selectedFiles() {
+            return [...(input.files || [])].slice(0, 4);
+        }
+
+        function renderPills() {
+            const files = selectedFiles();
+            pills.innerHTML = files.map((f) =>
+                `<span class="badge bg-secondary">${f.name}</span>`
+            ).join("");
+            if ((input.files || []).length > 4) {
+                pills.innerHTML += '<span class="badge bg-warning text-dark">взяты первые 4 файла</span>';
+            }
+            buildBtn.disabled = files.length === 0;
+        }
+
+        input.addEventListener("change", renderPills);
+
+        function sheetToTable(fileName, sheetName, sheet) {
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: "" });
+            if (!rows.length) return null;
+            const headers = rows[0].map((h) => (h == null ? "" : h));
+            const data = rows.slice(1).filter((r) => r && r.length);
+            const wide = data.some((r) => r.length > FIO_COL) || headers.length > FIO_COL;
+            if (!wide) return null;
+            return { file: fileName, sheet: sheetName, headers, rows: data };
+        }
+
+        async function readWorkbook(file) {
+            const buf = await file.arrayBuffer();
+            const wb = XLSX.read(buf, { type: "array", cellDates: true });
+            const tables = [];
+            for (const name of wb.SheetNames) {
+                const t = sheetToTable(file.name, name, wb.Sheets[name]);
+                if (t) tables.push(t);
+            }
+            return tables;
+        }
+
+        function fmtDate(d) {
+            return d.toLocaleDateString("ru-RU");
+        }
+
+        function loadClass(pct) {
+            if (pct > 100) return "load-over";
+            if (pct >= 80) return "load-warn";
+            return "load-ok";
+        }
+
+        function chip(lbl, val) {
+            return `<div class="col-6 col-md-3"><div class="stat-chip"><div class="lbl">${lbl}</div><div class="val">${val}</div></div></div>`;
+        }
+
+        function renderLoad(agg) {
+            loadEmpty.hidden = true;
+            loadResult.hidden = false;
+            loadStats.innerHTML =
+                chip("Квартал с", fmtDate(agg.qStart)) +
+                chip("Рабочих дней", String(agg.workdays)) +
+                chip("План на человека", String(agg.plan)) +
+                chip("Сотрудников", String(agg.employees.length));
+            const dateBit = agg.hasDateFilter
+                ? `Дата заявки: «${agg.dateHeader}». Строк вне квартала отброшено: ${agg.skippedOutOfQuarter}.`
+                : "Столбец даты не найден — учтены все строки с ФИО в столбце Y.";
+            loadNote.textContent =
+                `План = ${agg.planPerDay} заявки × ${agg.workdays} раб. дн. с ${fmtDate(agg.qStart)} по ${fmtDate(agg.today)}. Учтено заявок: ${agg.used}. Без ФИО: ${agg.skippedNoFio}. ${dateBit}`;
+            loadBody.innerHTML = agg.employees.map((e) => {
+                const pct = e.loadPct;
+                const width = Math.min(pct, 100);
+                const cls = loadClass(pct);
+                return `<tr>
+                    <td>${e.fio.replace(/</g, "&lt;")}</td>
+                    <td class="text-end">${e.apps}</td>
+                    <td class="text-end">${e.plan}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="load-bar flex-grow-1"><span style="width:${width}%"></span></div>
+                            <strong class="${cls}">${pct.toFixed(1)}%</strong>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join("") || `<tr><td colspan="4" class="text-muted">Нет строк с ФИО в столбце Y</td></tr>`;
+        }
+
+        buildBtn.addEventListener("click", async () => {
+            parseError.hidden = true;
+            parseError.textContent = "";
+            const files = selectedFiles();
+            if (!files.length) return;
+            if (typeof XLSX === "undefined") {
+                parseError.textContent = "Не загрузилась библиотека Excel (/vendor/xlsx.full.min.js).";
+                parseError.hidden = false;
+                return;
+            }
+            buildBtn.disabled = true;
+            try {
+                const tables = [];
+                for (const f of files) {
+                    tables.push(...await readWorkbook(f));
+                }
+                if (!tables.length) {
+                    throw new Error("В файлах нет листов со столбцом Y (25-й столбец).");
+                }
+                renderLoad(aggregateEmployeeLoad(tables, new Date()));
+            } catch (e) {
+                parseError.textContent = e.message || String(e);
+                parseError.hidden = false;
+            } finally {
+                buildBtn.disabled = selectedFiles().length === 0;
+            }
+        });
+    </script>
+</body>
+</html>

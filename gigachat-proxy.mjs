@@ -675,6 +675,11 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === "GET" && (url.pathname === "/gl-dashboard" || url.pathname === "/gl-dashboard/")) {
+        serveStatic(req, res, path.join(__dirname, "gl-dashboard.html"));
+        return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/vin/health") {
         const health = await checkVinHealth();
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });

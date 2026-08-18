@@ -754,3 +754,16 @@ html[data-theme="dark"] .text-warning-emphasis {
   font-size: 0.85rem;
   font-weight: 600;
 }
+
+html[data-theme="dark"] .stat-chip {
+  background: #16202c !important;
+  border-color: #334155 !important;
+}
+html[data-theme="dark"] .load-bar {
+  background: #243041 !important;
+}
+html[data-theme="dark"] .load-table th,
+html[data-theme="dark"] .load-table td {
+  color: #e8eef4 !important;
+  border-color: #334155 !important;
+}
