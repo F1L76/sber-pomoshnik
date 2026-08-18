@@ -225,9 +225,11 @@ if (csiScore(5) !== 5 || csiScore("4") !== 4 || csiScore(0) != null || csiScore(
 if (segmentFromAF("клиент малого бизнеса") !== "ММБ") throw new Error("seg mmb");
 if (segmentFromAF("работа с корпоративным блоком") !== "КСБ") throw new Error("seg ksb");
 if (segmentFromAF("группа аналитики") !== "ПМЗ") throw new Error("seg pmz");
+if (segmentFromAF("служба документарных операций") !== "ПКД") throw new Error("seg pkd");
 if (segmentFromAF("служба залогов") !== "ЗС") throw new Error("seg zs");
 if (segmentFromAF("прочее") !== "Прочее") throw new Error("seg other");
 if (segmentFromAF("малого и залог") !== "ММБ") throw new Error("seg mmb wins");
+if (segmentFromAF("документарных залогов") !== "ПКД") throw new Error("seg pkd wins");
 
 const metricRow = Array(40).fill("");
 metricRow[3] = "10.07.2026";
@@ -262,6 +264,7 @@ const afVals = [
     ["с корпоративным клиентом", "КСБ"],
     ["отдел аналитики", "ПМЗ"],
     ["залог недвижимости", "ЗС"],
+    ["служба документарных операций", "ПКД"],
     ["неизвестно", "Прочее"]
 ];
 for (const [af] of afVals) {
@@ -281,6 +284,7 @@ if (outSeg.segments.mdo.ММБ !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg f
 if (outSeg.segments.l1.КСБ !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file l1");
 if (outSeg.segments.oo.ПМЗ !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file oo pmz");
 if (outSeg.segments.oo.ЗС !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file oo zs");
+if (outSeg.segments.oo.ПКД !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file oo pkd");
 if (outSeg.segments.oo.Прочее !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file oo other");
 
 console.log("gl-load selfcheck ok", {
