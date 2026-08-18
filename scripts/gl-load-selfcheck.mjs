@@ -66,8 +66,20 @@ const workdays = countWorkdays(q, now);
 if (out.workdays !== workdays) throw new Error(`workdays ${out.workdays} != ${workdays}`);
 if (out.plan !== PLAN_APPS_PER_WORKDAY * workdays) throw new Error("plan");
 if (out.employees.length !== 1 || out.employees[0].apps !== 48) throw new Error("apps");
-const expectPct = (48 / out.plan) * 100;
+const expectPct = (48 / 24 / workdays) * 100;
 if (Math.abs(out.employees[0].loadPct - expectPct) > 1e-9) throw new Error("pct");
+
+const arbRow = Array(34).fill("");
+arbRow[3] = "10.07.2026";
+arbRow[FIO_COL] = "Сидоров С.С. (111)";
+arbRow[33] = "Арбитраж";
+const outArb = aggregateEmployeeLoad(
+    [{ file: "a.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: [...rows, arbRow] }],
+    now
+);
+const expectArb = ((48 / 24 + 1 / 3.2) / workdays) * 100;
+if (outArb.employees[0].appsArb !== 1) throw new Error("appsArb");
+if (Math.abs(outArb.employees[0].loadPct - expectArb) > 1e-6) throw new Error("arb pct");
 
 const vacPlan = employeePlan(q, now, { from: "2026-07-06", to: "2026-07-10" });
 if (vacPlan.vacationDays !== 5) throw new Error(`vacationDays ${vacPlan.vacationDays}`);

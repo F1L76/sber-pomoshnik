@@ -122,7 +122,7 @@
     <main class="container py-4">
         <section class="card-panel p-4 mb-4">
             <h2 class="h5 mb-2">Источники данных</h2>
-            <p class="text-muted small mb-3">Выберите до 4 файлов Excel (выгрузки БД). ФИО сотрудника — столбец <strong>Y</strong> до символа «(». План: 24 заявки за рабочий день. Нагрузка — с начала текущего квартала по сегодня.</p>
+            <p class="text-muted small mb-3">Выберите до 4 файлов Excel (выгрузки БД). ФИО — столбец <strong>Y</strong> до «(». Обычные заявки: 24 в день. Если в столбце <strong>AH</strong> значение «Арбитраж» — норматив 3,2 заявки в день (рабочий день 8 часов). Нагрузка — с начала квартала по сегодня.</p>
             <div class="d-flex flex-wrap align-items-end gap-3">
                 <div class="flex-grow-1">
                     <label class="form-label small fw-semibold mb-1" for="excelFiles">Файлы Excel</label>
@@ -292,7 +292,7 @@
                 ? `Дата заявки: «${agg.dateHeader}». Строк вне квартала отброшено: ${agg.skippedOutOfQuarter}.`
                 : "Столбец даты не найден — учтены все строки с ФИО в столбце Y.";
             loadNote.textContent =
-                `Базовый план = ${agg.planPerDay} × ${agg.workdays} раб. дн. с ${fmtDate(agg.qStart)} по ${fmtDate(agg.today)}. Отпуск (солнышко) вычитает рабочие дни из плана сотрудника. Учтено заявок: ${agg.used}. Без ФИО: ${agg.skippedNoFio}. ${dateBit}`;
+                `Нагрузка = (обычные/24 + арбитраж/3,2) / рабочие дни × 100%. Обычная заявка — 24 в день, AH=«Арбитраж» — 3,2 в день (8 ч). Базовые рабочие дни: ${agg.workdays} с ${fmtDate(agg.qStart)} по ${fmtDate(agg.today)}. Заявок: ${agg.used}, из них арбитраж: ${agg.usedArb || 0}. Без ФИО: ${agg.skippedNoFio}. ${dateBit}`;
             loadBody.innerHTML = agg.employees.map((e) => {
                 const pct = e.loadPct;
                 const width = Math.min(pct, 100);
@@ -308,7 +308,7 @@
                             <i class="fas fa-sun" aria-hidden="true"></i>
                         </button>
                     </td>
-                    <td class="text-end">${e.apps}</td>
+                    <td class="text-end">${e.apps}${e.appsArb ? `<div class="vac-hint">арб. ${e.appsArb}</div>` : ""}</td>
                     <td class="text-end">${e.plan}</td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
