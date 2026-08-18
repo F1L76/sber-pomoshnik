@@ -15,9 +15,16 @@ import {
     isVolkov,
     isVolchkova,
     findTagColumn,
+    termDaysFromST,
+    isOverdueCell,
+    numberCell,
     HOURS_PER_WORKDAY,
     MIN_APPS_FOR_LOAD,
     FIO_COL,
+    S_COL,
+    T_COL,
+    W_COL,
+    AG_COL,
     AH_COL
 } from "../lib/gl-load.mjs";
 
@@ -204,6 +211,30 @@ if (vacPlan.vacationDays !== 5) throw new Error(`vacationDays ${vacPlan.vacation
 if (vacPlan.plan !== HOURS_PER_WORKDAY * (workdays - 5)) throw new Error("vac plan hours");
 const withV = withVacations(out, { "Сидоров С.С.": { from: "2026-07-06", to: "2026-07-10" } });
 if (withV.employees[0].plan !== vacPlan.plan) throw new Error("withVacations plan");
+
+if (termDaysFromST("01.07.2026", "04.07.2026") !== 3) throw new Error("termDays");
+if (termDaysFromST("", "04.07.2026") != null) throw new Error("termDays empty");
+if (!isOverdueCell("ДА") || !isOverdueCell("да") || isOverdueCell("нет")) throw new Error("overdue cell");
+if (numberCell("1,5") !== 1.5 || numberCell("") !== 0) throw new Error("numberCell");
+
+const metricRow = Array(34).fill("");
+metricRow[3] = "10.07.2026";
+metricRow[FIO_COL] = "Метриков М.М. (7)";
+metricRow[S_COL] = "01.07.2026";
+metricRow[T_COL] = "04.07.2026";
+metricRow[W_COL] = 2;
+metricRow[AG_COL] = "ДА";
+const metricRows = repeatRow(metricRow, MIN_APPS_FOR_LOAD + 1);
+metricRows[0][AG_COL] = "НЕТ";
+metricRows[0][W_COL] = 0;
+metricRows[0][T_COL] = "06.07.2026"; // 5 days
+const outM = aggregateEmployeeLoad([{ file: "MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: metricRows }], now);
+if (outM.employees.length !== 1) throw new Error("metric emp");
+if (Math.abs(outM.employees[0].avgTermDays - (5 + 3 * MIN_APPS_FOR_LOAD) / (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("avg term");
+if (outM.employees[0].overdue !== MIN_APPS_FOR_LOAD) throw new Error("overdue emp");
+if (outM.overdueTotal !== MIN_APPS_FOR_LOAD) throw new Error("overdue total");
+if (outM.employees[0].returns !== 2 * MIN_APPS_FOR_LOAD) throw new Error("returns emp");
+if (outM.returnsTotal !== 2 * MIN_APPS_FOR_LOAD) throw new Error("returns total");
 
 console.log("gl-load selfcheck ok", {
     workdays,

@@ -163,6 +163,72 @@
                 </div>
             </div>
         </section>
+
+        <section class="card-panel p-4 mt-4" id="termBlock" hidden>
+            <h2 class="h5 mb-2">Средний срок</h2>
+            <p class="text-muted small mb-3">Срок заявки = столбец <strong>T</strong> минус столбец <strong>S</strong>, в днях. Те же сотрудники, что в нагрузке.</p>
+            <div class="table-responsive">
+                <table class="table load-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ФИО</th>
+                            <th class="text-end">Средний срок, дн.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="termBody"></tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Общий срок</th>
+                            <th class="text-end" id="termTotal"></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+        <section class="card-panel p-4 mt-4" id="overdueBlock" hidden>
+            <h2 class="h5 mb-2">Число просрочек</h2>
+            <p class="text-muted small mb-3">Просрочка — столбец <strong>AG</strong> со значением <strong>ДА</strong>. Те же сотрудники.</p>
+            <div class="table-responsive">
+                <table class="table load-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ФИО</th>
+                            <th class="text-end">Просрочек</th>
+                        </tr>
+                    </thead>
+                    <tbody id="overdueBody"></tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Общее количество</th>
+                            <th class="text-end" id="overdueTotal"></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+        <section class="card-panel p-4 mt-4" id="returnsBlock" hidden>
+            <h2 class="h5 mb-2">Количество возвратов</h2>
+            <p class="text-muted small mb-3">Сумма значений столбца <strong>W</strong>. Те же сотрудники.</p>
+            <div class="table-responsive">
+                <table class="table load-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ФИО</th>
+                            <th class="text-end">Возвратов</th>
+                        </tr>
+                    </thead>
+                    <tbody id="returnsBody"></tbody>
+                    <tfoot>
+                        <tr>
+                            <th>Общее количество</th>
+                            <th class="text-end" id="returnsTotal"></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
     </main>
 
     <dialog id="vacDialog" class="card-panel p-4" style="border:1px solid var(--sber-border); border-radius: 16px; max-width: 26rem; width: calc(100% - 2rem);">
@@ -198,6 +264,15 @@
         const loadStats = document.getElementById("loadStats");
         const loadNote = document.getElementById("loadNote");
         const loadBody = document.getElementById("loadBody");
+        const termBlock = document.getElementById("termBlock");
+        const termBody = document.getElementById("termBody");
+        const termTotal = document.getElementById("termTotal");
+        const overdueBlock = document.getElementById("overdueBlock");
+        const overdueBody = document.getElementById("overdueBody");
+        const overdueTotal = document.getElementById("overdueTotal");
+        const returnsBlock = document.getElementById("returnsBlock");
+        const returnsBody = document.getElementById("returnsBody");
+        const returnsTotal = document.getElementById("returnsTotal");
         const vacDialog = document.getElementById("vacDialog");
         const vacForm = document.getElementById("vacForm");
         const vacFioEl = document.getElementById("vacFio");
@@ -340,6 +415,25 @@
                     </td>
                 </tr>`;
             }).join("") || `<tr><td colspan="6" class="text-muted">Нет строк с ФИО в столбце Y</td></tr>`;
+
+            const people = (sortFn) => [...agg.employees].sort(sortFn);
+            const fioCell = (e) => `<td class="fio-cell">${e.fio.replace(/</g, "&lt;")}</td>`;
+            const fmtDays = (n) => (n == null || !Number.isFinite(n) ? "—" : n.toFixed(1));
+            termBody.innerHTML = people((a, b) => (b.avgTermDays ?? -1) - (a.avgTermDays ?? -1) || a.fio.localeCompare(b.fio, "ru"))
+                .map((e) => `<tr>${fioCell(e)}<td class="text-end">${fmtDays(e.avgTermDays)}</td></tr>`).join("")
+                || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
+            termTotal.textContent = fmtDays(agg.avgTermDays);
+            overdueBody.innerHTML = people((a, b) => b.overdue - a.overdue || a.fio.localeCompare(b.fio, "ru"))
+                .map((e) => `<tr>${fioCell(e)}<td class="text-end">${e.overdue || 0}</td></tr>`).join("")
+                || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
+            overdueTotal.textContent = String(agg.overdueTotal || 0);
+            returnsBody.innerHTML = people((a, b) => b.returns - a.returns || a.fio.localeCompare(b.fio, "ru"))
+                .map((e) => `<tr>${fioCell(e)}<td class="text-end">${e.returns || 0}</td></tr>`).join("")
+                || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
+            returnsTotal.textContent = String(agg.returnsTotal || 0);
+            termBlock.hidden = false;
+            overdueBlock.hidden = false;
+            returnsBlock.hidden = false;
         }
 
         loadBody.addEventListener("click", (e) => {
