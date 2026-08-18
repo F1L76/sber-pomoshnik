@@ -153,6 +153,7 @@
                                 <th>ФИО</th>
                                 <th></th>
                                 <th class="text-end">Заявок</th>
+                                <th class="text-end">Факт, ч</th>
                                 <th class="text-end">План, ч</th>
                                 <th>Нагрузка</th>
                             </tr>
@@ -330,6 +331,7 @@
                         </button>
                     </td>
                     <td class="text-end">${e.apps}${e.appsArb || e.appsL1 || e.appsOo ? `<div class="vac-hint">${[e.appsArb ? `арб. ${e.appsArb}` : "", e.appsL1 ? `1л. ${e.appsL1}` : "", e.appsOo ? `ОО ${e.appsOo}` : ""].filter(Boolean).join(" · ")}</div>` : ""}</td>
+                    <td class="text-end">${((e.minutes || 0) / 60).toFixed(1)}</td>
                     <td class="text-end">${e.planHours ?? e.plan}</td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
