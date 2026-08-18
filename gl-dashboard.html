@@ -172,7 +172,14 @@
             color: var(--sber-text);
         }
         .kpi-stars { color: #e6a817; }
-        .kpi-stars .fa-regular { color: #c5cdd6; }
+        .kpi-stars .is-off {
+            color: #fff;
+            -webkit-text-stroke: 0.7px #c5cdd6;
+        }
+        html[data-theme="dark"] .kpi-stars .is-off {
+            color: #fff;
+            -webkit-text-stroke: 0.5px #64748b;
+        }
         .csi-table thead th {
             text-align: center;
             font-weight: 600;
@@ -189,7 +196,6 @@
             gap: 1px;
             font-size: 0.78rem;
         }
-        html[data-theme="dark"] .kpi-stars .fa-regular { color: #4a5568; }
         html[data-theme="dark"] .kpi-card {
             background: #1a2330;
             border-color: #334155;
@@ -298,7 +304,7 @@
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-calendar-xmark"></i></span>
                         <div>
-                            <h2>Число просрочек</h2>
+                            <h2>Просрочки</h2>
                             <p>AG = ДА</p>
                         </div>
                     </div>
@@ -343,10 +349,10 @@
                             <thead>
                                 <tr>
                                     <th>ФИО</th>
-                                    <th><span class="kpi-stars csi-head-stars" aria-label="1"><i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i></span></th>
-                                    <th><span class="kpi-stars csi-head-stars" aria-label="2"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i></span></th>
-                                    <th><span class="kpi-stars csi-head-stars" aria-label="3"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i></span></th>
-                                    <th><span class="kpi-stars csi-head-stars" aria-label="4"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i></span></th>
+                                    <th><span class="kpi-stars csi-head-stars" aria-label="1"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
+                                    <th><span class="kpi-stars csi-head-stars" aria-label="2"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
+                                    <th><span class="kpi-stars csi-head-stars" aria-label="3"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
+                                    <th><span class="kpi-stars csi-head-stars" aria-label="4"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i></span></th>
                                     <th><span class="kpi-stars csi-head-stars" aria-label="5"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></span></th>
                                 </tr>
                             </thead>
