@@ -122,11 +122,15 @@
     <main class="container py-4">
         <section class="card-panel p-4 mb-4">
             <h2 class="h5 mb-2">Источники данных</h2>
-            <p class="text-muted small mb-3">Выберите до 4 файлов Excel (выгрузки БД). ФИО — столбец <strong>Y</strong> до «(». Обычные заявки: 24 в день. Если в столбце <strong>AH</strong> значение «Арбитраж» — норматив 3,2 заявки в день (рабочий день 8 часов). Нагрузка — с начала квартала по сегодня.</p>
+            <p class="text-muted small mb-3">Выберите до 4 файлов Excel (выгрузки БД). ФИО — столбец <strong>Y</strong> до «(». Обычные заявки: 24 в день. Если в столбце <strong>AH</strong> значение «Арбитраж» — норматив 3,2 заявки в день (рабочий день 8 часов). Нагрузка — с начала квартала <strong>по выбранную дату</strong>.</p>
             <div class="d-flex flex-wrap align-items-end gap-3">
                 <div class="flex-grow-1">
                     <label class="form-label small fw-semibold mb-1" for="excelFiles">Файлы Excel</label>
                     <input id="excelFiles" class="form-control" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" multiple>
+                </div>
+                <div>
+                    <label class="form-label small fw-semibold mb-1" for="asOfDate">На дату</label>
+                    <input id="asOfDate" class="form-control" type="date">
                 </div>
                 <button type="button" class="btn btn-sber" id="buildBtn" disabled>
                     <i class="fas fa-calculator me-1"></i>Посчитать нагрузку
@@ -198,9 +202,25 @@
         const vacFioEl = document.getElementById("vacFio");
         const vacFrom = document.getElementById("vacFrom");
         const vacTo = document.getElementById("vacTo");
+        const asOfInput = document.getElementById("asOfDate");
 
         let lastAgg = null;
+        let lastTables = null;
         let vacFio = "";
+
+        function todayYmd() {
+            const n = new Date();
+            const m = String(n.getMonth() + 1).padStart(2, "0");
+            const d = String(n.getDate()).padStart(2, "0");
+            return `${n.getFullYear()}-${m}-${d}`;
+        }
+        function asOfDate() {
+            const v = asOfInput.value || todayYmd();
+            const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!m) return new Date();
+            return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        }
+        asOfInput.value = todayYmd();
 
         function loadVacations() {
             try {
@@ -284,9 +304,9 @@
             loadEmpty.hidden = true;
             loadResult.hidden = false;
             loadStats.innerHTML =
+                chip("На дату", fmtDate(agg.today)) +
                 chip("Квартал с", fmtDate(agg.qStart)) +
                 chip("Рабочих дней", String(agg.workdays)) +
-                chip("План без отпуска", String(agg.plan)) +
                 chip("Сотрудников", String(agg.employees.length));
             const dateBit = agg.hasDateFilter
                 ? `Дата заявки: «${agg.dateHeader}». Строк вне квартала отброшено: ${agg.skippedOutOfQuarter}.`
@@ -350,6 +370,15 @@
             if (lastAgg) renderLoad(lastAgg);
         });
 
+        function applyTables(tables) {
+            lastTables = tables;
+            renderLoad(aggregateEmployeeLoad(tables, asOfDate()));
+        }
+
+        asOfInput.addEventListener("change", () => {
+            if (lastTables) applyTables(lastTables);
+        });
+
         buildBtn.addEventListener("click", async () => {
             parseError.hidden = true;
             parseError.textContent = "";
@@ -369,7 +398,7 @@
                 if (!tables.length) {
                     throw new Error("Не удалось прочитать таблицы из Excel. Нужен лист с ФИО в столбце Y (или «Исполнитель»).");
                 }
-                renderLoad(aggregateEmployeeLoad(tables, new Date()));
+                applyTables(tables);
             } catch (e) {
                 parseError.textContent = e.message || String(e);
                 parseError.hidden = false;
