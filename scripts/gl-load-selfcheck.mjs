@@ -19,6 +19,7 @@ import {
     isOverdueCell,
     numberCell,
     csiScore,
+    segmentFromAF,
     HOURS_PER_WORKDAY,
     MIN_APPS_FOR_LOAD,
     FIO_COL,
@@ -27,6 +28,7 @@ import {
     W_COL,
     AG_COL,
     AN_COL,
+    AF_COL,
     AH_COL
 } from "../lib/gl-load.mjs";
 
@@ -168,6 +170,7 @@ if (!isFirstLineFile("первая линия.xlsx")) throw new Error("l1 пер
 if (isFirstLineFile("выгрузка.xlsx")) throw new Error("l1 false positive");
 if (fileKind("Залоговая экспертиза MDO.xlsx") !== "mdo") throw new Error("mdo kind");
 if (fileKind("Работа с ОО.xlsx") !== "oo") throw new Error("oo kind");
+if (fileKind("Работа с Онлайн Оценкой.xlsx") !== "oo") throw new Error("oo online kind");
 if (!isVolkov("Волков Артем Анатольевич")) throw new Error("volkov");
 if (isVolchkova("Волков Артем Анатольевич")) throw new Error("volchkova vs volkov");
 if (!isVolchkova("Волчкова Анна Ивановна")) throw new Error("volchkova fio");
@@ -219,6 +222,12 @@ if (termDaysFromST("", "04.07.2026") != null) throw new Error("termDays empty");
 if (!isOverdueCell("ДА") || !isOverdueCell("да") || isOverdueCell("нет")) throw new Error("overdue cell");
 if (numberCell("1,5") !== 1.5 || numberCell("") !== 0) throw new Error("numberCell");
 if (csiScore(5) !== 5 || csiScore("4") !== 4 || csiScore(0) != null || csiScore("") != null) throw new Error("csiScore");
+if (segmentFromAF("клиент малого бизнеса") !== "ММБ") throw new Error("seg mmb");
+if (segmentFromAF("работа с корпоративным блоком") !== "КСБ") throw new Error("seg ksb");
+if (segmentFromAF("группа аналитики") !== "ПМЗ") throw new Error("seg pmz");
+if (segmentFromAF("служба залогов") !== "ЗС") throw new Error("seg zs");
+if (segmentFromAF("прочее") !== "Прочее") throw new Error("seg other");
+if (segmentFromAF("малого и залог") !== "ММБ") throw new Error("seg mmb wins");
 
 const metricRow = Array(40).fill("");
 metricRow[3] = "10.07.2026";
@@ -242,6 +251,37 @@ if (Math.abs(outM.employees[0].returns - 2 * MIN_APPS_FOR_LOAD) > 1e-9) throw ne
 if (outM.returnsTotal !== 2 * MIN_APPS_FOR_LOAD) throw new Error("returns total");
 if (JSON.stringify(outM.employees[0].csiCounts) !== JSON.stringify([1, 0, 0, 0, MIN_APPS_FOR_LOAD])) throw new Error("csi counts emp");
 if (JSON.stringify(outM.csiCounts) !== JSON.stringify([1, 0, 0, 0, MIN_APPS_FOR_LOAD])) throw new Error("csi counts total");
+if (outM.segments.mdo.Прочее !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg mdo other");
+
+const segRow = Array(40).fill("");
+segRow[3] = "10.07.2026";
+segRow[FIO_COL] = "Сегментов С.С. (8)";
+const segRows = [];
+const afVals = [
+    ["малого бизнеса", "ММБ"],
+    ["с корпоративным клиентом", "КСБ"],
+    ["отдел аналитики", "ПМЗ"],
+    ["залог недвижимости", "ЗС"],
+    ["неизвестно", "Прочее"]
+];
+for (const [af] of afVals) {
+    const r = [...segRow];
+    r[AF_COL] = af;
+    segRows.push(...repeatRow(r, MIN_APPS_FOR_LOAD + 1));
+}
+const outSeg = aggregateEmployeeLoad(
+    [
+        { file: "MDO.xlsx", sheet: "S", headers, rows: segRows.slice(0, MIN_APPS_FOR_LOAD + 1) },
+        { file: "1-я линия поддержки АС Залоги.xlsx", sheet: "S", headers, rows: segRows.slice(MIN_APPS_FOR_LOAD + 1, (MIN_APPS_FOR_LOAD + 1) * 2) },
+        { file: "Работа с Онлайн Оценкой.xlsx", sheet: "S", headers, rows: segRows.slice((MIN_APPS_FOR_LOAD + 1) * 2) }
+    ],
+    now
+);
+if (outSeg.segments.mdo.ММБ !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file mdo");
+if (outSeg.segments.l1.КСБ !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file l1");
+if (outSeg.segments.oo.ПМЗ !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file oo pmz");
+if (outSeg.segments.oo.ЗС !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file oo zs");
+if (outSeg.segments.oo.Прочее !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file oo other");
 
 console.log("gl-load selfcheck ok", {
     workdays,

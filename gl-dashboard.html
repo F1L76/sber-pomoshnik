@@ -113,6 +113,9 @@
         .kpi-returns { --kpi-accent: #2b6cb0; }
         .kpi-csi { --kpi-accent: #e6a817; }
         .kpi-load { --kpi-accent: var(--sber-green); }
+        .kpi-mdo { --kpi-accent: var(--sber-green); }
+        .kpi-l1 { --kpi-accent: #2b6cb0; }
+        .kpi-oo { --kpi-accent: #0f9d8e; }
         .kpi-head {
             display: flex;
             align-items: center;
@@ -195,6 +198,46 @@
             display: inline-flex;
             gap: 1px;
             font-size: 0.78rem;
+        }
+        .seg-chart {
+            display: flex;
+            align-items: stretch;
+            gap: 0.35rem;
+            height: 11.5rem;
+            padding: 0.15rem 0.2rem 0.35rem;
+        }
+        .seg-col {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .seg-track {
+            flex: 1;
+            width: 70%;
+            max-width: 2.4rem;
+            display: flex;
+            align-items: flex-end;
+            background: color-mix(in srgb, var(--kpi-accent) 12%, transparent);
+            border-radius: 8px 8px 3px 3px;
+        }
+        .seg-bar {
+            width: 100%;
+            background: var(--kpi-accent);
+            border-radius: 8px 8px 3px 3px;
+        }
+        .seg-n {
+            font-size: 0.82rem;
+            font-weight: 800;
+            margin-top: 0.3rem;
+            line-height: 1;
+        }
+        .seg-lbl {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--sber-muted);
+            margin-top: 0.2rem;
         }
         html[data-theme="dark"] .kpi-card {
             background: #1a2330;
@@ -281,7 +324,7 @@
         </section>
 
         <div class="row g-3 mt-1" id="kpiRow" hidden>
-            <div class="col-lg-4">
+            <div class="col-md-4">
                 <section class="kpi-card kpi-term">
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-stopwatch"></i></span>
@@ -299,7 +342,7 @@
                     </div>
                 </section>
             </div>
-            <div class="col-lg-4">
+            <div class="col-md-4">
                 <section class="kpi-card kpi-returns">
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-reply"></i></span>
@@ -317,7 +360,7 @@
                     </div>
                 </section>
             </div>
-            <div class="col-lg-4">
+            <div class="col-md-4">
                 <section class="kpi-card kpi-overdue">
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-calendar-xmark"></i></span>
@@ -362,6 +405,42 @@
                     </div>
                 </section>
             </div>
+            <div class="col-md-4">
+                <section class="kpi-card kpi-mdo">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-file-lines"></i></span>
+                        <div>
+                            <h2>MDO</h2>
+                            <p>сегмент AF</p>
+                        </div>
+                    </div>
+                    <div class="seg-chart" id="segMdo"></div>
+                </section>
+            </div>
+            <div class="col-md-4">
+                <section class="kpi-card kpi-l1">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-headset"></i></span>
+                        <div>
+                            <h2>1-я линия поддержки АС Залоги</h2>
+                            <p>сегмент AF</p>
+                        </div>
+                    </div>
+                    <div class="seg-chart" id="segL1"></div>
+                </section>
+            </div>
+            <div class="col-md-4">
+                <section class="kpi-card kpi-oo">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-globe"></i></span>
+                        <div>
+                            <h2>Работа с Онлайн Оценкой</h2>
+                            <p>сегмент AF</p>
+                        </div>
+                    </div>
+                    <div class="seg-chart" id="segOo"></div>
+                </section>
+            </div>
         </div>
     </main>
 
@@ -386,7 +465,7 @@
 
     <script src="/theme.js?v=2"></script>
     <script type="module">
-        import { aggregateEmployeeLoad, withVacations } from "/lib/gl-load.mjs";
+        import { aggregateEmployeeLoad, withVacations, SEGMENTS } from "/lib/gl-load.mjs";
 
         const VAC_KEY = "gl-dashboard:vacations";
         const input = document.getElementById("excelFiles");
@@ -407,6 +486,9 @@
         const returnsTotal = document.getElementById("returnsTotal");
         const csiBody = document.getElementById("csiBody");
         const csiFoot = document.getElementById("csiFoot");
+        const segMdo = document.getElementById("segMdo");
+        const segL1 = document.getElementById("segL1");
+        const segOo = document.getElementById("segOo");
         const vacDialog = document.getElementById("vacDialog");
         const vacForm = document.getElementById("vacForm");
         const vacFioEl = document.getElementById("vacFio");
@@ -579,6 +661,19 @@
                 : `<tr><td colspan="6" class="text-muted">Нет данных</td></tr>`;
             const tot = agg.csiCounts || [0, 0, 0, 0, 0];
             csiFoot.innerHTML = `<tr><th>Итого</th>${tot.map((n) => `<th class="csi-num">${n}</th>`).join("")}</tr>`;
+            const segs = agg.segments || {};
+            const fillSeg = (el, counts) => {
+                const c = counts || {};
+                const max = Math.max(1, ...SEGMENTS.map((s) => c[s] || 0));
+                el.innerHTML = SEGMENTS.map((s) => {
+                    const n = c[s] || 0;
+                    const h = n <= 0 ? 0 : Math.max(8, Math.round((n / max) * 100));
+                    return `<div class="seg-col"><div class="seg-track"><div class="seg-bar" style="height:${h}%"></div></div><div class="seg-n">${n}</div><div class="seg-lbl">${s}</div></div>`;
+                }).join("");
+            };
+            fillSeg(segMdo, segs.mdo);
+            fillSeg(segL1, segs.l1);
+            fillSeg(segOo, segs.oo);
             kpiRow.hidden = false;
         }
 
