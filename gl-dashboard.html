@@ -92,6 +92,74 @@
         }
         .vac-hint { font-size: 0.75rem; color: var(--sber-muted); }
         .fio-cell { min-width: 12rem; }
+        .kpi-card {
+            background: var(--sber-card);
+            border: 1px solid var(--sber-border);
+            border-radius: 16px;
+            padding: 0.9rem 1rem 0.5rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 24px rgba(30, 42, 58, 0.06);
+            border-top: 3px solid var(--kpi-accent, var(--sber-green));
+        }
+        .kpi-term { --kpi-accent: var(--sber-green); }
+        .kpi-overdue { --kpi-accent: #c62828; }
+        .kpi-returns { --kpi-accent: #2b6cb0; }
+        .kpi-head {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            margin-bottom: 0.45rem;
+        }
+        .kpi-icon {
+            width: 2.1rem;
+            height: 2.1rem;
+            border-radius: 10px;
+            display: grid;
+            place-items: center;
+            background: color-mix(in srgb, var(--kpi-accent) 16%, transparent);
+            color: var(--kpi-accent);
+            flex-shrink: 0;
+        }
+        .kpi-head h2 { font-size: 0.92rem; font-weight: 700; margin: 0; }
+        .kpi-head p { font-size: 0.68rem; color: var(--sber-muted); margin: 0; }
+        .kpi-total {
+            font-size: 1.7rem;
+            font-weight: 800;
+            color: var(--kpi-accent);
+            line-height: 1.1;
+        }
+        .kpi-total-lbl {
+            font-size: 0.68rem;
+            color: var(--sber-muted);
+            margin-bottom: 0.5rem;
+        }
+        .kpi-list {
+            overflow: auto;
+            max-height: 13.5rem;
+            margin: 0 -0.25rem;
+        }
+        .kpi-list table { width: 100%; font-size: 0.78rem; }
+        .kpi-list td {
+            padding: 0.28rem 0.4rem;
+            border-top: 1px solid var(--sber-border);
+            vertical-align: middle;
+        }
+        .kpi-list td:last-child { font-weight: 600; white-space: nowrap; text-align: right; }
+        .kpi-list .fio-cell {
+            min-width: 0;
+            max-width: 10rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        html[data-theme="dark"] .kpi-card {
+            background: #1a2330;
+            border-color: #334155;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+        }
+        html[data-theme="dark"] .kpi-list td { border-top-color: #334155; }
     </style>
     <link rel="stylesheet" href="/theme.css?v=14">
 </head>
@@ -164,71 +232,62 @@
             </div>
         </section>
 
-        <section class="card-panel p-4 mt-4" id="termBlock" hidden>
-            <h2 class="h5 mb-2">Средний срок</h2>
-            <p class="text-muted small mb-3">Срок заявки = столбец <strong>T</strong> минус столбец <strong>S</strong>, в днях.</p>
-            <div class="table-responsive">
-                <table class="table load-table align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>ФИО</th>
-                            <th class="text-end">Средний срок, дн.</th>
-                        </tr>
-                    </thead>
-                    <tbody id="termBody"></tbody>
-                    <tfoot>
-                        <tr>
-                            <th>Общий срок</th>
-                            <th class="text-end" id="termTotal"></th>
-                        </tr>
-                    </tfoot>
-                </table>
+        <div class="row g-3 mt-1" id="kpiRow" hidden>
+            <div class="col-lg-4">
+                <section class="kpi-card kpi-term" id="termBlock">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-regular fa-clock"></i></span>
+                        <div>
+                            <h2>Средний срок</h2>
+                            <p>T − S, дни</p>
+                        </div>
+                    </div>
+                    <div class="kpi-total" id="termTotal">—</div>
+                    <div class="kpi-total-lbl">Общий срок</div>
+                    <div class="kpi-list">
+                        <table>
+                            <tbody id="termBody"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
-        </section>
-
-        <section class="card-panel p-4 mt-4" id="overdueBlock" hidden>
-            <h2 class="h5 mb-2">Число просрочек</h2>
-            <p class="text-muted small mb-3">Просрочка — столбец <strong>AG</strong> со значением <strong>ДА</strong>.</p>
-            <div class="table-responsive">
-                <table class="table load-table align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>ФИО</th>
-                            <th class="text-end">Просрочек</th>
-                        </tr>
-                    </thead>
-                    <tbody id="overdueBody"></tbody>
-                    <tfoot>
-                        <tr>
-                            <th>Общее количество</th>
-                            <th class="text-end" id="overdueTotal"></th>
-                        </tr>
-                    </tfoot>
-                </table>
+            <div class="col-lg-4">
+                <section class="kpi-card kpi-overdue" id="overdueBlock">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-hourglass-end"></i></span>
+                        <div>
+                            <h2>Число просрочек</h2>
+                            <p>AG = ДА</p>
+                        </div>
+                    </div>
+                    <div class="kpi-total" id="overdueTotal">—</div>
+                    <div class="kpi-total-lbl">Общее количество</div>
+                    <div class="kpi-list">
+                        <table>
+                            <tbody id="overdueBody"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
-        </section>
-
-        <section class="card-panel p-4 mt-4" id="returnsBlock" hidden>
-            <h2 class="h5 mb-2">Количество возвратов</h2>
-            <p class="text-muted small mb-3">Сумма значений столбца <strong>W</strong>.</p>
-            <div class="table-responsive">
-                <table class="table load-table align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>ФИО</th>
-                            <th class="text-end">Возвратов</th>
-                        </tr>
-                    </thead>
-                    <tbody id="returnsBody"></tbody>
-                    <tfoot>
-                        <tr>
-                            <th>Общее количество</th>
-                            <th class="text-end" id="returnsTotal"></th>
-                        </tr>
-                    </tfoot>
-                </table>
+            <div class="col-lg-4">
+                <section class="kpi-card kpi-returns" id="returnsBlock">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-rotate-left"></i></span>
+                        <div>
+                            <h2>Количество возвратов</h2>
+                            <p>сумма W</p>
+                        </div>
+                    </div>
+                    <div class="kpi-total" id="returnsTotal">—</div>
+                    <div class="kpi-total-lbl">Общее количество</div>
+                    <div class="kpi-list">
+                        <table>
+                            <tbody id="returnsBody"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
-        </section>
+        </div>
     </main>
 
     <dialog id="vacDialog" class="card-panel p-4" style="border:1px solid var(--sber-border); border-radius: 16px; max-width: 26rem; width: calc(100% - 2rem);">
@@ -264,13 +323,11 @@
         const loadStats = document.getElementById("loadStats");
         const loadNote = document.getElementById("loadNote");
         const loadBody = document.getElementById("loadBody");
-        const termBlock = document.getElementById("termBlock");
+        const kpiRow = document.getElementById("kpiRow");
         const termBody = document.getElementById("termBody");
         const termTotal = document.getElementById("termTotal");
-        const overdueBlock = document.getElementById("overdueBlock");
         const overdueBody = document.getElementById("overdueBody");
         const overdueTotal = document.getElementById("overdueTotal");
-        const returnsBlock = document.getElementById("returnsBlock");
         const returnsBody = document.getElementById("returnsBody");
         const returnsTotal = document.getElementById("returnsTotal");
         const vacDialog = document.getElementById("vacDialog");
@@ -417,12 +474,16 @@
             }).join("") || `<tr><td colspan="6" class="text-muted">Нет строк с ФИО в столбце Y</td></tr>`;
 
             const people = (sortFn) => [...agg.employees].sort(sortFn);
-            const fioCell = (e) => `<td class="fio-cell">${e.fio.replace(/</g, "&lt;")}</td>`;
+            const fioCell = (e) => {
+                const fio = e.fio.replace(/</g, "&lt;");
+                return `<td class="fio-cell" title="${fio}">${fio}</td>`;
+            };
             const fmtDays = (n) => (n == null || !Number.isFinite(n) ? "—" : n.toFixed(1));
             termBody.innerHTML = people((a, b) => (b.avgTermDays ?? -1) - (a.avgTermDays ?? -1) || a.fio.localeCompare(b.fio, "ru"))
                 .map((e) => `<tr>${fioCell(e)}<td class="text-end">${fmtDays(e.avgTermDays)}</td></tr>`).join("")
                 || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
-            termTotal.textContent = fmtDays(agg.avgTermDays);
+            const termTxt = fmtDays(agg.avgTermDays);
+            termTotal.textContent = termTxt === "—" ? "—" : `${termTxt} дн.`;
             overdueBody.innerHTML = people((a, b) => b.overdue - a.overdue || a.fio.localeCompare(b.fio, "ru"))
                 .map((e) => `<tr>${fioCell(e)}<td class="text-end">${e.overdue || 0}</td></tr>`).join("")
                 || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
@@ -431,9 +492,7 @@
                 .map((e) => `<tr>${fioCell(e)}<td class="text-end">${e.returns || 0}</td></tr>`).join("")
                 || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
             returnsTotal.textContent = String(agg.returnsTotal || 0);
-            termBlock.hidden = false;
-            overdueBlock.hidden = false;
-            returnsBlock.hidden = false;
+            kpiRow.hidden = false;
         }
 
         loadBody.addEventListener("click", (e) => {
