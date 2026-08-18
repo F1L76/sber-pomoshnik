@@ -78,7 +78,7 @@ if (findDateColumn(headers, sample) !== 3) throw new Error("findDateColumn heade
 if (findFioColumn(headers, sample) !== FIO_COL) throw new Error("findFioColumn");
 
 const rows = [];
-for (let i = 0; i < 48; i++) {
+for (let i = 0; i < MIN_APPS_FOR_LOAD + 1; i++) {
     const row = Array(25).fill("");
     row[3] = "10.07.2026";
     row[FIO_COL] = "Сидоров С.С. (111)";
@@ -88,8 +88,8 @@ const out = aggregateEmployeeLoad([{ file: "a.xlsx", sheet: "S", headers, rows }
 const workdays = countWorkdays(q, now);
 if (out.workdays !== workdays) throw new Error(`workdays ${out.workdays} != ${workdays}`);
 if (out.plan !== HOURS_PER_WORKDAY * workdays) throw new Error("plan hours");
-if (out.employees.length !== 1 || out.employees[0].apps !== 48) throw new Error("apps");
-const expectPct = (48 * 20) / (workdays * 8 * 60) * 100;
+if (out.employees.length !== 1 || out.employees[0].apps !== MIN_APPS_FOR_LOAD + 1) throw new Error("apps");
+const expectPct = ((MIN_APPS_FOR_LOAD + 1) * 20) / (workdays * 8 * 60) * 100;
 if (Math.abs(out.employees[0].loadPct - expectPct) > 1e-9) throw new Error("pct");
 
 const few = Array(25).fill("");
@@ -99,13 +99,13 @@ const outFew = aggregateEmployeeLoad(
     [{ file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(few, MIN_APPS_FOR_LOAD) }],
     now
 );
-if (outFew.employees.length !== 0) throw new Error("30 apps excluded");
+if (outFew.employees.length !== 0) throw new Error("50 apps excluded");
 if (outFew.skippedLowVolume !== 1) throw new Error("skippedLowVolume");
 const outEnough = aggregateEmployeeLoad(
     [{ file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(few, MIN_APPS_FOR_LOAD + 1) }],
     now
 );
-if (outEnough.employees.length !== 1 || outEnough.employees[0].apps !== 31) throw new Error("31 apps included");
+if (outEnough.employees.length !== 1 || outEnough.employees[0].apps !== MIN_APPS_FOR_LOAD + 1) throw new Error("51 apps included");
 const mix = Array(25).fill("");
 mix[3] = "10.07.2026";
 mix[FIO_COL] = "Смешанный С.С. (9)";
@@ -120,11 +120,11 @@ if (outMixFew.employees.length !== 0) throw new Error("20+10 across files exclud
 const outMixOk = aggregateEmployeeLoad(
     [
         { file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(mix, 20) },
-        { file: "1-я линия.xlsx", sheet: "S", headers, rows: repeatRow(mix, 11) }
+        { file: "1-я линия.xlsx", sheet: "S", headers, rows: repeatRow(mix, MIN_APPS_FOR_LOAD + 1 - 20) }
     ],
     now
 );
-if (outMixOk.employees.length !== 1 || outMixOk.employees[0].apps !== 31) throw new Error("20+11 across files included");
+if (outMixOk.employees.length !== 1 || outMixOk.employees[0].apps !== MIN_APPS_FOR_LOAD + 1) throw new Error("mix across files included");
 
 const arbRow = Array(34).fill("");
 arbRow[3] = "10.07.2026";
@@ -134,7 +134,7 @@ const outArb = aggregateEmployeeLoad(
     [{ file: "a.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: [...rows, arbRow] }],
     now
 );
-const expectArb = ((48 * 20 + 150) / (workdays * 8 * 60)) * 100;
+const expectArb = (((MIN_APPS_FOR_LOAD + 1) * 20 + 150) / (workdays * 8 * 60)) * 100;
 if (outArb.employees[0].appsArb !== 1) throw new Error("appsArb");
 if (Math.abs(outArb.employees[0].loadPct - expectArb) > 1e-6) throw new Error("arb pct");
 
