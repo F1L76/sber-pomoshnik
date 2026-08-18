@@ -99,13 +99,13 @@ const outFew = aggregateEmployeeLoad(
     [{ file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(few, MIN_APPS_FOR_LOAD) }],
     now
 );
-if (outFew.employees.length !== 0) throw new Error("50 apps excluded");
+if (outFew.employees.length !== 0) throw new Error("40 apps excluded");
 if (outFew.skippedLowVolume !== 1) throw new Error("skippedLowVolume");
 const outEnough = aggregateEmployeeLoad(
     [{ file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(few, MIN_APPS_FOR_LOAD + 1) }],
     now
 );
-if (outEnough.employees.length !== 1 || outEnough.employees[0].apps !== MIN_APPS_FOR_LOAD + 1) throw new Error("51 apps included");
+if (outEnough.employees.length !== 1 || outEnough.employees[0].apps !== MIN_APPS_FOR_LOAD + 1) throw new Error("41 apps included");
 const mix = Array(25).fill("");
 mix[3] = "10.07.2026";
 mix[FIO_COL] = "Смешанный С.С. (9)";
