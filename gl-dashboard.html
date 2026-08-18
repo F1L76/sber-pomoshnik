@@ -290,9 +290,9 @@
         }
 
         function loadClass(pct) {
-            if (pct > 100) return "load-over";
+            if (pct >= 100) return "load-ok";
             if (pct >= 80) return "load-warn";
-            return "load-ok";
+            return "load-over";
         }
 
         function chip(lbl, val) {
