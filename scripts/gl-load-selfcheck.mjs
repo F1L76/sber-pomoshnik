@@ -9,6 +9,7 @@ import {
     aggregateEmployeeLoad,
     employeePlan,
     withVacations,
+    isFirstLineFile,
     PLAN_APPS_PER_WORKDAY,
     FIO_COL
 } from "../lib/gl-load.mjs";
@@ -80,6 +81,30 @@ const outArb = aggregateEmployeeLoad(
 const expectArb = ((48 / 24 + 1 / 3.2) / workdays) * 100;
 if (outArb.employees[0].appsArb !== 1) throw new Error("appsArb");
 if (Math.abs(outArb.employees[0].loadPct - expectArb) > 1e-6) throw new Error("arb pct");
+
+if (!isFirstLineFile("1-я линия поддержки АС Залоги.xlsx")) throw new Error("l1 name");
+if (!isFirstLineFile("первая линия.xlsx")) throw new Error("l1 первая");
+if (isFirstLineFile("выгрузка.xlsx")) throw new Error("l1 false positive");
+
+const l1Row = Array(25).fill("");
+l1Row[3] = "10.07.2026";
+l1Row[FIO_COL] = "Сидоров С.С. (111)";
+const outL1 = aggregateEmployeeLoad(
+    [{ file: "1-я линия поддержки АС Залоги.xlsx", sheet: "S", headers, rows: [l1Row] }],
+    now
+);
+if (outL1.employees[0].appsL1 !== 1) throw new Error("appsL1");
+if (Math.abs(outL1.employees[0].loadPct - (1 / 20 / workdays) * 100) > 1e-6) throw new Error("l1 pct");
+
+const l1Arb = Array(34).fill("");
+l1Arb[3] = "10.07.2026";
+l1Arb[FIO_COL] = "Сидоров С.С. (111)";
+l1Arb[33] = "Арбитраж";
+const outL1Arb = aggregateEmployeeLoad(
+    [{ file: "АС Залоги.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: [l1Arb] }],
+    now
+);
+if (outL1Arb.employees[0].appsArb !== 1 || outL1Arb.employees[0].appsL1) throw new Error("arb over l1");
 
 const vacPlan = employeePlan(q, now, { from: "2026-07-06", to: "2026-07-10" });
 if (vacPlan.vacationDays !== 5) throw new Error(`vacationDays ${vacPlan.vacationDays}`);
