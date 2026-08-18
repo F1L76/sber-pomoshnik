@@ -13,8 +13,10 @@ import {
     fileKind,
     minutesForApp,
     isVolkov,
+    findTagColumn,
     HOURS_PER_WORKDAY,
-    FIO_COL
+    FIO_COL,
+    AH_COL
 } from "../lib/gl-load.mjs";
 
 const now = new Date(2026, 7, 18); // 18 авг 2026
@@ -85,6 +87,33 @@ const expectArb = ((48 * 20 + 150) / (workdays * 8 * 60)) * 100;
 if (outArb.employees[0].appsArb !== 1) throw new Error("appsArb");
 if (Math.abs(outArb.employees[0].loadPct - expectArb) > 1e-6) throw new Error("arb pct");
 
+const arbContainsRow = Array(34).fill("");
+arbContainsRow[3] = "10.07.2026";
+arbContainsRow[FIO_COL] = "Иванов И.И. (222)";
+arbContainsRow[AH_COL] = "Арбитраж, срочно";
+const outArbContains = aggregateEmployeeLoad(
+    [{ file: "MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: [arbContainsRow] }],
+    now
+);
+if (outArbContains.employees[0].appsArb !== 1) throw new Error("appsArb contains");
+if (Math.abs(outArbContains.employees[0].minutes - 150) > 1e-9) throw new Error("arb contains minutes");
+
+const tagHeaders = Array(10).fill("");
+tagHeaders[3] = "Дата создания";
+tagHeaders[5] = "Тег";
+tagHeaders[FIO_COL] = "Исполнитель";
+const tagRow = Array(25).fill("");
+tagRow[3] = "10.07.2026";
+tagRow[5] = "foo Арбитраж bar";
+tagRow[FIO_COL] = "Петров П.П. (333)";
+if (findTagColumn(tagHeaders) !== 5) throw new Error("findTagColumn");
+const outTagCol = aggregateEmployeeLoad(
+    [{ file: "MDO.xlsx", sheet: "S", headers: tagHeaders, rows: [tagRow] }],
+    now
+);
+if (outTagCol.employees[0].appsArb !== 1) throw new Error("appsArb tag col");
+if (Math.abs(outTagCol.employees[0].minutes - 150) > 1e-9) throw new Error("tag col minutes");
+
 if (!isFirstLineFile("1-я линия поддержки АС Залоги.xlsx")) throw new Error("l1 name");
 if (!isFirstLineFile("первая линия.xlsx")) throw new Error("l1 первая");
 if (isFirstLineFile("выгрузка.xlsx")) throw new Error("l1 false positive");
@@ -93,6 +122,8 @@ if (fileKind("Работа с ОО.xlsx") !== "oo") throw new Error("oo kind");
 if (!isVolkov("Волков Артем Анатольевич")) throw new Error("volkov");
 if (minutesForApp("1-я линия.xlsx", "Иванов", "") !== 24) throw new Error("min l1");
 if (minutesForApp("Залоговая экспертиза MDO.xlsx", "Иванов", "Арбитраж") !== 150) throw new Error("min arb");
+if (minutesForApp("MDO.xlsx", "Иванов", "Арбитраж, срочно") !== 150) throw new Error("min arb contains");
+if (minutesForApp("MDO.xlsx", "Иванов", "foo Арбитраж bar") !== 150) throw new Error("min arb substring");
 if (minutesForApp("MDO.xlsx", "Волков Артем Анатольевич", "") !== 240) throw new Error("min volkov");
 if (minutesForApp("Работа с ОО.xlsx", "Иванов", "") !== 210) throw new Error("min oo");
 
