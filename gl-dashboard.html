@@ -152,7 +152,7 @@
                             <tr>
                                 <th>ФИО</th>
                                 <th></th>
-                                <th class="text-end">Заявок</th>
+                                <th class="text-end">Количество заявок</th>
                                 <th class="text-end">Факт, ч</th>
                                 <th class="text-end">План, ч</th>
                                 <th>Нагрузка</th>
@@ -313,7 +313,7 @@
                 ? `Дата заявки: «${agg.dateHeader}». Строк вне квартала отброшено: ${agg.skippedOutOfQuarter}.`
                 : "Столбец даты не найден — учтены все строки с ФИО в столбце Y.";
             loadNote.textContent =
-                `% выполнения = сумма минут по заявкам ÷ (план ${agg.hoursPerDay || 8} ч × раб. дни). В таблице только сотрудники с >30 заявками за квартал (отсеяно ${agg.skippedLowVolume || 0}). 1-я линия — 24 мин, MDO — 20 мин, Арбитраж — 150, Волков А.А. — 240, Работа с ОО — 210, Волчкова — 210 мин везде. Период: ${fmtDate(agg.qStart)} – ${fmtDate(agg.today)} (${agg.workdays} раб. дн., план ${agg.planHours} ч). Заявок: ${agg.used}. ${dateBit}`;
+                `% выполнения = сумма минут по заявкам ÷ (план ${agg.hoursPerDay || 8} ч × раб. дни). В таблице только сотрудники с >30 заявками за квартал (отсеяно ${agg.skippedLowVolume || 0}). 1-я линия — 24 мин, MDO — 20 мин, Арбитраж — 150, Волков А.А. — 240, Работа с ОО — 210, Волчкова — 210 мин везде. Период: ${fmtDate(agg.qStart)} – ${fmtDate(agg.today)} (${agg.workdays} раб. дн., план ${agg.planHours} ч). Количество заявок: ${agg.used}. ${dateBit}`;
             loadBody.innerHTML = agg.employees.map((e) => {
                 const pct = e.loadPct;
                 const width = Math.min(pct, 100);
