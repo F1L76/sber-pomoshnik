@@ -54,8 +54,13 @@
         }
         .stat-chip .lbl { font-size: 0.75rem; color: var(--sber-muted); }
         .stat-chip .val { font-size: 1.25rem; font-weight: 700; color: var(--sber-green); }
-        .load-table { font-size: 0.9rem; }
-        .load-table th { white-space: nowrap; }
+        .load-table { font-size: 0.95rem; }
+        .load-table th { white-space: nowrap; font-size: 0.95rem; }
+        .load-table .fio-cell {
+            font-size: 1.02rem;
+            font-weight: 700;
+            color: var(--sber-text);
+        }
         .load-bar {
             height: 8px;
             background: #e8edf2;
@@ -107,23 +112,33 @@
         .kpi-overdue { --kpi-accent: #c62828; }
         .kpi-returns { --kpi-accent: #2b6cb0; }
         .kpi-csi { --kpi-accent: #e6a817; }
+        .kpi-load { --kpi-accent: var(--sber-green); }
         .kpi-head {
             display: flex;
             align-items: center;
-            gap: 0.65rem;
-            margin-bottom: 0.45rem;
+            gap: 0.85rem;
+            margin-bottom: 0.65rem;
         }
         .kpi-icon {
-            width: 2.1rem;
-            height: 2.1rem;
-            border-radius: 10px;
+            width: 2.85rem;
+            height: 2.85rem;
+            border-radius: 14px;
             display: grid;
             place-items: center;
-            background: color-mix(in srgb, var(--kpi-accent) 16%, transparent);
+            background: color-mix(in srgb, var(--kpi-accent) 18%, transparent);
             color: var(--kpi-accent);
             flex-shrink: 0;
+            font-size: 1.2rem;
+            box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kpi-accent) 22%, transparent);
         }
-        .kpi-head h2 { font-size: 1.05rem; font-weight: 700; margin: 0; }
+        .kpi-head h2 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.15;
+            margin: 0;
+            color: var(--sber-text);
+        }
         .kpi-head p { font-size: 0.72rem; color: var(--sber-muted); margin: 0; }
         .kpi-total {
             font-size: 1.7rem;
@@ -175,7 +190,9 @@
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
         }
         html[data-theme="dark"] .kpi-list td { border-top-color: #334155; }
-        html[data-theme="dark"] .kpi-list .fio-cell { color: #e8eef4; }
+        html[data-theme="dark"] .kpi-list .fio-cell,
+        html[data-theme="dark"] .load-table .fio-cell { color: #e8eef4; }
+        html[data-theme="dark"] .kpi-head h2 { color: #e8eef4; }
     </style>
     <link rel="stylesheet" href="/theme.css?v=14">
 </head>
@@ -224,8 +241,11 @@
             <div id="parseError" class="text-danger small mt-2" hidden></div>
         </section>
 
-        <section class="card-panel p-4" id="loadBlock">
-            <h2 class="h5 mb-3">Нагрузка сотрудников</h2>
+        <section class="card-panel p-4 kpi-load" id="loadBlock">
+            <div class="kpi-head mb-3">
+                <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-gauge-high"></i></span>
+                <h2>Нагрузка сотрудников</h2>
+            </div>
             <p class="text-muted mb-0" id="loadEmpty">Загрузите Excel и нажмите «Посчитать нагрузку».</p>
             <div id="loadResult" hidden>
                 <div class="row g-3 mb-4" id="loadStats"></div>
@@ -252,7 +272,7 @@
             <div class="col-lg-6">
                 <section class="kpi-card kpi-term" id="termBlock">
                     <div class="kpi-head">
-                        <span class="kpi-icon" aria-hidden="true"><i class="fa-regular fa-clock"></i></span>
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-stopwatch"></i></span>
                         <div>
                             <h2>Средний срок</h2>
                             <p>T − S, дни</p>
@@ -270,7 +290,7 @@
             <div class="col-lg-6">
                 <section class="kpi-card kpi-overdue" id="overdueBlock">
                     <div class="kpi-head">
-                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-hourglass-end"></i></span>
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-calendar-xmark"></i></span>
                         <div>
                             <h2>Число просрочек</h2>
                             <p>AG = ДА</p>
@@ -288,7 +308,7 @@
             <div class="col-lg-6">
                 <section class="kpi-card kpi-returns" id="returnsBlock">
                     <div class="kpi-head">
-                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-rotate-left"></i></span>
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-reply"></i></span>
                         <div>
                             <h2>Количество возвратов</h2>
                             <p>сумма W</p>
@@ -306,7 +326,7 @@
             <div class="col-lg-6">
                 <section class="kpi-card kpi-csi" id="csiBlock">
                     <div class="kpi-head">
-                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-star"></i></span>
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-face-smile"></i></span>
                         <div>
                             <h2>CSI</h2>
                             <p>оценка AN, 1–5</p>
