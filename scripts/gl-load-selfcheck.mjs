@@ -238,10 +238,10 @@ if (outM.employees.length !== 1) throw new Error("metric emp");
 if (Math.abs(outM.employees[0].avgTermDays - (5 + 3 * MIN_APPS_FOR_LOAD) / (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("avg term");
 if (outM.employees[0].overdue !== MIN_APPS_FOR_LOAD) throw new Error("overdue emp");
 if (outM.overdueTotal !== MIN_APPS_FOR_LOAD) throw new Error("overdue total");
-if (outM.employees[0].returns !== 2 * MIN_APPS_FOR_LOAD) throw new Error("returns emp");
+if (Math.abs(outM.employees[0].returns - 2 * MIN_APPS_FOR_LOAD) > 1e-9) throw new Error("returns emp");
 if (outM.returnsTotal !== 2 * MIN_APPS_FOR_LOAD) throw new Error("returns total");
-if (Math.abs(outM.employees[0].avgCsi - (1 + 5 * MIN_APPS_FOR_LOAD) / (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("avg csi");
-if (Math.abs(outM.avgCsi - outM.employees[0].avgCsi) > 1e-9) throw new Error("csi total");
+if (JSON.stringify(outM.employees[0].csiCounts) !== JSON.stringify([1, 0, 0, 0, MIN_APPS_FOR_LOAD])) throw new Error("csi counts emp");
+if (JSON.stringify(outM.csiCounts) !== JSON.stringify([1, 0, 0, 0, MIN_APPS_FOR_LOAD])) throw new Error("csi counts total");
 
 console.log("gl-load selfcheck ok", {
     workdays,
