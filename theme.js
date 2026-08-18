@@ -3,7 +3,7 @@
  */
 (function (global) {
     const KEY = "sber-pomoshnik:theme";
-    const THEME_CSS_HREF = "/theme.css?v=13";
+    const THEME_CSS_HREF = "/theme.css?v=14";
 
     function getTheme() {
         try {

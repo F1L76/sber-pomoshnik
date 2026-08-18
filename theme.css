@@ -762,8 +762,12 @@ html[data-theme="dark"] .stat-chip {
 html[data-theme="dark"] .load-bar {
   background: #243041 !important;
 }
-html[data-theme="dark"] .load-table th,
-html[data-theme="dark"] .load-table td {
-  color: #e8eef4 !important;
-  border-color: #334155 !important;
+html[data-theme="dark"] .btn-sun {
+  background: #3a3218 !important;
+  border-color: #e6a817 !important;
+  color: #f0c674 !important;
+}
+html[data-theme="dark"] .btn-sun.is-on {
+  background: #e6a817 !important;
+  color: #1a2330 !important;
 }

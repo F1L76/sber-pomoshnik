@@ -7,6 +7,8 @@ import {
     findFioColumn,
     isWorkday,
     aggregateEmployeeLoad,
+    employeePlan,
+    withVacations,
     PLAN_APPS_PER_WORKDAY,
     FIO_COL
 } from "../lib/gl-load.mjs";
@@ -67,8 +69,15 @@ if (out.employees.length !== 1 || out.employees[0].apps !== 48) throw new Error(
 const expectPct = (48 / out.plan) * 100;
 if (Math.abs(out.employees[0].loadPct - expectPct) > 1e-9) throw new Error("pct");
 
+const vacPlan = employeePlan(q, now, { from: "2026-07-06", to: "2026-07-10" });
+if (vacPlan.vacationDays !== 5) throw new Error(`vacationDays ${vacPlan.vacationDays}`);
+if (vacPlan.plan !== PLAN_APPS_PER_WORKDAY * (workdays - 5)) throw new Error("vac plan");
+const withV = withVacations(out, { "Сидоров С.С.": { from: "2026-07-06", to: "2026-07-10" } });
+if (withV.employees[0].plan !== vacPlan.plan) throw new Error("withVacations plan");
+
 console.log("gl-load selfcheck ok", {
     workdays,
     plan: out.plan,
-    loadPct: Number(expectPct.toFixed(2))
+    loadPct: Number(expectPct.toFixed(2)),
+    vacDays: vacPlan.vacationDays
 });

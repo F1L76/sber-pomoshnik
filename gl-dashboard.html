@@ -74,8 +74,26 @@
         .load-over { color: #c62828; }
         .file-pills { display: flex; flex-wrap: wrap; gap: 0.35rem; }
         .file-pills .badge { font-weight: 500; }
+        .btn-sun {
+            border: 1px solid #f0c674;
+            background: #fff8e6;
+            color: #e6a817;
+            width: 2rem;
+            height: 2rem;
+            padding: 0;
+            border-radius: 999px;
+            line-height: 1;
+        }
+        .btn-sun:hover { background: #ffe9a8; color: #c48a00; }
+        .btn-sun.is-on {
+            background: #e6a817;
+            border-color: #e6a817;
+            color: #fff;
+        }
+        .vac-hint { font-size: 0.75rem; color: var(--sber-muted); }
+        .fio-cell { min-width: 12rem; }
     </style>
-    <link rel="stylesheet" href="/theme.css?v=13">
+    <link rel="stylesheet" href="/theme.css?v=14">
 </head>
 <body>
     <header class="hero">
@@ -129,6 +147,7 @@
                         <thead>
                             <tr>
                                 <th>ФИО</th>
+                                <th></th>
                                 <th class="text-end">Заявок</th>
                                 <th class="text-end">План</th>
                                 <th>Нагрузка</th>
@@ -141,10 +160,30 @@
         </section>
     </main>
 
+    <dialog id="vacDialog" class="card-panel p-4" style="border:1px solid var(--sber-border); border-radius: 16px; max-width: 26rem; width: calc(100% - 2rem);">
+        <form method="dialog" id="vacForm">
+            <h3 class="h6 mb-3"><i class="fas fa-sun me-2" style="color:#e6a817"></i>Отпуск: <span id="vacFio"></span></h3>
+            <div class="mb-2">
+                <label class="form-label small" for="vacFrom">С</label>
+                <input class="form-control" type="date" id="vacFrom" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small" for="vacTo">По</label>
+                <input class="form-control" type="date" id="vacTo" required>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-sber btn-sm" value="save">Сохранить</button>
+                <button type="submit" class="btn btn-outline-secondary btn-sm" id="vacClear" value="clear">Сбросить</button>
+                <button type="submit" class="btn btn-outline-secondary btn-sm" value="cancel">Отмена</button>
+            </div>
+        </form>
+    </dialog>
+
     <script src="/theme.js?v=2"></script>
     <script type="module">
-        import { aggregateEmployeeLoad } from "/lib/gl-load.mjs";
+        import { aggregateEmployeeLoad, withVacations } from "/lib/gl-load.mjs";
 
+        const VAC_KEY = "gl-dashboard:vacations";
         const input = document.getElementById("excelFiles");
         const buildBtn = document.getElementById("buildBtn");
         const pills = document.getElementById("filePills");
@@ -154,6 +193,25 @@
         const loadStats = document.getElementById("loadStats");
         const loadNote = document.getElementById("loadNote");
         const loadBody = document.getElementById("loadBody");
+        const vacDialog = document.getElementById("vacDialog");
+        const vacForm = document.getElementById("vacForm");
+        const vacFioEl = document.getElementById("vacFio");
+        const vacFrom = document.getElementById("vacFrom");
+        const vacTo = document.getElementById("vacTo");
+
+        let lastAgg = null;
+        let vacFio = "";
+
+        function loadVacations() {
+            try {
+                return JSON.parse(localStorage.getItem(VAC_KEY) || "{}") || {};
+            } catch {
+                return {};
+            }
+        }
+        function saveVacations(map) {
+            localStorage.setItem(VAC_KEY, JSON.stringify(map));
+        }
 
         function selectedFiles() {
             return [...(input.files || [])].slice(0, 4);
@@ -204,6 +262,11 @@
         function fmtDate(d) {
             return d.toLocaleDateString("ru-RU");
         }
+        function fmtYmd(s) {
+            const m = String(s || "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (!m) return s || "";
+            return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString("ru-RU");
+        }
 
         function loadClass(pct) {
             if (pct > 100) return "load-over";
@@ -215,36 +278,77 @@
             return `<div class="col-6 col-md-3"><div class="stat-chip"><div class="lbl">${lbl}</div><div class="val">${val}</div></div></div>`;
         }
 
-        function renderLoad(agg) {
+        function renderLoad(baseAgg) {
+            lastAgg = baseAgg;
+            const agg = withVacations(baseAgg, loadVacations());
             loadEmpty.hidden = true;
             loadResult.hidden = false;
             loadStats.innerHTML =
                 chip("Квартал с", fmtDate(agg.qStart)) +
                 chip("Рабочих дней", String(agg.workdays)) +
-                chip("План на человека", String(agg.plan)) +
+                chip("План без отпуска", String(agg.plan)) +
                 chip("Сотрудников", String(agg.employees.length));
             const dateBit = agg.hasDateFilter
                 ? `Дата заявки: «${agg.dateHeader}». Строк вне квартала отброшено: ${agg.skippedOutOfQuarter}.`
                 : "Столбец даты не найден — учтены все строки с ФИО в столбце Y.";
             loadNote.textContent =
-                `План = ${agg.planPerDay} заявки × ${agg.workdays} раб. дн. с ${fmtDate(agg.qStart)} по ${fmtDate(agg.today)}. Учтено заявок: ${agg.used}. Без ФИО: ${agg.skippedNoFio}. ${dateBit}`;
+                `Базовый план = ${agg.planPerDay} × ${agg.workdays} раб. дн. с ${fmtDate(agg.qStart)} по ${fmtDate(agg.today)}. Отпуск (солнышко) вычитает рабочие дни из плана сотрудника. Учтено заявок: ${agg.used}. Без ФИО: ${agg.skippedNoFio}. ${dateBit}`;
             loadBody.innerHTML = agg.employees.map((e) => {
                 const pct = e.loadPct;
                 const width = Math.min(pct, 100);
                 const cls = loadClass(pct);
+                const on = e.vacationDays > 0;
+                const vacText = on
+                    ? `<div class="vac-hint">Отпуск ${fmtYmd(e.vacation.from)} – ${fmtYmd(e.vacation.to)} (−${e.vacationDays} раб. дн.)</div>`
+                    : "";
                 return `<tr>
-                    <td>${e.fio.replace(/</g, "&lt;")}</td>
+                    <td class="fio-cell">${e.fio.replace(/</g, "&lt;")}${vacText}</td>
+                    <td>
+                        <button type="button" class="btn btn-sun${on ? " is-on" : ""}" data-fio="${encodeURIComponent(e.fio)}" title="Указать отпуск">
+                            <i class="fas fa-sun" aria-hidden="true"></i>
+                        </button>
+                    </td>
                     <td class="text-end">${e.apps}</td>
                     <td class="text-end">${e.plan}</td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             <div class="load-bar flex-grow-1"><span style="width:${width}%"></span></div>
-                            <strong class="${cls}">${pct.toFixed(1)}%</strong>
+                            <strong class="${cls}">${pct > 200 ? "∞" : pct.toFixed(1) + "%"}</strong>
                         </div>
                     </td>
                 </tr>`;
-            }).join("") || `<tr><td colspan="4" class="text-muted">Нет строк с ФИО в столбце Y</td></tr>`;
+            }).join("") || `<tr><td colspan="5" class="text-muted">Нет строк с ФИО в столбце Y</td></tr>`;
         }
+
+        loadBody.addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-fio]");
+            if (!btn) return;
+            vacFio = decodeURIComponent(btn.getAttribute("data-fio") || "");
+            const cur = loadVacations()[vacFio];
+            vacFioEl.textContent = vacFio;
+            vacFrom.value = cur?.from || "";
+            vacTo.value = cur?.to || "";
+            vacDialog.showModal();
+        });
+
+        vacForm.addEventListener("submit", (e) => {
+            const submitter = e.submitter;
+            const action = submitter?.value || "cancel";
+            if (action === "cancel") return;
+            const map = loadVacations();
+            if (action === "clear") {
+                delete map[vacFio];
+            } else {
+                if (!vacFrom.value || !vacTo.value || vacTo.value < vacFrom.value) {
+                    e.preventDefault();
+                    alert("Укажите период отпуска: дата «с» не позже «по».");
+                    return;
+                }
+                map[vacFio] = { from: vacFrom.value, to: vacTo.value };
+            }
+            saveVacations(map);
+            if (lastAgg) renderLoad(lastAgg);
+        });
 
         buildBtn.addEventListener("click", async () => {
             parseError.hidden = true;
