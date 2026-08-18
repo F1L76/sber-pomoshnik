@@ -153,7 +153,7 @@
                                 <th>ФИО</th>
                                 <th></th>
                                 <th class="text-end">Заявок</th>
-                                <th class="text-end">План</th>
+                                <th class="text-end">План, ч</th>
                                 <th>Нагрузка</th>
                             </tr>
                         </thead>
@@ -312,7 +312,7 @@
                 ? `Дата заявки: «${agg.dateHeader}». Строк вне квартала отброшено: ${agg.skippedOutOfQuarter}.`
                 : "Столбец даты не найден — учтены все строки с ФИО в столбце Y.";
             loadNote.textContent =
-                `Нагрузка = (обычные/24 + 1-я линия/20 + арбитраж/3,2) / рабочие дни × 100%. Файл «1-я линия… / АС Залоги» — 20 в день; AH=«Арбитраж» — 3,2. Рабочие дни: ${agg.workdays} с ${fmtDate(agg.qStart)} по ${fmtDate(agg.today)}. Заявок: ${agg.used}, арбитраж: ${agg.usedArb || 0}, 1-я линия: ${agg.usedL1 || 0}. Без ФИО: ${agg.skippedNoFio}. ${dateBit}`;
+                `План — отработанное время: ${agg.hoursPerDay || 8} ч × рабочие дни (минус отпуск). Нагрузка = (обычные/24 + 1-я линия/20 + арбитраж/3,2) / дни × 100%. AH=«Арбитраж» — 3,2 в день; файл 1-й линии — 20. Период: ${fmtDate(agg.qStart)} – ${fmtDate(agg.today)} (${agg.workdays} раб. дн.). Заявок: ${agg.used}, арбитраж: ${agg.usedArb || 0}, 1-я линия: ${agg.usedL1 || 0}. Без ФИО: ${agg.skippedNoFio}. ${dateBit}`;
             loadBody.innerHTML = agg.employees.map((e) => {
                 const pct = e.loadPct;
                 const width = Math.min(pct, 100);
@@ -329,7 +329,7 @@
                         </button>
                     </td>
                     <td class="text-end">${e.apps}${e.appsArb || e.appsL1 ? `<div class="vac-hint">${[e.appsArb ? `арб. ${e.appsArb}` : "", e.appsL1 ? `1л. ${e.appsL1}` : ""].filter(Boolean).join(" · ")}</div>` : ""}</td>
-                    <td class="text-end">${e.plan}</td>
+                    <td class="text-end">${e.planHours ?? e.plan}</td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
                             <div class="load-bar flex-grow-1"><span style="width:${width}%"></span></div>

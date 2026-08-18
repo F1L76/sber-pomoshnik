@@ -11,6 +11,7 @@ import {
     withVacations,
     isFirstLineFile,
     PLAN_APPS_PER_WORKDAY,
+    HOURS_PER_WORKDAY,
     FIO_COL
 } from "../lib/gl-load.mjs";
 
@@ -65,7 +66,7 @@ for (let i = 0; i < 48; i++) {
 const out = aggregateEmployeeLoad([{ file: "a.xlsx", sheet: "S", headers, rows }], now);
 const workdays = countWorkdays(q, now);
 if (out.workdays !== workdays) throw new Error(`workdays ${out.workdays} != ${workdays}`);
-if (out.plan !== PLAN_APPS_PER_WORKDAY * workdays) throw new Error("plan");
+if (out.plan !== HOURS_PER_WORKDAY * workdays) throw new Error("plan hours");
 if (out.employees.length !== 1 || out.employees[0].apps !== 48) throw new Error("apps");
 const expectPct = (48 / 24 / workdays) * 100;
 if (Math.abs(out.employees[0].loadPct - expectPct) > 1e-9) throw new Error("pct");
@@ -108,7 +109,7 @@ if (outL1Arb.employees[0].appsArb !== 1 || outL1Arb.employees[0].appsL1) throw n
 
 const vacPlan = employeePlan(q, now, { from: "2026-07-06", to: "2026-07-10" });
 if (vacPlan.vacationDays !== 5) throw new Error(`vacationDays ${vacPlan.vacationDays}`);
-if (vacPlan.plan !== PLAN_APPS_PER_WORKDAY * (workdays - 5)) throw new Error("vac plan");
+if (vacPlan.plan !== HOURS_PER_WORKDAY * (workdays - 5)) throw new Error("vac plan hours");
 const withV = withVacations(out, { "Сидоров С.С.": { from: "2026-07-06", to: "2026-07-10" } });
 if (withV.employees[0].plan !== vacPlan.plan) throw new Error("withVacations plan");
 
