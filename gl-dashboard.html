@@ -143,7 +143,7 @@
 
     <script src="/theme.js?v=2"></script>
     <script type="module">
-        import { aggregateEmployeeLoad, FIO_COL } from "/lib/gl-load.mjs";
+        import { aggregateEmployeeLoad } from "/lib/gl-load.mjs";
 
         const input = document.getElementById("excelFiles");
         const buildBtn = document.getElementById("buildBtn");
@@ -170,15 +170,23 @@
             buildBtn.disabled = files.length === 0;
         }
 
-        input.addEventListener("change", renderPills);
+        input.addEventListener("change", () => {
+            renderPills();
+            if (selectedFiles().length) buildBtn.click();
+        });
 
         function sheetToTable(fileName, sheetName, sheet) {
-            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, defval: "" });
+            if (!sheet || !sheet["!ref"]) return null;
+            const rows = XLSX.utils.sheet_to_json(sheet, {
+                header: 1,
+                raw: true,
+                defval: "",
+                blankrows: false
+            });
             if (!rows.length) return null;
             const headers = rows[0].map((h) => (h == null ? "" : h));
-            const data = rows.slice(1).filter((r) => r && r.length);
-            const wide = data.some((r) => r.length > FIO_COL) || headers.length > FIO_COL;
-            if (!wide) return null;
+            const data = rows.slice(1).filter((r) => Array.isArray(r) && r.some((c) => c !== "" && c != null));
+            if (!data.length) return null;
             return { file: fileName, sheet: sheetName, headers, rows: data };
         }
 
@@ -255,7 +263,7 @@
                     tables.push(...await readWorkbook(f));
                 }
                 if (!tables.length) {
-                    throw new Error("В файлах нет листов со столбцом Y (25-й столбец).");
+                    throw new Error("Не удалось прочитать таблицы из Excel. Нужен лист с ФИО в столбце Y (или «Исполнитель»).");
                 }
                 renderLoad(aggregateEmployeeLoad(tables, new Date()));
             } catch (e) {

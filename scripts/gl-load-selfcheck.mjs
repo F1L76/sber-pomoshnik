@@ -4,6 +4,8 @@ import {
     countWorkdays,
     parseExcelDate,
     findDateColumn,
+    findFioColumn,
+    isWorkday,
     aggregateEmployeeLoad,
     PLAN_APPS_PER_WORKDAY,
     FIO_COL
@@ -41,7 +43,14 @@ const sample = [
     });
     return row;
 });
+if (!isWorkday(new Date(2026, 0, 9))) {
+    /* 9 янв 2026 — перенос с 3 января */
+} else {
+    throw new Error("Jan 9 2026 should be off");
+}
+if (isWorkday(new Date(2026, 0, 12)) !== true) throw new Error("Jan 12 2026 should work");
 if (findDateColumn(headers, sample) !== 3) throw new Error("findDateColumn header");
+if (findFioColumn(headers, sample) !== FIO_COL) throw new Error("findFioColumn");
 
 const rows = [];
 for (let i = 0; i < 48; i++) {
