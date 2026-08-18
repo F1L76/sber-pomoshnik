@@ -162,7 +162,6 @@
             vertical-align: middle;
         }
         .kpi-list td:last-child { font-weight: 600; white-space: nowrap; text-align: right; }
-        .kpi-csi td:last-child { white-space: normal; font-weight: 500; }
         .kpi-list .fio-cell {
             min-width: 0;
             max-width: none;
@@ -174,16 +173,33 @@
             color: var(--sber-text);
         }
         .kpi-stars { color: #e6a817; }
-        .csi-counts {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.35rem 0.7rem;
-            justify-content: flex-end;
+        .kpi-stars .fa-regular { color: #c5cdd6; }
+        .csi-table { width: 100%; }
+        .csi-table th, .csi-table td { border-top: 1px solid var(--sber-border); }
+        .csi-table thead th {
+            text-align: center;
+            font-weight: 600;
+            padding: 0.45rem 0.3rem;
+            vertical-align: middle;
         }
-        .kpi-total .csi-counts { justify-content: flex-start; font-size: 1.05rem; font-weight: 700; }
-        .csi-n { white-space: nowrap; color: var(--sber-text); }
-        .csi-n b { font-weight: 800; }
-        .csi-n .kpi-stars { margin-right: 0.15rem; }
+        .csi-table thead th:first-child { text-align: left; }
+        .csi-table tbody td, .csi-table tfoot th, .csi-table tfoot td {
+            padding: 0.42rem 0.4rem;
+            vertical-align: middle;
+        }
+        .csi-table .csi-num { text-align: center; font-weight: 700; }
+        .kpi-csi .kpi-list td:last-child { text-align: center; font-weight: 700; }
+        .csi-table tfoot th, .csi-table tfoot td { font-weight: 800; }
+        .csi-table tfoot th:first-child { text-align: left; }
+        .csi-head-stars {
+            display: inline-flex;
+            gap: 1px;
+            font-size: 0.78rem;
+            letter-spacing: 0;
+        }
+        html[data-theme="dark"] .kpi-stars .fa-regular { color: #4a5568; }
+        html[data-theme="dark"] .csi-table th,
+        html[data-theme="dark"] .csi-table td { border-top-color: #334155; }
         html[data-theme="dark"] .kpi-card {
             background: #1a2330;
             border-color: #334155;
@@ -323,7 +339,7 @@
                     </div>
                 </section>
             </div>
-            <div class="col-lg-6">
+            <div class="col-12">
                 <section class="kpi-card kpi-csi" id="csiBlock">
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-face-smile"></i></span>
@@ -332,11 +348,11 @@
                             <p>оценка AN, 1–5</p>
                         </div>
                     </div>
-                    <div class="kpi-total" id="csiTotal">—</div>
-                    <div class="kpi-total-lbl">Количество оценок</div>
                     <div class="kpi-list">
-                        <table>
+                        <table class="csi-table">
+                            <thead id="csiHead"></thead>
                             <tbody id="csiBody"></tbody>
+                            <tfoot id="csiFoot"></tfoot>
                         </table>
                     </div>
                 </section>
@@ -384,8 +400,9 @@
         const overdueTotal = document.getElementById("overdueTotal");
         const returnsBody = document.getElementById("returnsBody");
         const returnsTotal = document.getElementById("returnsTotal");
+        const csiHead = document.getElementById("csiHead");
         const csiBody = document.getElementById("csiBody");
-        const csiTotal = document.getElementById("csiTotal");
+        const csiFoot = document.getElementById("csiFoot");
         const vacDialog = document.getElementById("vacDialog");
         const vacForm = document.getElementById("vacForm");
         const vacFioEl = document.getElementById("vacFio");
@@ -535,12 +552,12 @@
                 return `<td class="fio-cell" title="${fio}">${fio}</td>`;
             };
             const fmtDays = (n) => (n == null || !Number.isFinite(n) ? "—" : n.toFixed(1));
-            const csiCountsHtml = (counts) => {
-                const c = counts || [0, 0, 0, 0, 0];
-                const parts = [1, 2, 3, 4, 5].map((r) =>
-                    `<span class="csi-n"><span class="kpi-stars"><i class="fa-solid fa-star"></i></span>${r} <b>${c[r - 1]}</b></span>`
-                );
-                return `<span class="csi-counts">${parts.join("")}</span>`;
+            const starsHtml = (filled) => {
+                let html = '<span class="kpi-stars csi-head-stars">';
+                for (let i = 1; i <= 5; i++) {
+                    html += `<i class="fa-${i <= filled ? "solid" : "regular"} fa-star"></i>`;
+                }
+                return `${html}</span>`;
             };
             termBody.innerHTML = people((a, b) => (b.avgTermDays ?? -1) - (a.avgTermDays ?? -1) || a.fio.localeCompare(b.fio, "ru"))
                 .map((e) => `<tr>${fioCell(e)}<td class="text-end">${fmtDays(e.avgTermDays)}</td></tr>`).join("")
@@ -556,10 +573,16 @@
                 || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
             returnsTotal.textContent = String(agg.returnsTotal || 0);
             const csiRank = (c) => (c || []).reduce((acc, n, i) => acc + n * (i + 1) * 1000, 0);
-            csiBody.innerHTML = people((a, b) => csiRank(b.csiCounts) - csiRank(a.csiCounts) || a.fio.localeCompare(b.fio, "ru"))
-                .map((e) => `<tr>${fioCell(e)}<td>${csiCountsHtml(e.csiCounts)}</td></tr>`).join("")
-                || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
-            csiTotal.innerHTML = csiCountsHtml(agg.csiCounts);
+            csiHead.innerHTML = `<tr><th>ФИО</th>${[1, 2, 3, 4, 5].map((r) => `<th>${starsHtml(r)}</th>`).join("")}</tr>`;
+            const csiPeople = people((a, b) => csiRank(b.csiCounts) - csiRank(a.csiCounts) || a.fio.localeCompare(b.fio, "ru"));
+            csiBody.innerHTML = csiPeople.length
+                ? csiPeople.map((e) => {
+                    const c = e.csiCounts || [0, 0, 0, 0, 0];
+                    return `<tr>${fioCell(e)}${c.map((n) => `<td class="csi-num">${n}</td>`).join("")}</tr>`;
+                }).join("")
+                : `<tr><td colspan="6" class="text-muted">Нет данных</td></tr>`;
+            const tot = agg.csiCounts || [0, 0, 0, 0, 0];
+            csiFoot.innerHTML = `<tr><th>Итого</th>${tot.map((n) => `<th class="csi-num">${n}</th>`).join("")}</tr>`;
             kpiRow.hidden = false;
         }
 
