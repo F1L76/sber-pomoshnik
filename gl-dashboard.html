@@ -122,7 +122,7 @@
     <main class="container py-4">
         <section class="card-panel p-4 mb-4">
             <h2 class="h5 mb-2">Источники данных</h2>
-            <p class="text-muted small mb-3">Выберите до 4 файлов Excel (выгрузки БД). ФИО — столбец <strong>Y</strong> до «(». Обычные заявки: 24 в день. Файл «1-я линия поддержки АС Залоги» — 20 в день. Если в столбце <strong>AH</strong> «Арбитраж» — 3,2 в день (приоритетнее имени файла). Нагрузка — с начала квартала <strong>по выбранную дату</strong>.</p>
+            <p class="text-muted small mb-3">ФИО — столбец <strong>Y</strong> до «(». Тайминг: файл <strong>1-я линия поддержки</strong> — 24 мин/заявка; <strong>Залоговая экспертиза MDO</strong> — 20 мин, тег AH «Арбитраж» — 150 мин, Волков Артём Анатольевич — 240 мин; <strong>Работа с ОО</strong> — 210 мин. Выполнение = сумма минут по заявкам ÷ плановые часы (8 ч × рабочие дни).</p>
             <div class="d-flex flex-wrap align-items-end gap-3">
                 <div class="flex-grow-1">
                     <label class="form-label small fw-semibold mb-1" for="excelFiles">Файлы Excel</label>
@@ -312,7 +312,8 @@
                 ? `Дата заявки: «${agg.dateHeader}». Строк вне квартала отброшено: ${agg.skippedOutOfQuarter}.`
                 : "Столбец даты не найден — учтены все строки с ФИО в столбце Y.";
             loadNote.textContent =
-                `План — отработанное время: ${agg.hoursPerDay || 8} ч × рабочие дни (минус отпуск). Нагрузка = (обычные/24 + 1-я линия/20 + арбитраж/3,2) / дни × 100%. AH=«Арбитраж» — 3,2 в день; файл 1-й линии — 20. Период: ${fmtDate(agg.qStart)} – ${fmtDate(agg.today)} (${agg.workdays} раб. дн.). Заявок: ${agg.used}, арбитраж: ${agg.usedArb || 0}, 1-я линия: ${agg.usedL1 || 0}. Без ФИО: ${agg.skippedNoFio}. ${dateBit}`;
+            loadNote.textContent =
+                `% выполнения = сумма минут по заявкам ÷ (план ${agg.hoursPerDay || 8} ч × раб. дни). 1-я линия — 24 мин, MDO — 20 мин, Арбитраж — 150, Волков А.А. — 240, Работа с ОО — 210. Период: ${fmtDate(agg.qStart)} – ${fmtDate(agg.today)} (${agg.workdays} раб. дн., план ${agg.planHours} ч). Заявок: ${agg.used}. ${dateBit}`;
             loadBody.innerHTML = agg.employees.map((e) => {
                 const pct = e.loadPct;
                 const width = Math.min(pct, 100);
@@ -328,7 +329,7 @@
                             <i class="fas fa-sun" aria-hidden="true"></i>
                         </button>
                     </td>
-                    <td class="text-end">${e.apps}${e.appsArb || e.appsL1 ? `<div class="vac-hint">${[e.appsArb ? `арб. ${e.appsArb}` : "", e.appsL1 ? `1л. ${e.appsL1}` : ""].filter(Boolean).join(" · ")}</div>` : ""}</td>
+                    <td class="text-end">${e.apps}${e.appsArb || e.appsL1 || e.appsOo ? `<div class="vac-hint">${[e.appsArb ? `арб. ${e.appsArb}` : "", e.appsL1 ? `1л. ${e.appsL1}` : "", e.appsOo ? `ОО ${e.appsOo}` : ""].filter(Boolean).join(" · ")}</div>` : ""}</td>
                     <td class="text-end">${e.planHours ?? e.plan}</td>
                     <td>
                         <div class="d-flex align-items-center gap-2">

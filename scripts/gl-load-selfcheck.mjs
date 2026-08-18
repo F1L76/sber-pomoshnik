@@ -10,7 +10,9 @@ import {
     employeePlan,
     withVacations,
     isFirstLineFile,
-    PLAN_APPS_PER_WORKDAY,
+    fileKind,
+    minutesForApp,
+    isVolkov,
     HOURS_PER_WORKDAY,
     FIO_COL
 } from "../lib/gl-load.mjs";
@@ -68,7 +70,7 @@ const workdays = countWorkdays(q, now);
 if (out.workdays !== workdays) throw new Error(`workdays ${out.workdays} != ${workdays}`);
 if (out.plan !== HOURS_PER_WORKDAY * workdays) throw new Error("plan hours");
 if (out.employees.length !== 1 || out.employees[0].apps !== 48) throw new Error("apps");
-const expectPct = (48 / 24 / workdays) * 100;
+const expectPct = (48 * 20) / (workdays * 8 * 60) * 100;
 if (Math.abs(out.employees[0].loadPct - expectPct) > 1e-9) throw new Error("pct");
 
 const arbRow = Array(34).fill("");
@@ -79,13 +81,20 @@ const outArb = aggregateEmployeeLoad(
     [{ file: "a.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: [...rows, arbRow] }],
     now
 );
-const expectArb = ((48 / 24 + 1 / 3.2) / workdays) * 100;
+const expectArb = ((48 * 20 + 150) / (workdays * 8 * 60)) * 100;
 if (outArb.employees[0].appsArb !== 1) throw new Error("appsArb");
 if (Math.abs(outArb.employees[0].loadPct - expectArb) > 1e-6) throw new Error("arb pct");
 
 if (!isFirstLineFile("1-я линия поддержки АС Залоги.xlsx")) throw new Error("l1 name");
 if (!isFirstLineFile("первая линия.xlsx")) throw new Error("l1 первая");
 if (isFirstLineFile("выгрузка.xlsx")) throw new Error("l1 false positive");
+if (fileKind("Залоговая экспертиза MDO.xlsx") !== "mdo") throw new Error("mdo kind");
+if (fileKind("Работа с ОО.xlsx") !== "oo") throw new Error("oo kind");
+if (!isVolkov("Волков Артем Анатольевич")) throw new Error("volkov");
+if (minutesForApp("1-я линия.xlsx", "Иванов", "") !== 24) throw new Error("min l1");
+if (minutesForApp("Залоговая экспертиза MDO.xlsx", "Иванов", "Арбитраж") !== 150) throw new Error("min arb");
+if (minutesForApp("MDO.xlsx", "Волков Артем Анатольевич", "") !== 240) throw new Error("min volkov");
+if (minutesForApp("Работа с ОО.xlsx", "Иванов", "") !== 210) throw new Error("min oo");
 
 const l1Row = Array(25).fill("");
 l1Row[3] = "10.07.2026";
@@ -95,17 +104,18 @@ const outL1 = aggregateEmployeeLoad(
     now
 );
 if (outL1.employees[0].appsL1 !== 1) throw new Error("appsL1");
-if (Math.abs(outL1.employees[0].loadPct - (1 / 20 / workdays) * 100) > 1e-6) throw new Error("l1 pct");
+if (Math.abs(outL1.employees[0].loadPct - (24 / (workdays * 8 * 60)) * 100) > 1e-6) throw new Error("l1 pct");
 
 const l1Arb = Array(34).fill("");
 l1Arb[3] = "10.07.2026";
 l1Arb[FIO_COL] = "Сидоров С.С. (111)";
 l1Arb[33] = "Арбитраж";
 const outL1Arb = aggregateEmployeeLoad(
-    [{ file: "АС Залоги.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: [l1Arb] }],
+    [{ file: "1-я линия.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: [l1Arb] }],
     now
 );
-if (outL1Arb.employees[0].appsArb !== 1 || outL1Arb.employees[0].appsL1) throw new Error("arb over l1");
+if (outL1Arb.employees[0].appsL1 !== 1) throw new Error("l1 not arb file");
+if (Math.abs(outL1Arb.employees[0].minutes - 24) > 1e-9) throw new Error("l1 ignores ah");
 
 const vacPlan = employeePlan(q, now, { from: "2026-07-06", to: "2026-07-10" });
 if (vacPlan.vacationDays !== 5) throw new Error(`vacationDays ${vacPlan.vacationDays}`);
