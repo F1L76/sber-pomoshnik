@@ -146,7 +146,6 @@
             color: var(--kpi-accent);
             line-height: 1.1;
         }
-        .kpi-total .kpi-stars { font-size: 1.35rem; letter-spacing: 0.08em; }
         .kpi-total-lbl {
             font-size: 0.72rem;
             color: var(--sber-muted);
@@ -174,32 +173,23 @@
         }
         .kpi-stars { color: #e6a817; }
         .kpi-stars .fa-regular { color: #c5cdd6; }
-        .csi-table { width: 100%; }
-        .csi-table th, .csi-table td { border-top: 1px solid var(--sber-border); }
         .csi-table thead th {
             text-align: center;
             font-weight: 600;
             padding: 0.45rem 0.3rem;
-            vertical-align: middle;
+            border-top: 0;
         }
-        .csi-table thead th:first-child { text-align: left; }
-        .csi-table tbody td, .csi-table tfoot th, .csi-table tfoot td {
-            padding: 0.42rem 0.4rem;
-            vertical-align: middle;
-        }
-        .csi-table .csi-num { text-align: center; font-weight: 700; }
-        .kpi-csi .kpi-list td:last-child { text-align: center; font-weight: 700; }
-        .csi-table tfoot th, .csi-table tfoot td { font-weight: 800; }
+        .csi-table thead th:first-child,
         .csi-table tfoot th:first-child { text-align: left; }
+        .csi-table .csi-num { text-align: center; font-weight: 700; }
+        .csi-table tfoot th { font-weight: 800; padding: 0.42rem 0.4rem; }
+        .kpi-csi .kpi-list td:last-child { text-align: center; }
         .csi-head-stars {
             display: inline-flex;
             gap: 1px;
             font-size: 0.78rem;
-            letter-spacing: 0;
         }
         html[data-theme="dark"] .kpi-stars .fa-regular { color: #4a5568; }
-        html[data-theme="dark"] .csi-table th,
-        html[data-theme="dark"] .csi-table td { border-top-color: #334155; }
         html[data-theme="dark"] .kpi-card {
             background: #1a2330;
             border-color: #334155;
@@ -286,7 +276,7 @@
 
         <div class="row g-3 mt-1" id="kpiRow" hidden>
             <div class="col-lg-6">
-                <section class="kpi-card kpi-term" id="termBlock">
+                <section class="kpi-card kpi-term">
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-stopwatch"></i></span>
                         <div>
@@ -304,7 +294,7 @@
                 </section>
             </div>
             <div class="col-lg-6">
-                <section class="kpi-card kpi-overdue" id="overdueBlock">
+                <section class="kpi-card kpi-overdue">
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-calendar-xmark"></i></span>
                         <div>
@@ -322,7 +312,7 @@
                 </section>
             </div>
             <div class="col-lg-6">
-                <section class="kpi-card kpi-returns" id="returnsBlock">
+                <section class="kpi-card kpi-returns">
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-reply"></i></span>
                         <div>
@@ -340,7 +330,7 @@
                 </section>
             </div>
             <div class="col-12">
-                <section class="kpi-card kpi-csi" id="csiBlock">
+                <section class="kpi-card kpi-csi">
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-face-smile"></i></span>
                         <div>
@@ -350,7 +340,16 @@
                     </div>
                     <div class="kpi-list">
                         <table class="csi-table">
-                            <thead id="csiHead"></thead>
+                            <thead>
+                                <tr>
+                                    <th>ФИО</th>
+                                    <th><span class="kpi-stars csi-head-stars" aria-label="1"><i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i></span></th>
+                                    <th><span class="kpi-stars csi-head-stars" aria-label="2"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i></span></th>
+                                    <th><span class="kpi-stars csi-head-stars" aria-label="3"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i><i class="fa-regular fa-star"></i></span></th>
+                                    <th><span class="kpi-stars csi-head-stars" aria-label="4"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-regular fa-star"></i></span></th>
+                                    <th><span class="kpi-stars csi-head-stars" aria-label="5"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i></span></th>
+                                </tr>
+                            </thead>
                             <tbody id="csiBody"></tbody>
                             <tfoot id="csiFoot"></tfoot>
                         </table>
@@ -400,7 +399,6 @@
         const overdueTotal = document.getElementById("overdueTotal");
         const returnsBody = document.getElementById("returnsBody");
         const returnsTotal = document.getElementById("returnsTotal");
-        const csiHead = document.getElementById("csiHead");
         const csiBody = document.getElementById("csiBody");
         const csiFoot = document.getElementById("csiFoot");
         const vacDialog = document.getElementById("vacDialog");
@@ -552,13 +550,6 @@
                 return `<td class="fio-cell" title="${fio}">${fio}</td>`;
             };
             const fmtDays = (n) => (n == null || !Number.isFinite(n) ? "—" : n.toFixed(1));
-            const starsHtml = (filled) => {
-                let html = '<span class="kpi-stars csi-head-stars">';
-                for (let i = 1; i <= 5; i++) {
-                    html += `<i class="fa-${i <= filled ? "solid" : "regular"} fa-star"></i>`;
-                }
-                return `${html}</span>`;
-            };
             termBody.innerHTML = people((a, b) => (b.avgTermDays ?? -1) - (a.avgTermDays ?? -1) || a.fio.localeCompare(b.fio, "ru"))
                 .map((e) => `<tr>${fioCell(e)}<td class="text-end">${fmtDays(e.avgTermDays)}</td></tr>`).join("")
                 || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
@@ -572,8 +563,7 @@
                 .map((e) => `<tr>${fioCell(e)}<td class="text-end">${e.returns || 0}</td></tr>`).join("")
                 || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
             returnsTotal.textContent = String(agg.returnsTotal || 0);
-            const csiRank = (c) => (c || []).reduce((acc, n, i) => acc + n * (i + 1) * 1000, 0);
-            csiHead.innerHTML = `<tr><th>ФИО</th>${[1, 2, 3, 4, 5].map((r) => `<th>${starsHtml(r)}</th>`).join("")}</tr>`;
+            const csiRank = (c) => (c || []).reduce((acc, n, i) => acc + n * (i + 1), 0);
             const csiPeople = people((a, b) => csiRank(b.csiCounts) - csiRank(a.csiCounts) || a.fio.localeCompare(b.fio, "ru"));
             csiBody.innerHTML = csiPeople.length
                 ? csiPeople.map((e) => {
