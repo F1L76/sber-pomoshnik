@@ -13,7 +13,7 @@ import {
     fileKind,
     minutesForApp,
     isVolkov,
-    isVolochkova,
+    isVolchkova,
     findTagColumn,
     HOURS_PER_WORKDAY,
     FIO_COL,
@@ -121,22 +121,23 @@ if (isFirstLineFile("выгрузка.xlsx")) throw new Error("l1 false positive
 if (fileKind("Залоговая экспертиза MDO.xlsx") !== "mdo") throw new Error("mdo kind");
 if (fileKind("Работа с ОО.xlsx") !== "oo") throw new Error("oo kind");
 if (!isVolkov("Волков Артем Анатольевич")) throw new Error("volkov");
-if (isVolochkova("Волков Артем Анатольевич")) throw new Error("volochkova vs volkov");
-if (!isVolochkova("Волочкова Анна Ивановна")) throw new Error("volochkova fio");
-if (!isVolochkova("Волочкова А.И. (123)")) throw new Error("volochkova initials");
-if (!isVolochkova("волочкова")) throw new Error("volochkova surname");
-if (isVolochkova("Волков")) throw new Error("not volkov");
-if (isVolochkova("Волкова")) throw new Error("not volkova");
+if (isVolchkova("Волков Артем Анатольевич")) throw new Error("volchkova vs volkov");
+if (!isVolchkova("Волчкова Анна Ивановна")) throw new Error("volchkova fio");
+if (!isVolchkova("Волчкова А.И. (123)")) throw new Error("volchkova initials");
+if (!isVolchkova("волчкова")) throw new Error("volchkova surname");
+if (isVolchkova("Волочкова")) throw new Error("not volochkova");
+if (isVolchkova("Волков")) throw new Error("not volkov");
+if (isVolchkova("Волкова")) throw new Error("not volkova");
 if (minutesForApp("1-я линия.xlsx", "Иванов", "") !== 24) throw new Error("min l1");
 if (minutesForApp("Залоговая экспертиза MDO.xlsx", "Иванов", "Арбитраж") !== 150) throw new Error("min arb");
 if (minutesForApp("MDO.xlsx", "Иванов", "Арбитраж, срочно") !== 150) throw new Error("min arb contains");
 if (minutesForApp("MDO.xlsx", "Иванов", "foo Арбитраж bar") !== 150) throw new Error("min arb substring");
 if (minutesForApp("MDO.xlsx", "Волков Артем Анатольевич", "") !== 240) throw new Error("min volkov");
 if (minutesForApp("Работа с ОО.xlsx", "Иванов", "") !== 210) throw new Error("min oo");
-if (minutesForApp("1-я линия.xlsx", "Волочкова А.А.", "") !== 210) throw new Error("min volochkova l1");
-if (minutesForApp("MDO.xlsx", "Волочкова А.А.", "") !== 210) throw new Error("min volochkova mdo");
-if (minutesForApp("MDO.xlsx", "Волочкова А.А.", "Арбитраж") !== 210) throw new Error("min volochkova arb");
-if (minutesForApp("Работа с ОО.xlsx", "Волочкова А.А.", "") !== 210) throw new Error("min volochkova oo");
+if (minutesForApp("1-я линия.xlsx", "Волчкова А.А.", "") !== 210) throw new Error("min volchkova l1");
+if (minutesForApp("MDO.xlsx", "Волчкова А.А.", "") !== 210) throw new Error("min volchkova mdo");
+if (minutesForApp("MDO.xlsx", "Волчкова А.А.", "Арбитраж") !== 210) throw new Error("min volchkova arb");
+if (minutesForApp("Работа с ОО.xlsx", "Волчкова А.А.", "") !== 210) throw new Error("min volchkova oo");
 
 const l1Row = Array(25).fill("");
 l1Row[3] = "10.07.2026";
