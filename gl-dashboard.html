@@ -467,9 +467,39 @@
         </form>
     </dialog>
 
+    <dialog id="returnsDialog" class="card-panel p-4" style="border:1px solid var(--sber-border); border-radius: 16px; max-width: 54rem; width: calc(100% - 2rem);">
+        <form method="dialog" id="returnsDialogForm">
+            <h3 class="h6 mb-3"><i class="fas fa-file-alt me-2" aria-hidden="true"></i>Заявки по возвратам: <span id="returnsFio"></span></h3>
+            <p class="text-muted small mb-3">Отображаются строки, учтённые в дашборде: столбец <strong>A</strong> и ФИО из <strong>AD</strong> (до «(»).</p>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>ФИО (AD)</th>
+                            <th>Заявка (A)</th>
+                            <th>Файл</th>
+                        </tr>
+                    </thead>
+                    <tbody id="returnsAppsBody"></tbody>
+                </table>
+            </div>
+            <div class="d-flex flex-wrap gap-2 justify-content-end mt-3">
+                <div class="text-muted small align-self-center" id="returnsMeta"></div>
+                <button type="submit" class="btn btn-outline-secondary btn-sm" value="cancel">Закрыть</button>
+            </div>
+        </form>
+    </dialog>
+
     <script src="/theme.js?v=2"></script>
     <script type="module">
-        import { aggregateEmployeeLoad, withVacations, SEGMENTS } from "/lib/gl-load.mjs";
+        import {
+            aggregateEmployeeLoad,
+            withVacations,
+            SEGMENTS,
+            parseExcelDate,
+            findDateColumn,
+            fioFromCell
+        } from "/lib/gl-load.mjs";
 
         const VAC_KEY = "gl-dashboard:vacations";
         const input = document.getElementById("excelFiles");
@@ -488,6 +518,10 @@
         const overdueTotal = document.getElementById("overdueTotal");
         const returnsBody = document.getElementById("returnsBody");
         const returnsTotal = document.getElementById("returnsTotal");
+        const returnsDialog = document.getElementById("returnsDialog");
+        const returnsFioEl = document.getElementById("returnsFio");
+        const returnsAppsBody = document.getElementById("returnsAppsBody");
+        const returnsMeta = document.getElementById("returnsMeta");
         const csiBody = document.getElementById("csiBody");
         const csiFoot = document.getElementById("csiFoot");
         const segMdo = document.getElementById("segMdo");
@@ -503,6 +537,9 @@
         let lastAgg = null;
         let lastTables = null;
         let vacFio = "";
+
+        const A_COL = 0;
+        const AD_COL = 29; // Excel AD => 30-й столбец, 0-based индекс 29
 
         function todayYmd() {
             const n = new Date();
@@ -594,6 +631,39 @@
             return `<div class="col-6 col-md-3"><div class="stat-chip"><div class="lbl">${lbl}</div><div class="val">${val}</div></div></div>`;
         }
 
+        function esc(s) {
+            return String(s ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function collectReturnsApps(fio) {
+            if (!lastTables || !lastAgg) return [];
+            const out = [];
+            const { qStart, today, dateCol: globalDateCol } = lastAgg;
+            for (const table of lastTables) {
+                const sample = table.rows.slice(0, 40);
+                const col = findDateColumn(table.headers, sample);
+                const useCol = col >= 0 ? col : globalDateCol;
+                for (const row of table.rows) {
+                    const rowFio = fioFromCell(row[AD_COL]);
+                    if (!rowFio || rowFio !== fio) continue;
+                    if (useCol >= 0) {
+                        const dt = parseExcelDate(row[useCol]);
+                        if (dt && (dt < qStart || dt > today)) continue;
+                    }
+                    out.push({
+                        file: table.file,
+                        fio: rowFio,
+                        a: row[A_COL]
+                    });
+                }
+            }
+            return out;
+        }
+
         function renderLoad(baseAgg) {
             lastAgg = baseAgg;
             const agg = withVacations(baseAgg, loadVacations());
@@ -652,7 +722,20 @@
                 || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
             overdueTotal.textContent = String(agg.overdueTotal || 0);
             returnsBody.innerHTML = people((a, b) => b.returns - a.returns || a.fio.localeCompare(b.fio, "ru"))
-                .map((e) => `<tr>${fioCell(e)}<td class="text-end">${e.returns || 0}</td></tr>`).join("")
+                .map((e) => `<tr>
+                    ${fioCell(e)}
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end align-items-center gap-2">
+                            <span>${e.returns || 0}</span>
+                            <button type="button"
+                                    class="btn btn-outline-secondary btn-sm"
+                                    data-returns-fio="${encodeURIComponent(e.fio)}"
+                                    title="Показать заявки (столбец A)">
+                                <i class="fas fa-file-alt" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`).join("")
                 || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
             returnsTotal.textContent = String(agg.returnsTotal || 0);
             const csiRank = (c) => (c || []).reduce((acc, n, i) => acc + n * (i + 1), 0);
@@ -680,6 +763,26 @@
             fillSeg(segOo, segs.oo);
             kpiRow.hidden = false;
         }
+
+        returnsBody.addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-returns-fio]");
+            if (!btn) return;
+            if (!lastTables || !lastAgg) return;
+            const fio = decodeURIComponent(btn.getAttribute("data-returns-fio") || "");
+            const apps = collectReturnsApps(fio);
+            returnsFioEl.textContent = fio;
+            returnsMeta.textContent = `Строк: ${apps.length}`;
+            returnsAppsBody.innerHTML = apps.length
+                ? apps
+                    .map((app) => `<tr>
+                        <td>${esc(app.fio)}</td>
+                        <td>${esc(app.a)}</td>
+                        <td>${esc(app.file)}</td>
+                    </tr>`)
+                    .join("")
+                : `<tr><td colspan="3" class="text-muted">Нет заявок</td></tr>`;
+            returnsDialog.showModal();
+        });
 
         loadBody.addEventListener("click", (e) => {
             const btn = e.target.closest("[data-fio]");
