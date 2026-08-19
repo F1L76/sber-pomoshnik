@@ -469,8 +469,8 @@
 
     <dialog id="returnsDialog" class="card-panel p-4" style="border:1px solid var(--sber-border); border-radius: 16px; max-width: 54rem; width: calc(100% - 2rem);">
         <form method="dialog" id="returnsDialogForm">
-            <h3 class="h6 mb-3"><i class="fas fa-file-alt me-2" aria-hidden="true"></i>Заявки по возвратам: <span id="returnsFio"></span></h3>
-            <p class="text-muted small mb-3">Отображаются строки, учтённые в дашборде: столбец <strong>A</strong> и ФИО из <strong>AD</strong> (до «(»).</p>
+            <h3 class="h6 mb-3"><i class="fas fa-file-alt me-2" aria-hidden="true"></i><span id="returnsDialogTitle">Заявки по возвратам</span>: <span id="returnsFio"></span></h3>
+            <p class="text-muted small mb-3" id="returnsDialogNote">Отображаются строки, учтённые в дашборде: столбец <strong>A</strong> и ФИО из <strong>AD</strong> (до «(»).</p>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                     <thead>
@@ -498,7 +498,10 @@
             SEGMENTS,
             parseExcelDate,
             findDateColumn,
-            fioFromCell
+            fioFromCell,
+            isOverdueCell,
+            AG_COL,
+            FIO_COL
         } from "/lib/gl-load.mjs";
 
         const VAC_KEY = "gl-dashboard:vacations";
@@ -519,6 +522,8 @@
         const returnsBody = document.getElementById("returnsBody");
         const returnsTotal = document.getElementById("returnsTotal");
         const returnsDialog = document.getElementById("returnsDialog");
+        const returnsDialogTitle = document.getElementById("returnsDialogTitle");
+        const returnsDialogNote = document.getElementById("returnsDialogNote");
         const returnsFioEl = document.getElementById("returnsFio");
         const returnsAppsBody = document.getElementById("returnsAppsBody");
         const returnsMeta = document.getElementById("returnsMeta");
@@ -639,7 +644,7 @@
                 .replace(/"/g, "&quot;");
         }
 
-        function collectReturnsApps(fio) {
+        function collectEmployeeApps(fio, { overdueOnly = false } = {}) {
             if (!lastTables || !lastAgg) return [];
             const out = [];
             const { qStart, today, dateCol: globalDateCol } = lastAgg;
@@ -647,21 +652,46 @@
                 const sample = table.rows.slice(0, 40);
                 const col = findDateColumn(table.headers, sample);
                 const useCol = col >= 0 ? col : globalDateCol;
+                // aggregateEmployeeLoad группирует сотрудников по столбцу FIO (Y или найденный).
+                // В диалоге ФИО показываем из AD, но фильтруем по "агрегаторному" столбцу.
+                const fioColUsed = table.fioCol >= 0 ? table.fioCol : FIO_COL;
                 for (const row of table.rows) {
-                    const rowFio = fioFromCell(row[AD_COL]);
-                    if (!rowFio || rowFio !== fio) continue;
+                    const rowFioUsed = fioFromCell(row[fioColUsed]);
+                    if (!rowFioUsed || rowFioUsed !== fio) continue;
+                    if (overdueOnly && !isOverdueCell(row[AG_COL])) continue;
                     if (useCol >= 0) {
                         const dt = parseExcelDate(row[useCol]);
                         if (dt && (dt < qStart || dt > today)) continue;
                     }
+                    const rowFioDisplay = fioFromCell(row[AD_COL]) || rowFioUsed;
                     out.push({
                         file: table.file,
-                        fio: rowFio,
+                        fio: rowFioDisplay,
                         a: row[A_COL]
                     });
                 }
             }
             return out;
+        }
+
+        function showEmployeeAppsDialog(fio, overdueOnly) {
+            const apps = collectEmployeeApps(fio, { overdueOnly });
+            returnsDialogTitle.textContent = overdueOnly ? "Заявки по просрочкам" : "Заявки по возвратам";
+            returnsDialogNote.innerHTML = overdueOnly
+                ? "Только строки с просрочкой (<strong>AG</strong> = ДА): столбец <strong>A</strong> и ФИО из <strong>AD</strong> (до «(»)."
+                : "Отображаются строки, учтённые в дашборде: столбец <strong>A</strong> и ФИО из <strong>AD</strong> (до «(»).";
+            returnsFioEl.textContent = fio;
+            returnsMeta.textContent = `Строк: ${apps.length}`;
+            returnsAppsBody.innerHTML = apps.length
+                ? apps
+                    .map((app) => `<tr>
+                        <td>${esc(app.fio)}</td>
+                        <td>${esc(app.a)}</td>
+                        <td>${esc(app.file)}</td>
+                    </tr>`)
+                    .join("")
+                : `<tr><td colspan="3" class="text-muted">Нет заявок</td></tr>`;
+            returnsDialog.showModal();
         }
 
         function renderLoad(baseAgg) {
@@ -718,7 +748,20 @@
             const termTxt = fmtDays(agg.avgTermDays);
             termTotal.textContent = termTxt === "—" ? "—" : `${termTxt} дн.`;
             overdueBody.innerHTML = people((a, b) => b.overdue - a.overdue || a.fio.localeCompare(b.fio, "ru"))
-                .map((e) => `<tr>${fioCell(e)}<td class="text-end">${e.overdue || 0}</td></tr>`).join("")
+                .map((e) => `<tr>
+                    ${fioCell(e)}
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end align-items-center gap-2">
+                            <span>${e.overdue || 0}</span>
+                            <button type="button"
+                                    class="btn btn-outline-secondary btn-sm"
+                                    data-overdue-fio="${encodeURIComponent(e.fio)}"
+                                    title="Показать заявки (столбец A)">
+                                <i class="fas fa-file-alt" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`).join("")
                 || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
             overdueTotal.textContent = String(agg.overdueTotal || 0);
             returnsBody.innerHTML = people((a, b) => b.returns - a.returns || a.fio.localeCompare(b.fio, "ru"))
@@ -768,20 +811,14 @@
             const btn = e.target.closest("[data-returns-fio]");
             if (!btn) return;
             if (!lastTables || !lastAgg) return;
-            const fio = decodeURIComponent(btn.getAttribute("data-returns-fio") || "");
-            const apps = collectReturnsApps(fio);
-            returnsFioEl.textContent = fio;
-            returnsMeta.textContent = `Строк: ${apps.length}`;
-            returnsAppsBody.innerHTML = apps.length
-                ? apps
-                    .map((app) => `<tr>
-                        <td>${esc(app.fio)}</td>
-                        <td>${esc(app.a)}</td>
-                        <td>${esc(app.file)}</td>
-                    </tr>`)
-                    .join("")
-                : `<tr><td colspan="3" class="text-muted">Нет заявок</td></tr>`;
-            returnsDialog.showModal();
+            showEmployeeAppsDialog(decodeURIComponent(btn.getAttribute("data-returns-fio") || ""), false);
+        });
+
+        overdueBody.addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-overdue-fio]");
+            if (!btn) return;
+            if (!lastTables || !lastAgg) return;
+            showEmployeeAppsDialog(decodeURIComponent(btn.getAttribute("data-overdue-fio") || ""), true);
         });
 
         loadBody.addEventListener("click", (e) => {
