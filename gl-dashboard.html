@@ -501,7 +501,9 @@
             fioFromCell,
             isOverdueCell,
             AG_COL,
-            FIO_COL
+            FIO_COL,
+            W_COL,
+            numberCell
         } from "/lib/gl-load.mjs";
 
         const VAC_KEY = "gl-dashboard:vacations";
@@ -664,11 +666,22 @@
                         if (dt && (dt < qStart || dt > today)) continue;
                     }
                     const rowFioDisplay = fioFromCell(row[AD_COL]) || rowFioUsed;
-                    out.push({
-                        file: table.file,
-                        fio: rowFioDisplay,
-                        a: row[A_COL]
-                    });
+                    if (!overdueOnly) {
+                        // В дашборде "возвраты" считаются суммой по W.
+                        // Поэтому в диалог добавляем только строки, где W > 0,
+                        // и дублируем запись на количество возвратов в W (обычно 1).
+                        const returnsN = numberCell(row[W_COL]);
+                        const copies = returnsN > 0 ? Math.max(1, Math.round(returnsN)) : 0;
+                        for (let i = 0; i < copies; i++) {
+                            out.push({ file: table.file, fio: rowFioDisplay, a: row[A_COL] });
+                        }
+                    } else {
+                        out.push({
+                            file: table.file,
+                            fio: rowFioDisplay,
+                            a: row[A_COL]
+                        });
+                    }
                 }
             }
             return out;
