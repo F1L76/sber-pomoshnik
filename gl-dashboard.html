@@ -704,7 +704,14 @@
                     </tr>`)
                     .join("")
                 : `<tr><td colspan="3" class="text-muted">Нет заявок</td></tr>`;
+            // При повторном открытии dialog браузер может сохранять позицию скролла.
+            // Чтобы список всегда начинался с верха — принудительно сбрасываем скролл.
+            returnsDialog.scrollTop = 0;
+            const scroller = returnsDialog.querySelector(".table-responsive");
+            if (scroller) scroller.scrollTop = 0;
             returnsDialog.showModal();
+            returnsDialog.scrollTop = 0;
+            if (scroller) scroller.scrollTop = 0;
         }
 
         function renderLoad(baseAgg) {
