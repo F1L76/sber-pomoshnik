@@ -189,12 +189,24 @@
             margin: 0 -0.25rem;
         }
         .kpi-list table { width: 100%; font-size: 0.95rem; }
+        .kpi-list thead th {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--sber-muted);
+            padding: 0 0.5rem 0.2rem;
+            border: 0;
+        }
         .kpi-list td {
             padding: 0.42rem 0.5rem;
             border-top: 1px solid var(--sber-border);
             vertical-align: middle;
         }
         .kpi-list td:last-child { font-weight: 600; white-space: nowrap; text-align: right; }
+        .kpi-list td.kpi-share {
+            width: 4.1rem;
+            color: var(--sber-muted);
+            font-variant-numeric: tabular-nums;
+        }
         .kpi-list .fio-cell {
             min-width: 0;
             max-width: none;
@@ -450,6 +462,13 @@
                     <div class="kpi-total-lbl">Общее количество</div>
                     <div class="kpi-list">
                         <table>
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th class="text-end">шт</th>
+                                    <th class="text-end">доля</th>
+                                </tr>
+                            </thead>
                             <tbody id="returnsBody"></tbody>
                         </table>
                     </div>
@@ -471,6 +490,13 @@
                     <div class="kpi-total-lbl">Общее количество</div>
                     <div class="kpi-list">
                         <table>
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th class="text-end">шт</th>
+                                    <th class="text-end">доля</th>
+                                </tr>
+                            </thead>
                             <tbody id="overdueBody"></tbody>
                         </table>
                     </div>
@@ -884,6 +910,17 @@
             };
             const fileLabel = (f) => lineNameFromFile(f.file);
             const fmtNum = (n) => (n == null || !Number.isFinite(n) ? "—" : n.toFixed(1));
+            const fmtShare = (n, apps) => (apps ? `${((Number(n) || 0) / apps * 100).toFixed(1)}%` : "—");
+            const metricRow = (label, n, apps, btn) => `<tr>
+                    ${nameCell(label)}
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end align-items-center gap-2">
+                            <span>${n || 0}</span>
+                            ${btn}
+                        </div>
+                    </td>
+                    <td class="kpi-share">${fmtShare(n, apps)}</td>
+                </tr>`;
             const byEmp = !kpiFlip.term;
             termSub.textContent = byEmp ? "T − S, часы · сотрудники" : "T − S, часы · линии";
             document.querySelector('[data-flip="term"]')?.classList.toggle("is-on", !byEmp);
@@ -901,59 +938,27 @@
             termTotal.textContent = termTxt === "—" ? "—" : `${termTxt} ч`;
 
             const overdueEmp = !kpiFlip.overdue;
-            overdueSub.textContent = overdueEmp ? "AG = ДА · сотрудники" : "AG = ДА · линии";
+            overdueSub.textContent = overdueEmp ? "AG = ДА · доля от заявок · сотрудники" : "AG = ДА · доля от заявок линии";
             document.querySelector('[data-flip="overdue"]')?.classList.toggle("is-on", !overdueEmp);
             const overdueRows = overdueEmp
                 ? people((a, b) => b.overdue - a.overdue || a.fio.localeCompare(b.fio, "ru"))
-                    .map((e) => `<tr>
-                    ${nameCell(e.fio)}
-                    <td class="text-end">
-                        <div class="d-flex justify-content-end align-items-center gap-2">
-                            <span>${e.overdue || 0}</span>
-                            ${appsBtn("data-overdue-fio", e.fio)}
-                        </div>
-                    </td>
-                </tr>`)
+                    .map((e) => metricRow(e.fio, e.overdue, e.apps, appsBtn("data-overdue-fio", e.fio)))
                 : filesCut()
                     .sort((a, b) => b.overdue - a.overdue || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => `<tr>
-                    ${nameCell(fileLabel(f))}
-                    <td class="text-end">
-                        <div class="d-flex justify-content-end align-items-center gap-2">
-                            <span>${f.overdue || 0}</span>
-                            ${appsBtn("data-overdue-file", f.file)}
-                        </div>
-                    </td>
-                </tr>`);
-            overdueBody.innerHTML = overdueRows.join("") || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
+                    .map((f) => metricRow(fileLabel(f), f.overdue, f.apps, appsBtn("data-overdue-file", f.file)));
+            overdueBody.innerHTML = overdueRows.join("") || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
             overdueTotal.textContent = String(agg.overdueTotal || 0);
 
             const returnsEmp = !kpiFlip.returns;
-            returnsSub.textContent = returnsEmp ? "сумма W · сотрудники" : "сумма W · линии";
+            returnsSub.textContent = returnsEmp ? "сумма W · доля от заявок · сотрудники" : "сумма W · доля от заявок линии";
             document.querySelector('[data-flip="returns"]')?.classList.toggle("is-on", !returnsEmp);
             const returnsRows = returnsEmp
                 ? people((a, b) => b.returns - a.returns || a.fio.localeCompare(b.fio, "ru"))
-                    .map((e) => `<tr>
-                    ${nameCell(e.fio)}
-                    <td class="text-end">
-                        <div class="d-flex justify-content-end align-items-center gap-2">
-                            <span>${e.returns || 0}</span>
-                            ${appsBtn("data-returns-fio", e.fio)}
-                        </div>
-                    </td>
-                </tr>`)
+                    .map((e) => metricRow(e.fio, e.returns, e.apps, appsBtn("data-returns-fio", e.fio)))
                 : filesCut()
                     .sort((a, b) => b.returns - a.returns || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => `<tr>
-                    ${nameCell(fileLabel(f))}
-                    <td class="text-end">
-                        <div class="d-flex justify-content-end align-items-center gap-2">
-                            <span>${f.returns || 0}</span>
-                            ${appsBtn("data-returns-file", f.file)}
-                        </div>
-                    </td>
-                </tr>`);
-            returnsBody.innerHTML = returnsRows.join("") || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
+                    .map((f) => metricRow(fileLabel(f), f.returns, f.apps, appsBtn("data-returns-file", f.file)));
+            returnsBody.innerHTML = returnsRows.join("") || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
             returnsTotal.textContent = String(agg.returnsTotal || 0);
 
             const csiRank = (c) => (c || []).reduce((acc, n, i) => acc + n * (i + 1), 0);
