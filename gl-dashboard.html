@@ -640,6 +640,7 @@
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
+                            <th>ФИО (Y)</th>
                             <th>ФИО (AD)</th>
                             <th>Заявка (A)</th>
                             <th>Линия</th>
@@ -847,14 +848,15 @@
                     const dt = parseExcelDate(row[T_COL]);
                     if (!dt || dt < qStart || dt > today) continue;
                     const rowFioDisplay = fioFromCell(row[AD_COL]) || rowFioUsed;
+                    const rowFioY = fioFromCell(row[FIO_COL]) || rowFioUsed;
                     if (!overdueOnly) {
                         const returnsN = numberCell(row[W_COL]);
                         const copies = returnsN > 0 ? Math.max(1, Math.round(returnsN)) : 0;
                         for (let i = 0; i < copies; i++) {
-                            out.push({ file: lineNameFromFile(table.file), fio: rowFioDisplay, a: row[A_COL] });
+                            out.push({ file: lineNameFromFile(table.file), fio: rowFioDisplay, fioY: rowFioY, a: row[A_COL] });
                         }
                     } else {
-                        out.push({ file: lineNameFromFile(table.file), fio: rowFioDisplay, a: row[A_COL] });
+                        out.push({ file: lineNameFromFile(table.file), fio: rowFioDisplay, fioY: rowFioY, a: row[A_COL] });
                     }
                 }
             }
