@@ -287,7 +287,7 @@ if (outM.returnsTotal !== 2 * MIN_APPS_FOR_LOAD) throw new Error("returns total"
 if (JSON.stringify(outM.employees[0].csiCounts) !== JSON.stringify([1, 0, 0, 0, MIN_APPS_FOR_LOAD])) throw new Error("csi counts emp");
 if (JSON.stringify(outM.csiCounts) !== JSON.stringify([1, 0, 0, 0, MIN_APPS_FOR_LOAD])) throw new Error("csi counts total");
 if (outM.segments.mdo.Прочее !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg mdo other");
-if (!outM.files?.length || outM.files[0].file !== "MDO.xlsx") throw new Error("files cut");
+if (!outM.files?.length || outM.files[0].file !== "MDO") throw new Error("files cut");
 
 const lateT = Array(40).fill("");
 lateT[FIO_COL] = "Поздний П.П. (1)";
