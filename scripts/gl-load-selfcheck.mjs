@@ -15,7 +15,7 @@ import {
     isVolkov,
     isVolchkova,
     findTagColumn,
-    termDaysFromST,
+    termHoursFromST,
     isOverdueCell,
     numberCell,
     csiScore,
@@ -33,7 +33,11 @@ import {
 } from "../lib/gl-load.mjs";
 
 function repeatRow(row, n) {
-    return Array.from({ length: n }, () => [...row]);
+    return Array.from({ length: n }, () => {
+        const copy = [...row];
+        if (!copy[T_COL]) copy[T_COL] = copy[3] || "10.07.2026";
+        return copy;
+    });
 }
 
 const now = new Date(2026, 7, 18); // 18 авг 2026
@@ -81,6 +85,7 @@ const rows = [];
 for (let i = 0; i < MIN_APPS_FOR_LOAD + 1; i++) {
     const row = Array(25).fill("");
     row[3] = "10.07.2026";
+    row[T_COL] = "10.07.2026";
     row[FIO_COL] = "Сидоров С.С. (111)";
     rows.push(row);
 }
@@ -94,6 +99,7 @@ if (Math.abs(out.employees[0].loadPct - expectPct) > 1e-9) throw new Error("pct"
 
 const few = Array(25).fill("");
 few[3] = "10.07.2026";
+few[T_COL] = "10.07.2026";
 few[FIO_COL] = "Малозаявочный М.М. (1)";
 const outFew = aggregateEmployeeLoad(
     [{ file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(few, MIN_APPS_FOR_LOAD) }],
@@ -108,6 +114,7 @@ const outEnough = aggregateEmployeeLoad(
 if (outEnough.employees.length !== 1 || outEnough.employees[0].apps !== MIN_APPS_FOR_LOAD + 1) throw new Error("41 apps included");
 const mix = Array(25).fill("");
 mix[3] = "10.07.2026";
+mix[T_COL] = "10.07.2026";
 mix[FIO_COL] = "Смешанный С.С. (9)";
 const outMixFew = aggregateEmployeeLoad(
     [
@@ -128,6 +135,7 @@ if (outMixOk.employees.length !== 1 || outMixOk.employees[0].apps !== MIN_APPS_F
 
 const arbRow = Array(34).fill("");
 arbRow[3] = "10.07.2026";
+arbRow[T_COL] = "10.07.2026";
 arbRow[FIO_COL] = "Сидоров С.С. (111)";
 arbRow[33] = "Арбитраж";
 const outArb = aggregateEmployeeLoad(
@@ -216,9 +224,14 @@ if (vacPlan.vacationDays !== 5) throw new Error(`vacationDays ${vacPlan.vacation
 if (vacPlan.plan !== HOURS_PER_WORKDAY * (workdays - 5)) throw new Error("vac plan hours");
 const withV = withVacations(out, { "Сидоров С.С.": { from: "2026-07-06", to: "2026-07-10" } });
 if (withV.employees[0].plan !== vacPlan.plan) throw new Error("withVacations plan");
+const vacMulti = employeePlan(q, now, [
+    { from: "2026-07-06", to: "2026-07-10" },
+    { from: "2026-07-08", to: "2026-07-10" }
+]);
+if (vacMulti.vacationDays !== 5) throw new Error("vac overlap unique");
 
-if (termDaysFromST("01.07.2026", "04.07.2026") !== 3) throw new Error("termDays");
-if (termDaysFromST("", "04.07.2026") != null) throw new Error("termDays empty");
+if (termHoursFromST("01.07.2026", "04.07.2026") !== 72) throw new Error("termHours");
+if (termHoursFromST("", "04.07.2026") != null) throw new Error("termHours empty");
 if (!isOverdueCell("ДА") || !isOverdueCell("да") || isOverdueCell("нет")) throw new Error("overdue cell");
 if (numberCell("1,5") !== 1.5 || numberCell("") !== 0) throw new Error("numberCell");
 if (csiScore(5) !== 5 || csiScore("4") !== 4 || csiScore(0) != null || csiScore("") != null) throw new Error("csiScore");
@@ -249,7 +262,7 @@ metricRows[0][T_COL] = "06.07.2026"; // 5 days
 metricRows[0][AN_COL] = 1;
 const outM = aggregateEmployeeLoad([{ file: "MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: metricRows }], now);
 if (outM.employees.length !== 1) throw new Error("metric emp");
-if (Math.abs(outM.employees[0].avgTermDays - (5 + 3 * MIN_APPS_FOR_LOAD) / (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("avg term");
+if (Math.abs(outM.employees[0].avgTermHours - (120 + 72 * MIN_APPS_FOR_LOAD) / (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("avg term");
 if (outM.employees[0].overdue !== MIN_APPS_FOR_LOAD) throw new Error("overdue emp");
 if (outM.overdueTotal !== MIN_APPS_FOR_LOAD) throw new Error("overdue total");
 if (Math.abs(outM.employees[0].returns - 2 * MIN_APPS_FOR_LOAD) > 1e-9) throw new Error("returns emp");
@@ -257,6 +270,17 @@ if (outM.returnsTotal !== 2 * MIN_APPS_FOR_LOAD) throw new Error("returns total"
 if (JSON.stringify(outM.employees[0].csiCounts) !== JSON.stringify([1, 0, 0, 0, MIN_APPS_FOR_LOAD])) throw new Error("csi counts emp");
 if (JSON.stringify(outM.csiCounts) !== JSON.stringify([1, 0, 0, 0, MIN_APPS_FOR_LOAD])) throw new Error("csi counts total");
 if (outM.segments.mdo.Прочее !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg mdo other");
+if (!outM.files?.length || outM.files[0].file !== "MDO.xlsx") throw new Error("files cut");
+
+const lateT = Array(40).fill("");
+lateT[FIO_COL] = "Поздний П.П. (1)";
+lateT[T_COL] = "01.10.2026";
+const outLate = aggregateEmployeeLoad(
+    [{ file: "MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(lateT, MIN_APPS_FOR_LOAD + 1) }],
+    now
+);
+if (outLate.employees.length !== 0) throw new Error("T after as-of excluded");
+if (outLate.skippedOutOfQuarter !== MIN_APPS_FOR_LOAD + 1) throw new Error("T filter skip");
 
 const segRow = Array(40).fill("");
 segRow[3] = "10.07.2026";
