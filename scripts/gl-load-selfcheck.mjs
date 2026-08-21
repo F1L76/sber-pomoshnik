@@ -224,12 +224,15 @@ if (numberCell("1,5") !== 1.5 || numberCell("") !== 0) throw new Error("numberCe
 if (csiScore(5) !== 5 || csiScore("4") !== 4 || csiScore(0) != null || csiScore("") != null) throw new Error("csiScore");
 if (segmentFromAF("клиент малого бизнеса") !== "ММБ") throw new Error("seg mmb");
 if (segmentFromAF("работа с корпоративным блоком") !== "КСБ") throw new Error("seg ksb");
-if (segmentFromAF("группа аналитики") !== "ПМЗ") throw new Error("seg pmz");
+if (segmentFromAF("центр данных и аналитики") !== "ПМЗ") throw new Error("seg pmz");
 if (segmentFromAF("служба документарных операций") !== "ПКД") throw new Error("seg pkd");
-if (segmentFromAF("служба залогов") !== "ЗС") throw new Error("seg zs");
+if (segmentFromAF("центр залоговой экспертизы") !== "ЗС") throw new Error("seg zs");
+if (segmentFromAF("проблемными активами") !== "ПРПА") throw new Error("seg prpa");
 if (segmentFromAF("прочее") !== "Прочее") throw new Error("seg other");
-if (segmentFromAF("малого и залог") !== "ММБ") throw new Error("seg mmb wins");
-if (segmentFromAF("документарных залогов") !== "ПКД") throw new Error("seg pkd wins");
+if (segmentFromAF("малого корпоративно") !== "ММБ") throw new Error("seg mmb wins kib");
+if (segmentFromAF("залоговой экспертизы корпоративно") !== "ЗС") throw new Error("seg zs wins kib");
+if (segmentFromAF("проблемными активами малого") !== "ММБ") throw new Error("seg mmb wins prpa");
+if (segmentFromAF("документарных залоговой") !== "ПКД") throw new Error("seg pkd wins");
 
 const metricRow = Array(40).fill("");
 metricRow[3] = "10.07.2026";
@@ -262,8 +265,8 @@ const segRows = [];
 const afVals = [
     ["малого бизнеса", "ММБ"],
     ["с корпоративным клиентом", "КСБ"],
-    ["отдел аналитики", "ПМЗ"],
-    ["залог недвижимости", "ЗС"],
+    ["центр данных и аналитики", "ПМЗ"],
+    ["центр залоговой экспертизы", "ЗС"],
     ["служба документарных операций", "ПКД"],
     ["неизвестно", "Прочее"]
 ];

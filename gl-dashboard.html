@@ -814,8 +814,9 @@
             const segs = agg.segments || {};
             const fillSeg = (el, counts) => {
                 const c = counts || {};
-                const max = Math.max(1, ...SEGMENTS.map((s) => c[s] || 0));
-                el.innerHTML = SEGMENTS.map((s) => {
+                const order = [...SEGMENTS].sort((a, b) => (c[b] || 0) - (c[a] || 0) || SEGMENTS.indexOf(a) - SEGMENTS.indexOf(b));
+                const max = Math.max(1, ...order.map((s) => c[s] || 0));
+                el.innerHTML = order.map((s) => {
                     const n = c[s] || 0;
                     const h = n <= 0 ? 0 : Math.max(8, Math.round((n / max) * 100));
                     return `<div class="seg-col"><div class="seg-track"><div class="seg-bar" style="height:${h}%"></div></div><div class="seg-n">${n}</div><div class="seg-lbl">${s}</div></div>`;
