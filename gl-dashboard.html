@@ -549,34 +549,6 @@
                     </div>
                 </section>
             </div>
-            <div class="col-md-6">
-                <section class="kpi-card kpi-prio-ksb">
-                    <div class="kpi-head">
-                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
-                        <div class="kpi-head-text">
-                            <h2>Приоритеты КСБ</h2>
-                            <p>AL содержит «приоритет» · ТБ из AF</p>
-                        </div>
-                    </div>
-                    <div class="kpi-total" id="prioKsbTotal">—</div>
-                    <div class="kpi-total-lbl">Заявок на приоритет</div>
-                    <div class="line-bars" id="prioKsbBody"></div>
-                </section>
-            </div>
-            <div class="col-md-6">
-                <section class="kpi-card kpi-prio-mmb">
-                    <div class="kpi-head">
-                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
-                        <div class="kpi-head-text">
-                            <h2>Приоритеты ММБ</h2>
-                            <p>AL содержит «приоритет» · ТБ из AF</p>
-                        </div>
-                    </div>
-                    <div class="kpi-total" id="prioMmbTotal">—</div>
-                    <div class="kpi-total-lbl">Заявок на приоритет</div>
-                    <div class="line-bars" id="prioMmbBody"></div>
-                </section>
-            </div>
             <div class="col-md-4">
                 <section class="kpi-card kpi-seg kpi-mdo">
                     <div class="kpi-head">
@@ -611,6 +583,30 @@
                         </div>
                     </div>
                     <div class="seg-chart" id="segOo"></div>
+                </section>
+            </div>
+            <div class="col-md-6">
+                <section class="kpi-card kpi-seg kpi-prio-ksb">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
+                        <div>
+                            <h2>Приоритеты КСБ</h2>
+                            <p id="prioKsbSub">AL «приоритет» · ТБ из AF</p>
+                        </div>
+                    </div>
+                    <div class="seg-chart" id="prioKsbBody"></div>
+                </section>
+            </div>
+            <div class="col-md-6">
+                <section class="kpi-card kpi-seg kpi-prio-mmb">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
+                        <div>
+                            <h2>Приоритеты ММБ</h2>
+                            <p id="prioMmbSub">AL «приоритет» · ТБ из AF</p>
+                        </div>
+                    </div>
+                    <div class="seg-chart" id="prioMmbBody"></div>
                 </section>
             </div>
         </div>
@@ -688,8 +684,8 @@
         const linesBlock = document.getElementById("linesBlock");
         const linesBody = document.getElementById("linesBody");
         const linesTotal = document.getElementById("linesTotal");
-        const prioKsbTotal = document.getElementById("prioKsbTotal");
-        const prioMmbTotal = document.getElementById("prioMmbTotal");
+        const prioKsbSub = document.getElementById("prioKsbSub");
+        const prioMmbSub = document.getElementById("prioMmbSub");
         const prioKsbBody = document.getElementById("prioKsbBody");
         const prioMmbBody = document.getElementById("prioMmbBody");
         const kpiRow = document.getElementById("kpiRow");
@@ -868,19 +864,20 @@
             const who = fio || file || "";
             returnsDialogTitle.textContent = overdueOnly ? "Заявки по просрочкам" : "Заявки по возвратам";
             returnsDialogNote.innerHTML = overdueOnly
-                ? "Только строки с просрочкой (<strong>AG</strong> = ДА): столбец <strong>A</strong> и ФИО из <strong>AD</strong> (до «(»)."
-                : "Отображаются строки, учтённые в дашборде: столбец <strong>A</strong> и ФИО из <strong>AD</strong> (до «(»).";
+                ? "Только строки с просрочкой (<strong>AG</strong> = ДА): сотрудник из <strong>Y</strong>, ФИО из <strong>AD</strong> (до «(») и столбец <strong>A</strong>."
+                : "Отображаются строки, учтённые в дашборде: сотрудник из <strong>Y</strong>, ФИО из <strong>AD</strong> (до «(») и столбец <strong>A</strong>.";
             returnsFioEl.textContent = who;
             returnsMeta.textContent = `Строк: ${apps.length}`;
             returnsAppsBody.innerHTML = apps.length
                 ? apps
                     .map((app) => `<tr>
+                        <td>${esc(app.fioY)}</td>
                         <td>${esc(app.fio)}</td>
                         <td>${esc(app.a)}</td>
                         <td>${esc(app.file)}</td>
                     </tr>`)
                     .join("")
-                : `<tr><td colspan="3" class="text-muted">Нет заявок</td></tr>`;
+                : `<tr><td colspan="4" class="text-muted">Нет заявок</td></tr>`;
             returnsDialog.scrollTop = 0;
             const scroller = returnsDialog.querySelector(".table-responsive");
             if (scroller) scroller.scrollTop = 0;
@@ -1042,9 +1039,9 @@
             const tot = agg.csiCounts || [0, 0, 0, 0, 0];
             csiFoot.innerHTML = `<tr><th>Итого</th><th class="csi-avg">${fmtAvg(csiAvg(tot))}</th>${tot.map((n) => `<th class="csi-num">${n}</th>`).join("")}</tr>`;
             const segs = agg.segments || {};
-            const fillSeg = (el, counts) => {
+            const fillSeg = (el, counts, keys = SEGMENTS) => {
                 const c = counts || {};
-                const order = [...SEGMENTS].sort((a, b) => (c[b] || 0) - (c[a] || 0) || SEGMENTS.indexOf(a) - SEGMENTS.indexOf(b));
+                const order = [...keys].sort((a, b) => (c[b] || 0) - (c[a] || 0) || keys.indexOf(a) - keys.indexOf(b));
                 const max = Math.max(1, ...order.map((s) => c[s] || 0));
                 el.innerHTML = order.map((s) => {
                     const n = c[s] || 0;
@@ -1060,26 +1057,12 @@
             fillSeg(segMdo, segs.mdo);
             fillSeg(segL1, segs.l1);
             fillSeg(segOo, segs.oo);
-            const fillPrio = (el, totalEl, counts, total) => {
-                const c = counts || {};
-                const nTotal = Number(total) || 0;
-                totalEl.innerHTML = String(nTotal);
-                const scale = nTotal || 1;
-                const order = [...TERR_BANKS].sort((a, b) => (c[b] || 0) - (c[a] || 0) || TERR_BANKS.indexOf(a) - TERR_BANKS.indexOf(b));
-                el.innerHTML = order.map((code) => {
-                    const n = c[code] || 0;
-                    const pct = (n / scale) * 100;
-                    return `<div class="line-row">
-                        <div class="line-name">${code}</div>
-                        <div class="line-n">${n}</div>
-                        <div class="line-track"><div class="line-bar" style="width:${pct}%"></div></div>
-                    </div>`;
-                }).join("");
-            };
             const prio = agg.priorities || {};
             const prioTot = agg.priorityTotals || {};
-            fillPrio(prioKsbBody, prioKsbTotal, prio.КСБ, prioTot.КСБ);
-            fillPrio(prioMmbBody, prioMmbTotal, prio.ММБ, prioTot.ММБ);
+            prioKsbSub.textContent = `${prioTot.КСБ || 0} заявок · AL «приоритет»`;
+            prioMmbSub.textContent = `${prioTot.ММБ || 0} заявок · AL «приоритет»`;
+            fillSeg(prioKsbBody, prio.КСБ, TERR_BANKS);
+            fillSeg(prioMmbBody, prio.ММБ, TERR_BANKS);
             kpiRow.hidden = false;
         }
 
