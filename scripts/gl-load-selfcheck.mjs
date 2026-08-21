@@ -404,6 +404,7 @@ if (tbFromAF("Волго-Вятский банк") !== "ВВБ") throw new Error
 if (tbFromAF("Поволжский банк") !== "ПБ") throw new Error("tb pb");
 if (tbFromAF("Уральский банк") !== "УБ") throw new Error("tb ub");
 if (tbFromAF("Сибирский банк") !== "СБ") throw new Error("tb sb");
+if (tbFromAF("Байкальский банк") !== "ББ") throw new Error("tb bb");
 if (tbFromAF("Дальневосточный банк") !== "ДВБ") throw new Error("tb dvb");
 if (tbFromAF("Северо-Западный банк") !== "СЗБ") throw new Error("tb szb");
 if (tbFromAF("Юго-Западный банк") !== "ЮЗБ") throw new Error("tb yuzb");
@@ -412,7 +413,7 @@ if (tbFromAF("Подразделение центрального подчине
 if (tbFromAF("нет банка") != null) throw new Error("tb none");
 if (!isPriorityCell("Срочный приоритет")) throw new Error("prio cell");
 if (isPriorityCell("обычная")) throw new Error("prio false");
-if (TERR_BANKS.length !== 11) throw new Error("tb list");
+if (TERR_BANKS.length !== 12) throw new Error("tb list");
 if (segmentFromAF("Московский банк, ММБ") !== "ММБ") throw new Error("seg mmb code");
 if (segmentFromAF("Среднерусский банк КСБ") !== "КСБ") throw new Error("seg ksb code");
 
@@ -436,6 +437,14 @@ if (outPrio.priorityTotals.КСБ !== 1) throw new Error("prio ksb total");
 if (outPrio.priorities.ММБ.МБ !== 2) throw new Error("prio mmb mb");
 if (outPrio.priorities.КСБ.СРБ !== 1) throw new Error("prio ksb srb");
 if (outPrio.priorities.ММБ.СРБ !== 0) throw new Error("prio mmb srb empty");
+const prioBb = [...prioRow];
+prioBb[AF_COL] = "Байкальский банк|Блок корпоративный";
+const outBb = aggregateEmployeeLoad(
+    [{ file: "MDO.xlsx", sheet: "S", headers: [...headers, ...Array(20).fill("")], rows: [prioBb] }],
+    now
+);
+if (outBb.priorityTotals.КСБ !== 1) throw new Error("prio bb ksb");
+if (outBb.priorities.КСБ.ББ !== 1) throw new Error("prio bb bar");
 
 console.log("gl-load selfcheck ok", {
     workdays,

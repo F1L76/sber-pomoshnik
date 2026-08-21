@@ -119,6 +119,10 @@
         .kpi-oo { --kpi-accent: #0f9d8e; }
         .kpi-prio-ksb { --kpi-accent: #2b6cb0; }
         .kpi-prio-mmb { --kpi-accent: #0f9d8e; }
+        .kpi-prio-ksb .seg-chart,
+        .kpi-prio-mmb .seg-chart { gap: 0.18rem; }
+        .kpi-prio-ksb .seg-lbl,
+        .kpi-prio-mmb .seg-lbl { font-size: 0.62rem; }
         .kpi-total-share {
             font-size: 0.95rem;
             font-weight: 700;
@@ -668,7 +672,7 @@
             T_COL,
             W_COL,
             numberCell
-        } from "/lib/gl-load.mjs?v=22";
+        } from "/lib/gl-load.mjs?v=23";
         import { resolveVacations } from "/lib/gl-vacations.mjs?v=22";
 
         const VAC_KEY = "gl-dashboard:vacations";
