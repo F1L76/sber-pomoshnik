@@ -693,47 +693,48 @@
                 .replace(/"/g, "&quot;");
         }
 
-        function collectEmployeeApps(fio, { overdueOnly = false } = {}) {
+        function allowedFios() {
+            return new Set((lastAgg?.employees || []).map((e) => e.fio));
+        }
+
+        function collectApps({ fio, file, overdueOnly = false } = {}) {
             if (!lastTables || !lastAgg) return [];
             const out = [];
             const { qStart, today } = lastAgg;
+            const fios = allowedFios();
             for (const table of lastTables) {
+                if (file && table.file !== file) continue;
                 const fioColUsed = table.fioCol >= 0 ? table.fioCol : FIO_COL;
                 for (const row of table.rows) {
                     const rowFioUsed = fioFromCell(row[fioColUsed]);
-                    if (!rowFioUsed || rowFioUsed !== fio) continue;
+                    if (!rowFioUsed || !fios.has(rowFioUsed)) continue;
+                    if (fio && rowFioUsed !== fio) continue;
                     if (overdueOnly && !isOverdueCell(row[AG_COL])) continue;
                     const dt = parseExcelDate(row[T_COL]);
                     if (!dt || dt < qStart || dt > today) continue;
                     const rowFioDisplay = fioFromCell(row[AD_COL]) || rowFioUsed;
                     if (!overdueOnly) {
-                        // В дашборде "возвраты" считаются суммой по W.
-                        // Поэтому в диалог добавляем только строки, где W > 0,
-                        // и дублируем запись на количество возвратов в W (обычно 1).
                         const returnsN = numberCell(row[W_COL]);
                         const copies = returnsN > 0 ? Math.max(1, Math.round(returnsN)) : 0;
                         for (let i = 0; i < copies; i++) {
                             out.push({ file: table.file, fio: rowFioDisplay, a: row[A_COL] });
                         }
                     } else {
-                        out.push({
-                            file: table.file,
-                            fio: rowFioDisplay,
-                            a: row[A_COL]
-                        });
+                        out.push({ file: table.file, fio: rowFioDisplay, a: row[A_COL] });
                     }
                 }
             }
             return out;
         }
 
-        function showEmployeeAppsDialog(fio, overdueOnly) {
-            const apps = collectEmployeeApps(fio, { overdueOnly });
+        function showAppsDialog({ fio, file, overdueOnly = false } = {}) {
+            const apps = collectApps({ fio, file, overdueOnly });
+            const who = fio || String(file || "").replace(/\.(xlsx|xls)$/i, "");
             returnsDialogTitle.textContent = overdueOnly ? "Заявки по просрочкам" : "Заявки по возвратам";
             returnsDialogNote.innerHTML = overdueOnly
                 ? "Только строки с просрочкой (<strong>AG</strong> = ДА): столбец <strong>A</strong> и ФИО из <strong>AD</strong> (до «(»)."
                 : "Отображаются строки, учтённые в дашборде: столбец <strong>A</strong> и ФИО из <strong>AD</strong> (до «(»).";
-            returnsFioEl.textContent = fio;
+            returnsFioEl.textContent = who;
             returnsMeta.textContent = `Строк: ${apps.length}`;
             returnsAppsBody.innerHTML = apps.length
                 ? apps
@@ -744,14 +745,21 @@
                     </tr>`)
                     .join("")
                 : `<tr><td colspan="3" class="text-muted">Нет заявок</td></tr>`;
-            // При повторном открытии dialog браузер может сохранять позицию скролла.
-            // Чтобы список всегда начинался с верха — принудительно сбрасываем скролл.
             returnsDialog.scrollTop = 0;
             const scroller = returnsDialog.querySelector(".table-responsive");
             if (scroller) scroller.scrollTop = 0;
             returnsDialog.showModal();
             returnsDialog.scrollTop = 0;
             if (scroller) scroller.scrollTop = 0;
+        }
+
+        function appsBtn(attr, value) {
+            return `<button type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    ${attr}="${encodeURIComponent(value)}"
+                    title="Показать заявки (столбец A)">
+                <i class="fas fa-file-alt" aria-hidden="true"></i>
+            </button>`;
         }
 
         function renderLoad(baseAgg) {
@@ -829,18 +837,21 @@
                     <td class="text-end">
                         <div class="d-flex justify-content-end align-items-center gap-2">
                             <span>${e.overdue || 0}</span>
-                            <button type="button"
-                                    class="btn btn-outline-secondary btn-sm"
-                                    data-overdue-fio="${encodeURIComponent(e.fio)}"
-                                    title="Показать заявки (столбец A)">
-                                <i class="fas fa-file-alt" aria-hidden="true"></i>
-                            </button>
+                            ${appsBtn("data-overdue-fio", e.fio)}
                         </div>
                     </td>
                 </tr>`)
                 : filesCut()
                     .sort((a, b) => b.overdue - a.overdue || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => `<tr>${nameCell(fileLabel(f))}<td class="text-end">${f.overdue || 0}</td></tr>`);
+                    .map((f) => `<tr>
+                    ${nameCell(fileLabel(f))}
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end align-items-center gap-2">
+                            <span>${f.overdue || 0}</span>
+                            ${appsBtn("data-overdue-file", f.file)}
+                        </div>
+                    </td>
+                </tr>`);
             overdueBody.innerHTML = overdueRows.join("") || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
             overdueTotal.textContent = String(agg.overdueTotal || 0);
 
@@ -854,18 +865,21 @@
                     <td class="text-end">
                         <div class="d-flex justify-content-end align-items-center gap-2">
                             <span>${e.returns || 0}</span>
-                            <button type="button"
-                                    class="btn btn-outline-secondary btn-sm"
-                                    data-returns-fio="${encodeURIComponent(e.fio)}"
-                                    title="Показать заявки (столбец A)">
-                                <i class="fas fa-file-alt" aria-hidden="true"></i>
-                            </button>
+                            ${appsBtn("data-returns-fio", e.fio)}
                         </div>
                     </td>
                 </tr>`)
                 : filesCut()
                     .sort((a, b) => b.returns - a.returns || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => `<tr>${nameCell(fileLabel(f))}<td class="text-end">${f.returns || 0}</td></tr>`);
+                    .map((f) => `<tr>
+                    ${nameCell(fileLabel(f))}
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end align-items-center gap-2">
+                            <span>${f.returns || 0}</span>
+                            ${appsBtn("data-returns-file", f.file)}
+                        </div>
+                    </td>
+                </tr>`);
             returnsBody.innerHTML = returnsRows.join("") || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
             returnsTotal.textContent = String(agg.returnsTotal || 0);
 
@@ -951,17 +965,27 @@
         });
 
         returnsBody.addEventListener("click", (e) => {
-            const btn = e.target.closest("[data-returns-fio]");
-            if (!btn) return;
+            const byFile = e.target.closest("[data-returns-file]");
+            const byFio = e.target.closest("[data-returns-fio]");
+            if (!byFile && !byFio) return;
             if (!lastTables || !lastAgg) return;
-            showEmployeeAppsDialog(decodeURIComponent(btn.getAttribute("data-returns-fio") || ""), false);
+            if (byFile) {
+                showAppsDialog({ file: decodeURIComponent(byFile.getAttribute("data-returns-file") || ""), overdueOnly: false });
+                return;
+            }
+            showAppsDialog({ fio: decodeURIComponent(byFio.getAttribute("data-returns-fio") || ""), overdueOnly: false });
         });
 
         overdueBody.addEventListener("click", (e) => {
-            const btn = e.target.closest("[data-overdue-fio]");
-            if (!btn) return;
+            const byFile = e.target.closest("[data-overdue-file]");
+            const byFio = e.target.closest("[data-overdue-fio]");
+            if (!byFile && !byFio) return;
             if (!lastTables || !lastAgg) return;
-            showEmployeeAppsDialog(decodeURIComponent(btn.getAttribute("data-overdue-fio") || ""), true);
+            if (byFile) {
+                showAppsDialog({ file: decodeURIComponent(byFile.getAttribute("data-overdue-file") || ""), overdueOnly: true });
+                return;
+            }
+            showAppsDialog({ fio: decodeURIComponent(byFio.getAttribute("data-overdue-fio") || ""), overdueOnly: true });
         });
 
         loadBody.addEventListener("click", (e) => {
