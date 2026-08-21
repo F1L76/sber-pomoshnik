@@ -270,6 +270,45 @@
             color: var(--sber-muted);
             margin-top: 0.2rem;
         }
+        .line-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            padding: 0.15rem 0 0.55rem;
+        }
+        .line-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.2rem 0.75rem;
+        }
+        .line-name {
+            font-size: 0.98rem;
+            font-weight: 700;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--sber-text);
+        }
+        .line-n {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--kpi-accent);
+            font-variant-numeric: tabular-nums;
+        }
+        .line-track {
+            grid-column: 1 / -1;
+            height: 0.95rem;
+            background: color-mix(in srgb, var(--kpi-accent) 14%, transparent);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .line-bar {
+            height: 100%;
+            background: var(--kpi-accent);
+            border-radius: 999px;
+            min-width: 0.35rem;
+        }
         html[data-theme="dark"] .kpi-card {
             background: #1a2330;
             border-color: #334155;
@@ -279,6 +318,7 @@
         html[data-theme="dark"] .kpi-list .fio-cell,
         html[data-theme="dark"] .load-table .fio-cell { color: #e8eef4; }
         html[data-theme="dark"] .kpi-head h2 { color: #e8eef4; }
+        html[data-theme="dark"] .line-name { color: #e8eef4; }
         html[data-theme="dark"] .kpi-flip {
             background: #1a2330;
             border-color: #334155;
@@ -314,7 +354,7 @@
     <main class="container py-4">
         <section class="card-panel p-4 mb-4">
             <h2 class="h5 mb-2">Источники данных</h2>
-            <p class="text-muted small mb-3">ФИО — столбец <strong>Y</strong> до «(». В нагрузке только сотрудники с <strong>более 40 заявками</strong> за квартал по всем файлам. Минуты по линии и тегу: <strong>Осмотры</strong> — 20; <strong>1-я линия поддержки</strong> — 24; <strong>Работа с Онлайн оценкой</strong> — 20, тег «Арбитраж» — 210; <strong>Залоговая экспертиза MDO</strong> — 20, тег «Арбитраж» — 150, тег «ФЖН» — 240. Выполнение = сумма минут по заявкам ÷ плановые часы (8 ч × рабочие дни).</p>
+            <p class="text-muted small mb-3">ФИО — столбец <strong>Y</strong> до «(». В дашбордах только сотрудники ГЛ из графика отсутствий: Горчагова, Вавинова, Филинюк, Пасхина, Пирогова, Сироткина, Волчкова, Волков. Минуты по линии и тегу: <strong>Осмотры</strong> — 20; <strong>1-я линия поддержки</strong> — 24; <strong>Работа с Онлайн оценкой</strong> — 20, тег «Арбитраж» — 210; <strong>Залоговая экспертиза MDO</strong> — 20, тег «Арбитраж» — 150, тег «ФЖН» — 240. Выполнение = сумма минут по заявкам ÷ плановые часы (8 ч × рабочие дни).</p>
             <div class="d-flex flex-wrap align-items-end gap-3">
                 <div class="flex-grow-1">
                     <label class="form-label small fw-semibold mb-1" for="excelFiles">Файлы Excel</label>
@@ -364,16 +404,12 @@
                 <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
                 <div class="kpi-head-text">
                     <h2>Закрытые заявки по линиям</h2>
-                    <p>имя файла до «_», все заявки файла</p>
+                    <p>сотрудники ГЛ · период по T</p>
                 </div>
             </div>
             <div class="kpi-total" id="linesTotal">—</div>
             <div class="kpi-total-lbl">Всего заявок</div>
-            <div class="kpi-list">
-                <table>
-                    <tbody id="linesBody"></tbody>
-                </table>
-            </div>
+            <div class="line-bars" id="linesBody"></div>
         </section>
 
         <div class="row g-3 mt-1" id="kpiRow" hidden>
@@ -796,7 +832,7 @@
                 chip("Сотрудников", String(agg.employees.length));
             const dateBit = `Дата заявки — столбец <strong>T</strong>, период ${fmtDate(agg.qStart)} – ${fmtDate(agg.today)} («На дату»). Строк без T или вне периода отброшено: ${agg.skippedOutOfQuarter}.`;
             loadNote.innerHTML =
-                `% выполнения = сумма минут по заявкам ÷ (план ${agg.hoursPerDay || 8} ч × раб. дни). В таблице только сотрудники с >40 заявками за квартал (отсеяно ${agg.skippedLowVolume || 0}). Осмотры — 20 мин, 1-я линия — 24, ОО — 20 / Арбитраж 210, MDO — 20 / Арбитраж 150 / ФЖН 240. Рабочих дней: ${agg.workdays}, план ${agg.planHours} ч. Количество заявок: ${agg.used}. ${dateBit}`;
+                `% выполнения = сумма минут по заявкам ÷ (план ${agg.hoursPerDay || 8} ч × раб. дни). Только сотрудники ГЛ (отсеяно ${agg.skippedNotGl || 0} строк). Осмотры — 20 мин, 1-я линия — 24, ОО — 20 / Арбитраж 210, MDO — 20 / Арбитраж 150 / ФЖН 240. Рабочих дней: ${agg.workdays}, план ${agg.planHours} ч. Количество заявок: ${agg.used}. ${dateBit}`;
             loadBody.innerHTML = agg.employees.map((e) => {
                 const pct = e.loadPct;
                 const width = Math.min(pct, 100);
@@ -823,17 +859,22 @@
                         </div>
                     </td>
                 </tr>`;
-            }).join("") || `<tr><td colspan="6" class="text-muted">Нет строк с ФИО в столбце Y</td></tr>`;
+            }).join("") || `<tr><td colspan="6" class="text-muted">Нет заявок сотрудников ГЛ</td></tr>`;
 
             const lineRows = agg.lines || [];
             linesBlock.hidden = false;
             linesTotal.textContent = String(agg.linesTotal || 0);
+            const lineMax = Math.max(0, ...lineRows.map((l) => l.apps));
             linesBody.innerHTML = lineRows.length
-                ? lineRows.map((l) => `<tr>
-                    <td class="fio-cell" title="${esc(l.name)}">${esc(l.name)}</td>
-                    <td class="text-end">${l.apps}</td>
-                </tr>`).join("")
-                : `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
+                ? lineRows.map((l) => {
+                    const pct = lineMax ? (l.apps / lineMax) * 100 : 0;
+                    return `<div class="line-row">
+                        <div class="line-name" title="${esc(l.name)}">${esc(l.name)}</div>
+                        <div class="line-n">${l.apps}</div>
+                        <div class="line-track"><div class="line-bar" style="width:${pct}%"></div></div>
+                    </div>`;
+                }).join("")
+                : `<div class="text-muted small">Нет данных</div>`;
 
             const people = (sortFn) => [...agg.employees].sort(sortFn);
             const filesCut = () => [...(agg.files || [])];

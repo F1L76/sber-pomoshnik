@@ -23,7 +23,6 @@ import {
     csiScore,
     segmentFromAF,
     HOURS_PER_WORKDAY,
-    MIN_APPS_FOR_LOAD,
     FIO_COL,
     S_COL,
     T_COL,
@@ -33,7 +32,10 @@ import {
     AF_COL,
     AH_COL
 } from "../lib/gl-load.mjs";
-import { parseVacCell, resolveVacations } from "../lib/gl-vacations.mjs";
+import { parseVacCell, resolveVacations, isGlEmployee } from "../lib/gl-vacations.mjs";
+
+const APPS = 41;
+const GL_FIO = "Филинюк А.А. (111)";
 
 function repeatRow(row, n) {
     return Array.from({ length: n }, () => {
@@ -85,42 +87,50 @@ if (findDateColumn(headers, sample) !== 3) throw new Error("findDateColumn heade
 if (findFioColumn(headers, sample) !== FIO_COL) throw new Error("findFioColumn");
 
 const rows = [];
-for (let i = 0; i < MIN_APPS_FOR_LOAD + 1; i++) {
+for (let i = 0; i < APPS; i++) {
     const row = Array(25).fill("");
     row[3] = "10.07.2026";
     row[T_COL] = "10.07.2026";
-    row[FIO_COL] = "Сидоров С.С. (111)";
+    row[FIO_COL] = GL_FIO;
     rows.push(row);
 }
 const out = aggregateEmployeeLoad([{ file: "a.xlsx", sheet: "S", headers, rows }], now);
 const workdays = countWorkdays(q, now);
 if (out.workdays !== workdays) throw new Error(`workdays ${out.workdays} != ${workdays}`);
 if (out.plan !== HOURS_PER_WORKDAY * workdays) throw new Error("plan hours");
-if (out.employees.length !== 1 || out.employees[0].apps !== MIN_APPS_FOR_LOAD + 1) throw new Error("apps");
-if (out.linesTotal !== MIN_APPS_FOR_LOAD + 1) throw new Error("linesTotal");
+if (out.employees.length !== 1 || out.employees[0].apps !== APPS) throw new Error("apps");
+if (out.linesTotal !== APPS) throw new Error("linesTotal");
 if (out.lines[0].name !== "a") throw new Error("line from a.xlsx");
-const expectPct = ((MIN_APPS_FOR_LOAD + 1) * 20) / (workdays * 8 * 60) * 100;
+const expectPct = ((APPS) * 20) / (workdays * 8 * 60) * 100;
 if (Math.abs(out.employees[0].loadPct - expectPct) > 1e-9) throw new Error("pct");
+
+if (!isGlEmployee("Филинюк А.А. (111)")) throw new Error("gl filinyuk");
+if (!isGlEmployee("волков артем")) throw new Error("gl volkov case");
+if (isGlEmployee("Сидоров С.С. (111)")) throw new Error("gl sidorov");
 
 const few = Array(25).fill("");
 few[3] = "10.07.2026";
 few[T_COL] = "10.07.2026";
-few[FIO_COL] = "Малозаявочный М.М. (1)";
+few[FIO_COL] = "Сидоров С.С. (111)";
 const outFew = aggregateEmployeeLoad(
-    [{ file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(few, MIN_APPS_FOR_LOAD) }],
+    [{ file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(few, APPS) }],
     now
 );
-if (outFew.employees.length !== 0) throw new Error("40 apps excluded");
-if (outFew.skippedLowVolume !== 1) throw new Error("skippedLowVolume");
+if (outFew.employees.length !== 0) throw new Error("non-gl excluded");
+if (outFew.skippedNotGl !== APPS) throw new Error("skippedNotGl");
+const glFew = Array(25).fill("");
+glFew[3] = "10.07.2026";
+glFew[T_COL] = "10.07.2026";
+glFew[FIO_COL] = GL_FIO;
 const outEnough = aggregateEmployeeLoad(
-    [{ file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(few, MIN_APPS_FOR_LOAD + 1) }],
+    [{ file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(glFew, 3) }],
     now
 );
-if (outEnough.employees.length !== 1 || outEnough.employees[0].apps !== MIN_APPS_FOR_LOAD + 1) throw new Error("41 apps included");
+if (outEnough.employees.length !== 1 || outEnough.employees[0].apps !== 3) throw new Error("gl few apps included");
 const mix = Array(25).fill("");
 mix[3] = "10.07.2026";
 mix[T_COL] = "10.07.2026";
-mix[FIO_COL] = "Смешанный С.С. (9)";
+mix[FIO_COL] = GL_FIO;
 const outMixFew = aggregateEmployeeLoad(
     [
         { file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(mix, 20) },
@@ -128,39 +138,39 @@ const outMixFew = aggregateEmployeeLoad(
     ],
     now
 );
-if (outMixFew.employees.length !== 0) throw new Error("20+10 across files excluded");
+if (outMixFew.employees.length !== 1 || outMixFew.employees[0].apps !== 30) throw new Error("gl mix included");
 const outMixOk = aggregateEmployeeLoad(
     [
         { file: "MDO.xlsx", sheet: "S", headers, rows: repeatRow(mix, 20) },
-        { file: "1-я линия.xlsx", sheet: "S", headers, rows: repeatRow(mix, MIN_APPS_FOR_LOAD + 1 - 20) }
+        { file: "1-я линия.xlsx", sheet: "S", headers, rows: repeatRow(mix, APPS - 20) }
     ],
     now
 );
-if (outMixOk.employees.length !== 1 || outMixOk.employees[0].apps !== MIN_APPS_FOR_LOAD + 1) throw new Error("mix across files included");
+if (outMixOk.employees.length !== 1 || outMixOk.employees[0].apps !== APPS) throw new Error("mix across files included");
 
 const arbRow = Array(34).fill("");
 arbRow[3] = "10.07.2026";
 arbRow[T_COL] = "10.07.2026";
-arbRow[FIO_COL] = "Сидоров С.С. (111)";
+arbRow[FIO_COL] = "Филинюк А.А. (111)";
 arbRow[33] = "Арбитраж";
 const outArb = aggregateEmployeeLoad(
     [{ file: "a.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: [...rows, arbRow] }],
     now
 );
-const expectArb = (((MIN_APPS_FOR_LOAD + 1) * 20 + 150) / (workdays * 8 * 60)) * 100;
+const expectArb = (((APPS) * 20 + 150) / (workdays * 8 * 60)) * 100;
 if (outArb.employees[0].appsArb !== 1) throw new Error("appsArb");
 if (Math.abs(outArb.employees[0].loadPct - expectArb) > 1e-6) throw new Error("arb pct");
 
 const arbContainsRow = Array(34).fill("");
 arbContainsRow[3] = "10.07.2026";
-arbContainsRow[FIO_COL] = "Иванов И.И. (222)";
+arbContainsRow[FIO_COL] = GL_FIO;
 arbContainsRow[AH_COL] = "Арбитраж, срочно";
 const outArbContains = aggregateEmployeeLoad(
-    [{ file: "MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(arbContainsRow, MIN_APPS_FOR_LOAD + 1) }],
+    [{ file: "MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(arbContainsRow, APPS) }],
     now
 );
-if (outArbContains.employees[0].appsArb !== MIN_APPS_FOR_LOAD + 1) throw new Error("appsArb contains");
-if (Math.abs(outArbContains.employees[0].minutes - 150 * (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("arb contains minutes");
+if (outArbContains.employees[0].appsArb !== APPS) throw new Error("appsArb contains");
+if (Math.abs(outArbContains.employees[0].minutes - 150 * (APPS)) > 1e-9) throw new Error("arb contains minutes");
 
 const tagHeaders = Array(10).fill("");
 tagHeaders[3] = "Дата создания";
@@ -169,14 +179,14 @@ tagHeaders[FIO_COL] = "Исполнитель";
 const tagRow = Array(25).fill("");
 tagRow[3] = "10.07.2026";
 tagRow[5] = "foo Арбитраж bar";
-tagRow[FIO_COL] = "Петров П.П. (333)";
+tagRow[FIO_COL] = GL_FIO;
 if (findTagColumn(tagHeaders) !== 5) throw new Error("findTagColumn");
 const outTagCol = aggregateEmployeeLoad(
-    [{ file: "MDO.xlsx", sheet: "S", headers: tagHeaders, rows: repeatRow(tagRow, MIN_APPS_FOR_LOAD + 1) }],
+    [{ file: "MDO.xlsx", sheet: "S", headers: tagHeaders, rows: repeatRow(tagRow, APPS) }],
     now
 );
-if (outTagCol.employees[0].appsArb !== MIN_APPS_FOR_LOAD + 1) throw new Error("appsArb tag col");
-if (Math.abs(outTagCol.employees[0].minutes - 150 * (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("tag col minutes");
+if (outTagCol.employees[0].appsArb !== APPS) throw new Error("appsArb tag col");
+if (Math.abs(outTagCol.employees[0].minutes - 150 * (APPS)) > 1e-9) throw new Error("tag col minutes");
 
 if (!isFirstLineFile("1-я линия поддержки АС Залоги.xlsx")) throw new Error("l1 name");
 if (!isFirstLineFile("первая линия.xlsx")) throw new Error("l1 первая");
@@ -214,65 +224,65 @@ if (minutesForApp("Работа с ОО.xlsx", "Волчкова А.А.", "") !=
 
 const l1Row = Array(25).fill("");
 l1Row[3] = "10.07.2026";
-l1Row[FIO_COL] = "Сидоров С.С. (111)";
+l1Row[FIO_COL] = "Филинюк А.А. (111)";
 const outL1 = aggregateEmployeeLoad(
-    [{ file: "1-я линия поддержки АС Залоги.xlsx", sheet: "S", headers, rows: repeatRow(l1Row, MIN_APPS_FOR_LOAD + 1) }],
+    [{ file: "1-я линия поддержки АС Залоги.xlsx", sheet: "S", headers, rows: repeatRow(l1Row, APPS) }],
     now
 );
-if (outL1.employees[0].appsL1 !== MIN_APPS_FOR_LOAD + 1) throw new Error("appsL1");
-if (Math.abs(outL1.employees[0].loadPct - ((MIN_APPS_FOR_LOAD + 1) * 24 / (workdays * 8 * 60)) * 100) > 1e-6) throw new Error("l1 pct");
+if (outL1.employees[0].appsL1 !== APPS) throw new Error("appsL1");
+if (Math.abs(outL1.employees[0].loadPct - ((APPS) * 24 / (workdays * 8 * 60)) * 100) > 1e-6) throw new Error("l1 pct");
 
 const l1Arb = Array(34).fill("");
 l1Arb[3] = "10.07.2026";
-l1Arb[FIO_COL] = "Сидоров С.С. (111)";
+l1Arb[FIO_COL] = "Филинюк А.А. (111)";
 l1Arb[33] = "Арбитраж";
 const outL1Arb = aggregateEmployeeLoad(
-    [{ file: "1-я линия.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(l1Arb, MIN_APPS_FOR_LOAD + 1) }],
+    [{ file: "1-я линия.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(l1Arb, APPS) }],
     now
 );
-if (outL1Arb.employees[0].appsL1 !== MIN_APPS_FOR_LOAD + 1) throw new Error("l1 not arb file");
-if (Math.abs(outL1Arb.employees[0].minutes - 24 * (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("l1 ignores ah");
+if (outL1Arb.employees[0].appsL1 !== APPS) throw new Error("l1 not arb file");
+if (Math.abs(outL1Arb.employees[0].minutes - 24 * (APPS)) > 1e-9) throw new Error("l1 ignores ah");
 
 const ooArb = Array(34).fill("");
 ooArb[3] = "10.07.2026";
 ooArb[T_COL] = "10.07.2026";
-ooArb[FIO_COL] = "Сидоров С.С. (111)";
+ooArb[FIO_COL] = "Филинюк А.А. (111)";
 ooArb[33] = "Арбитраж";
 const outOoArb = aggregateEmployeeLoad(
-    [{ file: "Работа с Онлайн Оценкой.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(ooArb, MIN_APPS_FOR_LOAD + 1) }],
+    [{ file: "Работа с Онлайн Оценкой.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(ooArb, APPS) }],
     now
 );
-if (outOoArb.employees[0].appsOo !== MIN_APPS_FOR_LOAD + 1) throw new Error("oo apps");
-if (outOoArb.employees[0].appsArb !== MIN_APPS_FOR_LOAD + 1) throw new Error("oo arb count");
-if (Math.abs(outOoArb.employees[0].minutes - 210 * (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("oo arb minutes");
+if (outOoArb.employees[0].appsOo !== APPS) throw new Error("oo apps");
+if (outOoArb.employees[0].appsArb !== APPS) throw new Error("oo arb count");
+if (Math.abs(outOoArb.employees[0].minutes - 210 * (APPS)) > 1e-9) throw new Error("oo arb minutes");
 
 const fzhRow = Array(34).fill("");
 fzhRow[3] = "10.07.2026";
 fzhRow[T_COL] = "10.07.2026";
-fzhRow[FIO_COL] = "Сидоров С.С. (111)";
+fzhRow[FIO_COL] = "Филинюк А.А. (111)";
 fzhRow[33] = "ФЖН";
 const outFzh = aggregateEmployeeLoad(
-    [{ file: "Залоговая экспертиза MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(fzhRow, MIN_APPS_FOR_LOAD + 1) }],
+    [{ file: "Залоговая экспертиза MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(fzhRow, APPS) }],
     now
 );
-if (outFzh.employees[0].appsFzh !== MIN_APPS_FOR_LOAD + 1) throw new Error("fzh count");
-if (Math.abs(outFzh.employees[0].minutes - 240 * (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("fzh minutes");
+if (outFzh.employees[0].appsFzh !== APPS) throw new Error("fzh count");
+if (Math.abs(outFzh.employees[0].minutes - 240 * (APPS)) > 1e-9) throw new Error("fzh minutes");
 
 const osmotrRow = Array(25).fill("");
 osmotrRow[3] = "10.07.2026";
 osmotrRow[T_COL] = "10.07.2026";
-osmotrRow[FIO_COL] = "Сидоров С.С. (111)";
+osmotrRow[FIO_COL] = "Филинюк А.А. (111)";
 const outOsmotr = aggregateEmployeeLoad(
-    [{ file: "Осмотры.xlsx", sheet: "S", headers, rows: repeatRow(osmotrRow, MIN_APPS_FOR_LOAD + 1) }],
+    [{ file: "Осмотры.xlsx", sheet: "S", headers, rows: repeatRow(osmotrRow, APPS) }],
     now
 );
-if (Math.abs(outOsmotr.employees[0].minutes - 20 * (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("osmotr minutes");
+if (Math.abs(outOsmotr.employees[0].minutes - 20 * (APPS)) > 1e-9) throw new Error("osmotr minutes");
 if (outOsmotr.segments.mdo.Прочее) throw new Error("osmotr not mdo seg");
 
 const vacPlan = employeePlan(q, now, { from: "2026-07-06", to: "2026-07-10" });
 if (vacPlan.vacationDays !== 5) throw new Error(`vacationDays ${vacPlan.vacationDays}`);
 if (vacPlan.plan !== HOURS_PER_WORKDAY * (workdays - 5)) throw new Error("vac plan hours");
-const withV = withVacations(out, { "Сидоров С.С.": { from: "2026-07-06", to: "2026-07-10" } });
+const withV = withVacations(out, { "Филинюк А.А.": { from: "2026-07-06", to: "2026-07-10" } });
 if (withV.employees[0].plan !== vacPlan.plan) throw new Error("withVacations plan");
 const vacMulti = employeePlan(q, now, [
     { from: "2026-07-06", to: "2026-07-10" },
@@ -310,42 +320,42 @@ if (segmentFromAF("документарных залоговой") !== "ПКД")
 
 const metricRow = Array(40).fill("");
 metricRow[3] = "10.07.2026";
-metricRow[FIO_COL] = "Метриков М.М. (7)";
+metricRow[FIO_COL] = GL_FIO;
 metricRow[S_COL] = "01.07.2026";
 metricRow[T_COL] = "04.07.2026";
 metricRow[W_COL] = 2;
 metricRow[AG_COL] = "ДА";
 metricRow[AN_COL] = 5;
-const metricRows = repeatRow(metricRow, MIN_APPS_FOR_LOAD + 1);
+const metricRows = repeatRow(metricRow, APPS);
 metricRows[0][AG_COL] = "НЕТ";
 metricRows[0][W_COL] = 0;
 metricRows[0][T_COL] = "06.07.2026"; // 5 days
 metricRows[0][AN_COL] = 1;
 const outM = aggregateEmployeeLoad([{ file: "MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: metricRows }], now);
 if (outM.employees.length !== 1) throw new Error("metric emp");
-if (Math.abs(outM.employees[0].avgTermHours - (120 + 72 * MIN_APPS_FOR_LOAD) / (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("avg term");
-if (outM.employees[0].overdue !== MIN_APPS_FOR_LOAD) throw new Error("overdue emp");
-if (outM.overdueTotal !== MIN_APPS_FOR_LOAD) throw new Error("overdue total");
-if (Math.abs(outM.employees[0].returns - 2 * MIN_APPS_FOR_LOAD) > 1e-9) throw new Error("returns emp");
-if (outM.returnsTotal !== 2 * MIN_APPS_FOR_LOAD) throw new Error("returns total");
-if (JSON.stringify(outM.employees[0].csiCounts) !== JSON.stringify([1, 0, 0, 0, MIN_APPS_FOR_LOAD])) throw new Error("csi counts emp");
-if (JSON.stringify(outM.csiCounts) !== JSON.stringify([1, 0, 0, 0, MIN_APPS_FOR_LOAD])) throw new Error("csi counts total");
-if (outM.segments.mdo.Прочее !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg mdo other");
+if (Math.abs(outM.employees[0].avgTermHours - (120 + 72 * (APPS - 1)) / (APPS)) > 1e-9) throw new Error("avg term");
+if (outM.employees[0].overdue !== (APPS - 1)) throw new Error("overdue emp");
+if (outM.overdueTotal !== (APPS - 1)) throw new Error("overdue total");
+if (Math.abs(outM.employees[0].returns - 2 * (APPS - 1)) > 1e-9) throw new Error("returns emp");
+if (outM.returnsTotal !== 2 * (APPS - 1)) throw new Error("returns total");
+if (JSON.stringify(outM.employees[0].csiCounts) !== JSON.stringify([1, 0, 0, 0, (APPS - 1)])) throw new Error("csi counts emp");
+if (JSON.stringify(outM.csiCounts) !== JSON.stringify([1, 0, 0, 0, (APPS - 1)])) throw new Error("csi counts total");
+if (outM.segments.mdo.Прочее !== APPS) throw new Error("seg mdo other");
 if (!outM.files?.length || outM.files[0].file !== "MDO") throw new Error("files cut");
 
 const lateT = Array(40).fill("");
-lateT[FIO_COL] = "Поздний П.П. (1)";
+lateT[FIO_COL] = GL_FIO;
 lateT[T_COL] = "01.10.2026";
 const outLate = aggregateEmployeeLoad(
-    [{ file: "MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(lateT, MIN_APPS_FOR_LOAD + 1) }],
+    [{ file: "MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(lateT, APPS) }],
     now
 );
 if (outLate.employees.length !== 0) throw new Error("T after as-of excluded");
-if (outLate.skippedOutOfQuarter !== MIN_APPS_FOR_LOAD + 1) throw new Error("T filter skip");
+if (outLate.skippedOutOfQuarter !== APPS) throw new Error("T filter skip");
 
 const segRow = Array(40).fill("");
 segRow[3] = "10.07.2026";
-segRow[FIO_COL] = "Сегментов С.С. (8)";
+segRow[FIO_COL] = GL_FIO;
 const segRows = [];
 const afVals = [
     ["малого бизнеса", "ММБ"],
@@ -358,22 +368,22 @@ const afVals = [
 for (const [af] of afVals) {
     const r = [...segRow];
     r[AF_COL] = af;
-    segRows.push(...repeatRow(r, MIN_APPS_FOR_LOAD + 1));
+    segRows.push(...repeatRow(r, APPS));
 }
 const outSeg = aggregateEmployeeLoad(
     [
-        { file: "MDO.xlsx", sheet: "S", headers, rows: segRows.slice(0, MIN_APPS_FOR_LOAD + 1) },
-        { file: "1-я линия поддержки АС Залоги.xlsx", sheet: "S", headers, rows: segRows.slice(MIN_APPS_FOR_LOAD + 1, (MIN_APPS_FOR_LOAD + 1) * 2) },
-        { file: "Работа с Онлайн Оценкой.xlsx", sheet: "S", headers, rows: segRows.slice((MIN_APPS_FOR_LOAD + 1) * 2) }
+        { file: "MDO.xlsx", sheet: "S", headers, rows: segRows.slice(0, APPS) },
+        { file: "1-я линия поддержки АС Залоги.xlsx", sheet: "S", headers, rows: segRows.slice(APPS, (APPS) * 2) },
+        { file: "Работа с Онлайн Оценкой.xlsx", sheet: "S", headers, rows: segRows.slice((APPS) * 2) }
     ],
     now
 );
-if (outSeg.segments.mdo.ММБ !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file mdo");
-if (outSeg.segments.l1.КСБ !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file l1");
-if (outSeg.segments.oo.ПМЗ !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file oo pmz");
-if (outSeg.segments.oo.ЗС !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file oo zs");
-if (outSeg.segments.oo.ПКД !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file oo pkd");
-if (outSeg.segments.oo.Прочее !== MIN_APPS_FOR_LOAD + 1) throw new Error("seg file oo other");
+if (outSeg.segments.mdo.ММБ !== APPS) throw new Error("seg file mdo");
+if (outSeg.segments.l1.КСБ !== APPS) throw new Error("seg file l1");
+if (outSeg.segments.oo.ПМЗ !== APPS) throw new Error("seg file oo pmz");
+if (outSeg.segments.oo.ЗС !== APPS) throw new Error("seg file oo zs");
+if (outSeg.segments.oo.ПКД !== APPS) throw new Error("seg file oo pkd");
+if (outSeg.segments.oo.Прочее !== APPS) throw new Error("seg file oo other");
 
 console.log("gl-load selfcheck ok", {
     workdays,
