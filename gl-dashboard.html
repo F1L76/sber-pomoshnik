@@ -418,7 +418,7 @@
                 <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
                 <div class="kpi-head-text">
                     <h2>Закрытые заявки по линиям</h2>
-                    <p>сотрудники ГЛ · период по T</p>
+                    <p>только заявки сотрудников ГЛ · период по T</p>
                 </div>
             </div>
             <div class="kpi-total" id="linesTotal">—</div>
@@ -628,8 +628,8 @@
             T_COL,
             W_COL,
             numberCell
-        } from "/lib/gl-load.mjs";
-        import { resolveVacations } from "/lib/gl-vacations.mjs";
+        } from "/lib/gl-load.mjs?v=21";
+        import { resolveVacations } from "/lib/gl-vacations.mjs?v=21";
 
         const VAC_KEY = "gl-dashboard:vacations";
         const input = document.getElementById("excelFiles");

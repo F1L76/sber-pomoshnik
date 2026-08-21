@@ -118,6 +118,15 @@ const outFew = aggregateEmployeeLoad(
 );
 if (outFew.employees.length !== 0) throw new Error("non-gl excluded");
 if (outFew.skippedNotGl !== APPS) throw new Error("skippedNotGl");
+if ((outFew.linesTotal || 0) !== 0 || (outFew.lines || []).length) throw new Error("non-gl lines");
+const mixedLine = [
+    ...repeatRow(Object.assign(Array(25).fill(""), { 3: "10.07.2026", [T_COL]: "10.07.2026", [FIO_COL]: GL_FIO }), 3),
+    ...repeatRow(Object.assign(Array(25).fill(""), { 3: "10.07.2026", [T_COL]: "10.07.2026", [FIO_COL]: "Сидоров С.С. (111)" }), 10)
+];
+const outMixedLine = aggregateEmployeeLoad([{ file: "MDO.xlsx", sheet: "S", headers, rows: mixedLine }], now);
+if (outMixedLine.employees.length !== 1 || outMixedLine.employees[0].apps !== 3) throw new Error("mixed gl apps");
+if (outMixedLine.linesTotal !== 3) throw new Error("lines only gl");
+if (outMixedLine.skippedNotGl !== 10) throw new Error("mixed skippedNotGl");
 const glFew = Array(25).fill("");
 glFew[3] = "10.07.2026";
 glFew[T_COL] = "10.07.2026";
