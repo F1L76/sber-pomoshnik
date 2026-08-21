@@ -1,231 +1,106 @@
-import { motion } from "motion/react";
-import { BlurText } from "./BlurText";
+import { useEffect, useState } from "react";
+import { useTypewriter } from "../hooks/useTypewriter";
 
-function ArrowUpRightIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M7 17L17 7"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7 7H17V17"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+const TYPEWRITER_TEXT =
+  "Актив понимает себя, управляет своей стоимостью и заменяет целые службы Сбера.";
 
-function PlayIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <polygon fill="currentColor" points="6 4 20 12 6 20 6 4" />
-    </svg>
-  );
-}
+const PILLS = [
+  { href: "#profile", label: "Анализ рынка" },
+  { href: "#profile", label: "Оценка онлайн" },
+  { href: "#services", label: "Контроль залога" },
+  { href: "#flow", label: "Как это работает" },
+] as const;
 
-function ClockOutlineIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="9"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M12 7.5V12.2L15.2 14.1"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+const CONTACT_EMAIL = "ai.profile@sber.ru";
 
-function GlobeOutlineIcon({ className }: { className?: string }) {
+const pillClass =
+  "mb-[0.4em] mx-[0.2em] inline-flex items-center justify-center whitespace-nowrap rounded-full px-4 py-[0.3em] text-[13px] transition-colors duration-200 sm:px-5 sm:text-[15px]";
+
+function CopyIcon() {
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <circle
-        cx="12"
-        cy="12"
-        r="9"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-      <path
-        d="M3.7 10.2H20.3"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M3.7 13.8H20.3"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-      <path
-        d="M12 3.2C9.5 5.9 9.5 18.1 12 20.8C14.5 18.1 14.5 5.9 12 3.2Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinejoin="round"
-      />
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <rect x="3.5" y="0.75" width="7.75" height="7.75" rx="1.2" stroke="currentColor" />
+      <rect x="0.75" y="3.5" width="7.75" height="7.75" rx="1.2" stroke="currentColor" />
     </svg>
   );
 }
 
 export function HeroContent() {
+  const { displayed, done } = useTypewriter(TYPEWRITER_TEXT);
+  const [pillsOn, setPillsOn] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setPillsOn(true), 400);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
+  const copyEmail = () => {
+    void navigator.clipboard.writeText(CONTACT_EMAIL).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    });
+  };
+
   return (
-    <main className="w-full flex flex-col min-h-screen items-center pt-24 px-4 pb-8">
-      <div className="flex-1 w-full flex flex-col items-center justify-center">
-        <motion.div
-          initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
-          animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="w-full flex flex-col items-center"
+    <section
+      id="hero"
+      className="relative z-[1] flex h-screen flex-col overflow-hidden px-5 pb-12 sm:px-8 md:justify-center md:px-10 md:pb-0 justify-end"
+    >
+      <div className="relative z-10 max-w-xl">
+        <p
+          className="pointer-events-none mb-5 select-none font-normal text-black sm:mb-6"
+          style={{
+            fontSize: "clamp(18px, 4vw, 26px)",
+            lineHeight: 1.3,
+            filter: "blur(4px)",
+          }}
         >
-          <div className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white flex items-center">
-            <span className="bg-white text-black px-3 py-1 rounded-full text-xs font-semibold">
-              New
-            </span>
-            <span className="text-sm text-white/90 pr-3">
-              Роль ТМ ММБ в ЗС: связка КП и ЗС для качества интеграции
-            </span>
-          </div>
-        </motion.div>
+          Знакомьтесь — AI-профиль актива,
+          <br />
+          цифровой двойник, который работает 24/7
+        </p>
 
-        <motion.div
-          initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
-          animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="w-full flex flex-col items-center"
+        <p
+          className="mb-5 min-h-[54px] font-normal text-black sm:mb-6"
+          style={{ fontSize: "clamp(18px, 4vw, 26px)", lineHeight: 1.35 }}
         >
-          <BlurText
-            text="Роль ТМ ММБ в ЗС"
-            className="flex flex-wrap justify-center row-gap-[0.1em] text-6xl md:text-7xl lg:text-[5.5rem] font-heading italic text-white leading-[0.8] max-w-2xl tracking-[-4px] text-center"
-          />
-        </motion.div>
+          {displayed}
+          {done ? null : (
+            <span className="cursor-blink ml-[2px] inline-block h-[1.1em] w-[2px] align-middle bg-black" />
+          )}
+        </p>
 
-        <motion.p
-          initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
-          animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          className="mt-4 text-sm md:text-base text-white max-w-2xl font-body font-light leading-tight text-center"
+        <div
+          className="flex flex-wrap gap-y-1"
+          style={{
+            opacity: pillsOn ? 1 : 0,
+            transform: pillsOn ? "translateY(0)" : "translateY(8px)",
+            transition: "opacity 0.4s ease, transform 0.4s ease",
+          }}
         >
-          ТМ ММБ обеспечивает устойчивую интеграцию АС СБОФ и АС Залоги:
-          передает ошибки в разработку, возвращает обратную связь КП, уточняет
-          методологию у ЗС и ДММБ, организует разбор арбитражей и регулярное
-          обучение — для автономности и качества процессов.
-        </motion.p>
-
-        <motion.div
-          initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
-          animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.1 }}
-          className="flex items-center gap-6 mt-6 justify-center"
-        >
-          <a
-            href="#"
-            className="liquid-glass-strong rounded-full px-5 py-2.5 text-sm font-medium text-white inline-flex items-center gap-3 hover:opacity-90"
+          {PILLS.map((pill) => (
+            <a
+              key={pill.label}
+              href={pill.href}
+              className={`${pillClass} border border-black/10 bg-white text-black hover:bg-black hover:text-white`}
+            >
+              {pill.label}
+            </a>
+          ))}
+          <button
+            type="button"
+            onClick={copyEmail}
+            className={`${pillClass} gap-2 border border-white bg-transparent text-white hover:bg-white hover:text-black sm:gap-3`}
           >
-            Начать взаимодействие
-            <ArrowUpRightIcon className="w-5 h-5" />
-          </a>
-
-          <a
-            href="#"
-            className="text-sm text-white/90 hover:opacity-70 inline-flex items-center gap-2 font-body"
-          >
-            Смотреть контур
-            <PlayIcon className="w-4 h-4" />
-          </a>
-        </motion.div>
-
-        <motion.div
-          initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
-          animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.3 }}
-          className="flex items-stretch gap-4 mt-8 justify-center"
-        >
-          <div className="liquid-glass rounded-[1.25rem] p-5 w-[220px] flex flex-col">
-            <div className="text-white flex items-center">
-              <ClockOutlineIcon className="w-7 h-7" />
-            </div>
-            <div className="flex-1" />
-            <div className="font-heading italic text-white text-4xl tracking-[-1px] leading-none">
-              34.5 мин
-            </div>
-            <div className="text-xs text-white font-body font-light mt-2">
-              Среднее время решения интеграционных дефектов
-            </div>
-          </div>
-
-          <div className="liquid-glass rounded-[1.25rem] p-5 w-[220px] flex flex-col">
-            <div className="text-white flex items-center">
-              <GlobeOutlineIcon className="w-7 h-7" />
-            </div>
-            <div className="flex-1" />
-            <div className="font-heading italic text-white text-4xl tracking-[-1px] leading-none">
-              2.8B+
-            </div>
-            <div className="text-xs text-white font-body font-light mt-2">
-              Пользователи в контуре взаимодействия
-            </div>
-          </div>
-        </motion.div>
+            <span>
+              {copied ? "Скопировано: " : "Связь: "}
+              <span className="underline underline-offset-1">{CONTACT_EMAIL}</span>
+            </span>
+            <CopyIcon />
+          </button>
+        </div>
       </div>
-
-      <motion.div
-        initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
-        animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 1.4 }}
-        className="flex flex-col items-center gap-4 pb-8"
-      >
-        <div className="liquid-glass rounded-full chip px-3.5 py-1 text-xs font-medium text-white">
-          Взаимодействуем с КП, ЗС и ММБ по единым правилам
-        </div>
-
-        <div className="font-heading italic text-white text-2xl md:text-3xl tracking-tight flex items-center gap-12 md:gap-16">
-          <span>Aeon</span>
-          <span className="opacity-90">·</span>
-          <span>КП</span>
-          <span className="opacity-90">·</span>
-          <span>ЗС</span>
-          <span className="opacity-90">·</span>
-          <span>ДММБ</span>
-          <span className="opacity-90">·</span>
-          <span>Группа</span>
-        </div>
-      </motion.div>
-    </main>
+    </section>
   );
 }

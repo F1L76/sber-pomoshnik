@@ -1,75 +1,100 @@
-const NAV_LINKS = [
-  "Home",
-  "Voyages",
-  "Worlds",
-  "Innovation",
-  "Plan Launch",
+import { useState } from "react";
+
+const LINKS = [
+  { href: "#flow", label: "Контур" },
+  { href: "#profile", label: "Профиль" },
+  { href: "#services", label: "Службы" },
+  { href: "#value", label: "Ценность" },
 ] as const;
 
-function ArrowUpRightIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path
-        d="M7 17L17 7"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M7 7H17V17"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 export function Navbar() {
+  const [open, setOpen] = useState(false);
+
+  const close = () => setOpen(false);
+
   return (
-    <header className="fixed top-4 inset-x-0 z-50 px-8 lg:px-16">
-      <div className="flex items-center justify-between">
-        <div
-          className="liquid-glass rounded-full w-12 h-12 flex items-center justify-center"
-          aria-hidden="true"
-        >
-          <span className="font-heading text-white text-3xl leading-none -mt-0.5">
-            a
-          </span>
-        </div>
-
-        <div className="hidden lg:flex items-center gap-3">
-          <nav className="liquid-glass rounded-full px-1.5 py-1.5 flex items-center gap-1">
-            {NAV_LINKS.map((link) => (
-              <a
-                key={link}
-                href="#"
-                className="px-3 py-2 text-sm font-medium text-white/90 font-body hover:opacity-80"
-              >
-                {link}
-              </a>
-            ))}
-          </nav>
-
-          <a
-            href="#"
-            className="liquid-glass-strong rounded-full bg-white text-black px-5 py-2.5 text-sm font-medium whitespace-nowrap flex items-center gap-2 hover:opacity-90"
+    <>
+      <header className="fixed top-0 z-10 flex w-full items-center justify-between px-5 py-4 sm:px-8 sm:py-5">
+        <a href="#hero" className="flex items-center gap-3 text-black" onClick={close}>
+          <span
+            className="text-[21px] tracking-tight sm:text-[26px]"
+            style={{ fontFamily: "var(--font-heading)" }}
           >
-            Claim a Spot
-            <ArrowUpRightIcon className="w-5 h-5" />
-          </a>
-        </div>
+            Сбер®
+          </span>
+          <span
+            className="select-none text-[25px] sm:text-[30px]"
+            style={{ letterSpacing: "-0.02em" }}
+            aria-hidden="true"
+          >
+            ✳︎
+          </span>
+        </a>
 
-        {/* spacer */}
-        <div className="w-12 h-12 opacity-0" aria-hidden="true" />
+        <nav
+          className="hidden text-[23px] text-black md:flex"
+          aria-label="Основная навигация"
+        >
+          {LINKS.map((link, index) => (
+            <span key={link.href}>
+              {index > 0 ? ", " : null}
+              <a href={link.href} className="transition-opacity hover:opacity-60">
+                {link.label}
+              </a>
+            </span>
+          ))}
+        </nav>
+
+        <a
+          href="#contact"
+          className="hidden text-[23px] text-black underline underline-offset-2 transition-opacity hover:opacity-60 md:inline"
+        >
+          Связаться
+        </a>
+
+        <button
+          type="button"
+          className="flex flex-col gap-[5px] md:hidden"
+          aria-label={open ? "Закрыть меню" : "Открыть меню"}
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <span
+            className={`h-[2px] w-6 bg-black transition duration-300 ${open ? "translate-y-[7px] rotate-45" : ""}`}
+          />
+          <span
+            className={`h-[2px] w-6 bg-black transition duration-300 ${open ? "opacity-0" : ""}`}
+          />
+          <span
+            className={`h-[2px] w-6 bg-black transition duration-300 ${open ? "-translate-y-[7px] -rotate-45" : ""}`}
+          />
+        </button>
+      </header>
+
+      <div
+        className={`fixed inset-0 z-[9] flex flex-col justify-center gap-8 bg-white/95 px-8 backdrop-blur-sm md:hidden ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        style={{ transition: "opacity 0.3s ease" }}
+      >
+        {LINKS.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            className="text-[32px] font-medium text-black"
+            onClick={close}
+          >
+            {link.label}
+          </a>
+        ))}
+        <a
+          href="#contact"
+          className="text-[32px] font-medium text-black underline underline-offset-2"
+          onClick={close}
+        >
+          Связаться
+        </a>
       </div>
-    </header>
+    </>
   );
 }
