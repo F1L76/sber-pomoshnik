@@ -31,6 +31,7 @@ import {
     AF_COL,
     AH_COL
 } from "../lib/gl-load.mjs";
+import { parseVacCell, resolveVacations } from "../lib/gl-vacations.mjs";
 
 function repeatRow(row, n) {
     return Array.from({ length: n }, () => {
@@ -229,6 +230,17 @@ const vacMulti = employeePlan(q, now, [
     { from: "2026-07-08", to: "2026-07-10" }
 ]);
 if (vacMulti.vacationDays !== 5) throw new Error("vac overlap unique");
+if (JSON.stringify(parseVacCell("06.04.-19.04")) !== JSON.stringify([{ from: "2026-04-06", to: "2026-04-19" }])) {
+    throw new Error("parseVacCell range");
+}
+if (JSON.stringify(parseVacCell("02.07.")) !== JSON.stringify([{ from: "2026-07-02", to: "2026-07-02" }])) {
+    throw new Error("parseVacCell day");
+}
+const filVac = resolveVacations("Филинюк Андрей Владимирович");
+if (!filVac.some((p) => p.from === "2026-07-02" && p.to === "2026-07-02")) throw new Error("builtin filinyuk");
+if (resolveVacations("Филинюк Андрей Владимирович", { "Филинюк Андрей Владимирович": [] }).length !== 0) {
+    throw new Error("override empty");
+}
 
 if (termHoursFromST("01.07.2026", "04.07.2026") !== 72) throw new Error("termHours");
 if (termHoursFromST("", "04.07.2026") != null) throw new Error("termHours empty");

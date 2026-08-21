@@ -535,7 +535,6 @@
         import {
             aggregateEmployeeLoad,
             withVacations,
-            vacationsAsList,
             SEGMENTS,
             parseExcelDate,
             fioFromCell,
@@ -546,6 +545,7 @@
             W_COL,
             numberCell
         } from "/lib/gl-load.mjs";
+        import { resolveVacations } from "/lib/gl-vacations.mjs";
 
         const VAC_KEY = "gl-dashboard:vacations";
         const input = document.getElementById("excelFiles");
@@ -968,7 +968,7 @@
             const btn = e.target.closest("[data-fio]");
             if (!btn) return;
             vacFio = decodeURIComponent(btn.getAttribute("data-fio") || "");
-            const periods = vacationsAsList(loadVacations()[vacFio]);
+            const periods = resolveVacations(vacFio, loadVacations());
             vacFioEl.textContent = vacFio;
             vacPeriods.innerHTML = (periods.length ? periods : [{ from: "", to: "" }])
                 .map((p) => vacPeriodHtml(p.from, p.to)).join("");
