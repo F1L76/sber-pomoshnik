@@ -234,7 +234,9 @@
         }
         .csi-table thead th:first-child,
         .csi-table tfoot th:first-child { text-align: left; }
-        .csi-table .csi-num { text-align: center; font-weight: 700; }
+        .csi-table .csi-avg { text-align: right; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .csi-table thead th:nth-child(2),
+        .csi-table tfoot th:nth-child(2) { text-align: right; }
         .csi-table tfoot th { font-weight: 800; padding: 0.42rem 0.4rem; }
         .kpi-csi .kpi-list td:last-child { text-align: center; }
         .csi-head-stars {
@@ -519,6 +521,7 @@
                             <thead>
                                 <tr>
                                     <th id="csiNameHead">ФИО</th>
+                                    <th>средняя</th>
                                     <th><span class="kpi-stars csi-head-stars" aria-label="1"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
                                     <th><span class="kpi-stars csi-head-stars" aria-label="2"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
                                     <th><span class="kpi-stars csi-head-stars" aria-label="3"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
@@ -962,27 +965,28 @@
             returnsTotal.textContent = String(agg.returnsTotal || 0);
 
             const csiRank = (c) => (c || []).reduce((acc, n, i) => acc + n * (i + 1), 0);
+            const csiN = (c) => (c || []).reduce((s, n) => s + n, 0);
+            const csiAvg = (c) => {
+                const n = csiN(c);
+                return n ? csiRank(c) / n : null;
+            };
+            const fmtAvg = (v) => (v == null || !Number.isFinite(v) ? "—" : v.toFixed(2));
+            const csiRow = (label, c) => `<tr>${nameCell(label)}<td class="csi-avg">${fmtAvg(csiAvg(c))}</td>${c.map((n) => `<td class="csi-num">${n}</td>`).join("")}</tr>`;
             const csiEmp = !kpiFlip.csi;
             csiSub.textContent = csiEmp ? "оценка AN, 1–5 · сотрудники" : "оценка AN, 1–5 · линии";
             csiNameHead.textContent = csiEmp ? "ФИО" : "Линия";
             document.querySelector('[data-flip="csi"]')?.classList.toggle("is-on", !csiEmp);
             const csiRows = csiEmp
-                ? people((a, b) => csiRank(b.csiCounts) - csiRank(a.csiCounts) || a.fio.localeCompare(b.fio, "ru"))
-                    .map((e) => {
-                        const c = e.csiCounts || [0, 0, 0, 0, 0];
-                        return `<tr>${nameCell(e.fio)}${c.map((n) => `<td class="csi-num">${n}</td>`).join("")}</tr>`;
-                    })
+                ? people((a, b) => (csiAvg(b.csiCounts) ?? -1) - (csiAvg(a.csiCounts) ?? -1) || a.fio.localeCompare(b.fio, "ru"))
+                    .map((e) => csiRow(e.fio, e.csiCounts || [0, 0, 0, 0, 0]))
                 : filesCut()
-                    .sort((a, b) => csiRank(b.csiCounts) - csiRank(a.csiCounts) || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => {
-                        const c = f.csiCounts || [0, 0, 0, 0, 0];
-                        return `<tr>${nameCell(fileLabel(f))}${c.map((n) => `<td class="csi-num">${n}</td>`).join("")}</tr>`;
-                    });
+                    .sort((a, b) => (csiAvg(b.csiCounts) ?? -1) - (csiAvg(a.csiCounts) ?? -1) || a.file.localeCompare(b.file, "ru"))
+                    .map((f) => csiRow(fileLabel(f), f.csiCounts || [0, 0, 0, 0, 0]));
             csiBody.innerHTML = csiRows.length
                 ? csiRows.join("")
-                : `<tr><td colspan="6" class="text-muted">Нет данных</td></tr>`;
+                : `<tr><td colspan="7" class="text-muted">Нет данных</td></tr>`;
             const tot = agg.csiCounts || [0, 0, 0, 0, 0];
-            csiFoot.innerHTML = `<tr><th>Итого</th>${tot.map((n) => `<th class="csi-num">${n}</th>`).join("")}</tr>`;
+            csiFoot.innerHTML = `<tr><th>Итого</th><th class="csi-avg">${fmtAvg(csiAvg(tot))}</th>${tot.map((n) => `<th class="csi-num">${n}</th>`).join("")}</tr>`;
             const segs = agg.segments || {};
             const fillSeg = (el, counts) => {
                 const c = counts || {};
