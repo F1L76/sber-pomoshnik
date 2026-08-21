@@ -13,6 +13,7 @@ import {
     fileKind,
     lineNameFromFile,
     minutesForApp,
+    isFzhCell,
     isVolkov,
     isVolchkova,
     findTagColumn,
@@ -183,8 +184,11 @@ if (isFirstLineFile("выгрузка.xlsx")) throw new Error("l1 false positive
 if (fileKind("Залоговая экспертиза MDO.xlsx") !== "mdo") throw new Error("mdo kind");
 if (fileKind("Работа с ОО.xlsx") !== "oo") throw new Error("oo kind");
 if (fileKind("Работа с Онлайн Оценкой.xlsx") !== "oo") throw new Error("oo online kind");
+if (fileKind("Осмотры_07.26.xlsx") !== "osmotr") throw new Error("osmotr kind");
 if (lineNameFromFile("Залоговая экспертиза MDO_07.26.xlsx") !== "Залоговая экспертиза MDO") throw new Error("line name");
 if (lineNameFromFile("Работа с ОО.xlsx") !== "Работа с ОО") throw new Error("line name no _");
+if (!isFzhCell("ФЖН, срочно")) throw new Error("fzh contains");
+if (isFzhCell("Арбитраж")) throw new Error("fzh false");
 if (!isVolkov("Волков Артем Анатольевич")) throw new Error("volkov");
 if (isVolchkova("Волков Артем Анатольевич")) throw new Error("volchkova vs volkov");
 if (!isVolchkova("Волчкова Анна Ивановна")) throw new Error("volchkova fio");
@@ -194,15 +198,19 @@ if (isVolchkova("Волочкова")) throw new Error("not volochkova");
 if (isVolchkova("Волков")) throw new Error("not volkov");
 if (isVolchkova("Волкова")) throw new Error("not volkova");
 if (minutesForApp("1-я линия.xlsx", "Иванов", "") !== 24) throw new Error("min l1");
+if (minutesForApp("Осмотры.xlsx", "Иванов", "Арбитраж") !== 20) throw new Error("min osmotr ignores tag");
 if (minutesForApp("Залоговая экспертиза MDO.xlsx", "Иванов", "Арбитраж") !== 150) throw new Error("min arb");
 if (minutesForApp("MDO.xlsx", "Иванов", "Арбитраж, срочно") !== 150) throw new Error("min arb contains");
 if (minutesForApp("MDO.xlsx", "Иванов", "foo Арбитраж bar") !== 150) throw new Error("min arb substring");
-if (minutesForApp("MDO.xlsx", "Волков Артем Анатольевич", "") !== 240) throw new Error("min volkov");
-if (minutesForApp("Работа с ОО.xlsx", "Иванов", "") !== 210) throw new Error("min oo");
-if (minutesForApp("1-я линия.xlsx", "Волчкова А.А.", "") !== 210) throw new Error("min volchkova l1");
-if (minutesForApp("MDO.xlsx", "Волчкова А.А.", "") !== 210) throw new Error("min volchkova mdo");
-if (minutesForApp("MDO.xlsx", "Волчкова А.А.", "Арбитраж") !== 210) throw new Error("min volchkova arb");
-if (minutesForApp("Работа с ОО.xlsx", "Волчкова А.А.", "") !== 210) throw new Error("min volchkova oo");
+if (minutesForApp("MDO.xlsx", "Иванов", "ФЖН") !== 240) throw new Error("min fzh");
+if (minutesForApp("MDO.xlsx", "Иванов", "Арбитраж, ФЖН") !== 240) throw new Error("min fzh over arb");
+if (minutesForApp("MDO.xlsx", "Волков Артем Анатольевич", "") !== 20) throw new Error("min volkov now mdo default");
+if (minutesForApp("Работа с ОО.xlsx", "Иванов", "") !== 20) throw new Error("min oo");
+if (minutesForApp("Работа с Онлайн Оценкой.xlsx", "Иванов", "Арбитраж") !== 210) throw new Error("min oo arb");
+if (minutesForApp("1-я линия.xlsx", "Волчкова А.А.", "") !== 24) throw new Error("min volchkova l1");
+if (minutesForApp("MDO.xlsx", "Волчкова А.А.", "") !== 20) throw new Error("min volchkova mdo");
+if (minutesForApp("MDO.xlsx", "Волчкова А.А.", "Арбитраж") !== 150) throw new Error("min volchkova arb");
+if (minutesForApp("Работа с ОО.xlsx", "Волчкова А.А.", "") !== 20) throw new Error("min volchkova oo");
 
 const l1Row = Array(25).fill("");
 l1Row[3] = "10.07.2026";
@@ -224,6 +232,42 @@ const outL1Arb = aggregateEmployeeLoad(
 );
 if (outL1Arb.employees[0].appsL1 !== MIN_APPS_FOR_LOAD + 1) throw new Error("l1 not arb file");
 if (Math.abs(outL1Arb.employees[0].minutes - 24 * (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("l1 ignores ah");
+
+const ooArb = Array(34).fill("");
+ooArb[3] = "10.07.2026";
+ooArb[T_COL] = "10.07.2026";
+ooArb[FIO_COL] = "Сидоров С.С. (111)";
+ooArb[33] = "Арбитраж";
+const outOoArb = aggregateEmployeeLoad(
+    [{ file: "Работа с Онлайн Оценкой.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(ooArb, MIN_APPS_FOR_LOAD + 1) }],
+    now
+);
+if (outOoArb.employees[0].appsOo !== MIN_APPS_FOR_LOAD + 1) throw new Error("oo apps");
+if (outOoArb.employees[0].appsArb !== MIN_APPS_FOR_LOAD + 1) throw new Error("oo arb count");
+if (Math.abs(outOoArb.employees[0].minutes - 210 * (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("oo arb minutes");
+
+const fzhRow = Array(34).fill("");
+fzhRow[3] = "10.07.2026";
+fzhRow[T_COL] = "10.07.2026";
+fzhRow[FIO_COL] = "Сидоров С.С. (111)";
+fzhRow[33] = "ФЖН";
+const outFzh = aggregateEmployeeLoad(
+    [{ file: "Залоговая экспертиза MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(fzhRow, MIN_APPS_FOR_LOAD + 1) }],
+    now
+);
+if (outFzh.employees[0].appsFzh !== MIN_APPS_FOR_LOAD + 1) throw new Error("fzh count");
+if (Math.abs(outFzh.employees[0].minutes - 240 * (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("fzh minutes");
+
+const osmotrRow = Array(25).fill("");
+osmotrRow[3] = "10.07.2026";
+osmotrRow[T_COL] = "10.07.2026";
+osmotrRow[FIO_COL] = "Сидоров С.С. (111)";
+const outOsmotr = aggregateEmployeeLoad(
+    [{ file: "Осмотры.xlsx", sheet: "S", headers, rows: repeatRow(osmotrRow, MIN_APPS_FOR_LOAD + 1) }],
+    now
+);
+if (Math.abs(outOsmotr.employees[0].minutes - 20 * (MIN_APPS_FOR_LOAD + 1)) > 1e-9) throw new Error("osmotr minutes");
+if (outOsmotr.segments.mdo.Прочее) throw new Error("osmotr not mdo seg");
 
 const vacPlan = employeePlan(q, now, { from: "2026-07-06", to: "2026-07-10" });
 if (vacPlan.vacationDays !== 5) throw new Error(`vacationDays ${vacPlan.vacationDays}`);
