@@ -22,6 +22,9 @@ import {
     numberCell,
     csiScore,
     segmentFromAF,
+    tbFromAF,
+    isPriorityCell,
+    TERR_BANKS,
     HOURS_PER_WORKDAY,
     FIO_COL,
     S_COL,
@@ -30,7 +33,8 @@ import {
     AG_COL,
     AN_COL,
     AF_COL,
-    AH_COL
+    AH_COL,
+    AL_COL
 } from "../lib/gl-load.mjs";
 import { parseVacCell, resolveVacations, isGlEmployee } from "../lib/gl-vacations.mjs";
 
@@ -393,6 +397,45 @@ if (outSeg.segments.oo.ПМЗ !== APPS) throw new Error("seg file oo pmz");
 if (outSeg.segments.oo.ЗС !== APPS) throw new Error("seg file oo zs");
 if (outSeg.segments.oo.ПКД !== APPS) throw new Error("seg file oo pkd");
 if (outSeg.segments.oo.Прочее !== APPS) throw new Error("seg file oo other");
+
+if (tbFromAF("Московский банк") !== "МБ") throw new Error("tb mb");
+if (tbFromAF("Среднерусский банк") !== "СРБ") throw new Error("tb srb");
+if (tbFromAF("Волго-Вятский банк") !== "ВВБ") throw new Error("tb vvb");
+if (tbFromAF("Поволжский банк") !== "ПБ") throw new Error("tb pb");
+if (tbFromAF("Уральский банк") !== "УБ") throw new Error("tb ub");
+if (tbFromAF("Сибирский банк") !== "СБ") throw new Error("tb sb");
+if (tbFromAF("Дальневосточный банк") !== "ДВБ") throw new Error("tb dvb");
+if (tbFromAF("Северо-Западный банк") !== "СЗБ") throw new Error("tb szb");
+if (tbFromAF("Юго-Западный банк") !== "ЮЗБ") throw new Error("tb yuzb");
+if (tbFromAF("Центрально-Черноземный банк") !== "ЦЧБ") throw new Error("tb cchb");
+if (tbFromAF("Подразделение центрального подчинения") !== "ТМ") throw new Error("tb tm");
+if (tbFromAF("нет банка") != null) throw new Error("tb none");
+if (!isPriorityCell("Срочный приоритет")) throw new Error("prio cell");
+if (isPriorityCell("обычная")) throw new Error("prio false");
+if (TERR_BANKS.length !== 11) throw new Error("tb list");
+if (segmentFromAF("Московский банк, ММБ") !== "ММБ") throw new Error("seg mmb code");
+if (segmentFromAF("Среднерусский банк КСБ") !== "КСБ") throw new Error("seg ksb code");
+
+const prioRow = Array(40).fill("");
+prioRow[3] = "10.07.2026";
+prioRow[T_COL] = "10.07.2026";
+prioRow[FIO_COL] = GL_FIO;
+prioRow[AF_COL] = "Московский банк, малое и среднее / малого бизнеса";
+prioRow[AL_COL] = "приоритет";
+const prioRow2 = [...prioRow];
+prioRow2[AF_COL] = "Среднерусский банк, корпоративный блок";
+prioRow2[AL_COL] = "Приоритет 1";
+const prioSkip = [...prioRow];
+prioSkip[AL_COL] = "";
+const outPrio = aggregateEmployeeLoad(
+    [{ file: "MDO.xlsx", sheet: "S", headers: [...headers, ...Array(20).fill("")], rows: [prioRow, prioRow, prioRow2, prioSkip] }],
+    now
+);
+if (outPrio.priorityTotals.ММБ !== 2) throw new Error("prio mmb total");
+if (outPrio.priorityTotals.КСБ !== 1) throw new Error("prio ksb total");
+if (outPrio.priorities.ММБ.МБ !== 2) throw new Error("prio mmb mb");
+if (outPrio.priorities.КСБ.СРБ !== 1) throw new Error("prio ksb srb");
+if (outPrio.priorities.ММБ.СРБ !== 0) throw new Error("prio mmb srb empty");
 
 console.log("gl-load selfcheck ok", {
     workdays,

@@ -117,6 +117,14 @@
         .kpi-mdo { --kpi-accent: var(--sber-green); }
         .kpi-l1 { --kpi-accent: #2b6cb0; }
         .kpi-oo { --kpi-accent: #0f9d8e; }
+        .kpi-prio-ksb { --kpi-accent: #2b6cb0; }
+        .kpi-prio-mmb { --kpi-accent: #0f9d8e; }
+        .kpi-total-share {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--sber-muted);
+            margin-left: 0.4rem;
+        }
         .kpi-seg .kpi-head {
             align-items: flex-start;
             min-height: 4.9rem;
@@ -338,6 +346,7 @@
         html[data-theme="dark"] .load-table .fio-cell { color: #e8eef4; }
         html[data-theme="dark"] .kpi-head h2 { color: #e8eef4; }
         html[data-theme="dark"] .line-name { color: #e8eef4; }
+        html[data-theme="dark"] .kpi-total-share { color: #94a3b8; }
         html[data-theme="dark"] .kpi-flip {
             background: #1a2330;
             border-color: #334155;
@@ -466,7 +475,7 @@
                         </button>
                     </div>
                     <div class="kpi-total" id="returnsTotal">—</div>
-                    <div class="kpi-total-lbl">Общее количество</div>
+                    <div class="kpi-total-lbl">Общее количество · доля заявок</div>
                     <div class="kpi-list">
                         <table>
                             <thead>
@@ -494,7 +503,7 @@
                         </button>
                     </div>
                     <div class="kpi-total" id="overdueTotal">—</div>
-                    <div class="kpi-total-lbl">Общее количество</div>
+                    <div class="kpi-total-lbl">Общее количество · доля заявок</div>
                     <div class="kpi-list">
                         <table>
                             <thead>
@@ -538,6 +547,34 @@
                             <tfoot id="csiFoot"></tfoot>
                         </table>
                     </div>
+                </section>
+            </div>
+            <div class="col-md-6">
+                <section class="kpi-card kpi-prio-ksb">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
+                        <div class="kpi-head-text">
+                            <h2>Приоритеты КСБ</h2>
+                            <p>AL содержит «приоритет» · ТБ из AF</p>
+                        </div>
+                    </div>
+                    <div class="kpi-total" id="prioKsbTotal">—</div>
+                    <div class="kpi-total-lbl">Заявок на приоритет</div>
+                    <div class="line-bars" id="prioKsbBody"></div>
+                </section>
+            </div>
+            <div class="col-md-6">
+                <section class="kpi-card kpi-prio-mmb">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
+                        <div class="kpi-head-text">
+                            <h2>Приоритеты ММБ</h2>
+                            <p>AL содержит «приоритет» · ТБ из AF</p>
+                        </div>
+                    </div>
+                    <div class="kpi-total" id="prioMmbTotal">—</div>
+                    <div class="kpi-total-lbl">Заявок на приоритет</div>
+                    <div class="line-bars" id="prioMmbBody"></div>
                 </section>
             </div>
             <div class="col-md-4">
@@ -624,6 +661,7 @@
             aggregateEmployeeLoad,
             withVacations,
             SEGMENTS,
+            TERR_BANKS,
             parseExcelDate,
             fioFromCell,
             isOverdueCell,
@@ -633,8 +671,8 @@
             T_COL,
             W_COL,
             numberCell
-        } from "/lib/gl-load.mjs?v=21";
-        import { resolveVacations } from "/lib/gl-vacations.mjs?v=21";
+        } from "/lib/gl-load.mjs?v=22";
+        import { resolveVacations } from "/lib/gl-vacations.mjs?v=22";
 
         const VAC_KEY = "gl-dashboard:vacations";
         const input = document.getElementById("excelFiles");
@@ -649,6 +687,10 @@
         const linesBlock = document.getElementById("linesBlock");
         const linesBody = document.getElementById("linesBody");
         const linesTotal = document.getElementById("linesTotal");
+        const prioKsbTotal = document.getElementById("prioKsbTotal");
+        const prioMmbTotal = document.getElementById("prioMmbTotal");
+        const prioKsbBody = document.getElementById("prioKsbBody");
+        const prioMmbBody = document.getElementById("prioMmbBody");
         const kpiRow = document.getElementById("kpiRow");
         const termBody = document.getElementById("termBody");
         const termTotal = document.getElementById("termTotal");
@@ -955,7 +997,12 @@
                     .sort((a, b) => b.overdue - a.overdue || a.file.localeCompare(b.file, "ru"))
                     .map((f) => metricRow(fileLabel(f), f.overdue, f.apps, appsBtn("data-overdue-file", f.file)));
             overdueBody.innerHTML = overdueRows.join("") || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
-            overdueTotal.textContent = String(agg.overdueTotal || 0);
+            const fmtTotalShare = (n, apps) => {
+                const num = Number(n) || 0;
+                const share = apps ? ` <span class="kpi-total-share">${((num / apps) * 100).toFixed(1)}%</span>` : "";
+                return `${num}${share}`;
+            };
+            overdueTotal.innerHTML = fmtTotalShare(agg.overdueTotal, agg.used);
 
             const returnsEmp = !kpiFlip.returns;
             returnsSub.textContent = returnsEmp ? "сумма W · доля от заявок · сотрудники" : "сумма W · доля от заявок линии";
@@ -967,7 +1014,7 @@
                     .sort((a, b) => b.returns - a.returns || a.file.localeCompare(b.file, "ru"))
                     .map((f) => metricRow(fileLabel(f), f.returns, f.apps, appsBtn("data-returns-file", f.file)));
             returnsBody.innerHTML = returnsRows.join("") || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
-            returnsTotal.textContent = String(agg.returnsTotal || 0);
+            returnsTotal.innerHTML = fmtTotalShare(agg.returnsTotal, agg.used);
 
             const csiRank = (c) => (c || []).reduce((acc, n, i) => acc + n * (i + 1), 0);
             const csiN = (c) => (c || []).reduce((s, n) => s + n, 0);
@@ -1011,6 +1058,26 @@
             fillSeg(segMdo, segs.mdo);
             fillSeg(segL1, segs.l1);
             fillSeg(segOo, segs.oo);
+            const fillPrio = (el, totalEl, counts, total) => {
+                const c = counts || {};
+                const nTotal = Number(total) || 0;
+                totalEl.innerHTML = String(nTotal);
+                const scale = nTotal || 1;
+                const order = [...TERR_BANKS].sort((a, b) => (c[b] || 0) - (c[a] || 0) || TERR_BANKS.indexOf(a) - TERR_BANKS.indexOf(b));
+                el.innerHTML = order.map((code) => {
+                    const n = c[code] || 0;
+                    const pct = (n / scale) * 100;
+                    return `<div class="line-row">
+                        <div class="line-name">${code}</div>
+                        <div class="line-n">${n}</div>
+                        <div class="line-track"><div class="line-bar" style="width:${pct}%"></div></div>
+                    </div>`;
+                }).join("");
+            };
+            const prio = agg.priorities || {};
+            const prioTot = agg.priorityTotals || {};
+            fillPrio(prioKsbBody, prioKsbTotal, prio.КСБ, prioTot.КСБ);
+            fillPrio(prioMmbBody, prioMmbTotal, prio.ММБ, prioTot.ММБ);
             kpiRow.hidden = false;
         }
 
