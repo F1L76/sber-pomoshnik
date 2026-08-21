@@ -113,6 +113,7 @@
         .kpi-returns { --kpi-accent: #2b6cb0; }
         .kpi-csi { --kpi-accent: #e6a817; }
         .kpi-load { --kpi-accent: var(--sber-green); }
+        .kpi-lines { --kpi-accent: #5b4bb7; }
         .kpi-mdo { --kpi-accent: var(--sber-green); }
         .kpi-l1 { --kpi-accent: #2b6cb0; }
         .kpi-oo { --kpi-accent: #0f9d8e; }
@@ -358,6 +359,23 @@
             </div>
         </section>
 
+        <section class="kpi-card kpi-lines mt-3" id="linesBlock" hidden>
+            <div class="kpi-head">
+                <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
+                <div class="kpi-head-text">
+                    <h2>Закрытые заявки по линиям</h2>
+                    <p>имя файла до «_», все заявки файла</p>
+                </div>
+            </div>
+            <div class="kpi-total" id="linesTotal">—</div>
+            <div class="kpi-total-lbl">Всего заявок</div>
+            <div class="kpi-list">
+                <table>
+                    <tbody id="linesBody"></tbody>
+                </table>
+            </div>
+        </section>
+
         <div class="row g-3 mt-1" id="kpiRow" hidden>
             <div class="col-md-4">
                 <section class="kpi-card kpi-term">
@@ -557,6 +575,9 @@
         const loadStats = document.getElementById("loadStats");
         const loadNote = document.getElementById("loadNote");
         const loadBody = document.getElementById("loadBody");
+        const linesBlock = document.getElementById("linesBlock");
+        const linesBody = document.getElementById("linesBody");
+        const linesTotal = document.getElementById("linesTotal");
         const kpiRow = document.getElementById("kpiRow");
         const termBody = document.getElementById("termBody");
         const termTotal = document.getElementById("termTotal");
@@ -802,6 +823,16 @@
                     </td>
                 </tr>`;
             }).join("") || `<tr><td colspan="6" class="text-muted">Нет строк с ФИО в столбце Y</td></tr>`;
+
+            const lineRows = agg.lines || [];
+            linesBlock.hidden = false;
+            linesTotal.textContent = String(agg.linesTotal || 0);
+            linesBody.innerHTML = lineRows.length
+                ? lineRows.map((l) => `<tr>
+                    <td class="fio-cell" title="${esc(l.name)}">${esc(l.name)}</td>
+                    <td class="text-end">${l.apps}</td>
+                </tr>`).join("")
+                : `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
 
             const people = (sortFn) => [...agg.employees].sort(sortFn);
             const filesCut = () => [...(agg.files || [])];

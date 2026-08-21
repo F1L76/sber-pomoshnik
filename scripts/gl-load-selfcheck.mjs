@@ -11,6 +11,7 @@ import {
     withVacations,
     isFirstLineFile,
     fileKind,
+    lineNameFromFile,
     minutesForApp,
     isVolkov,
     isVolchkova,
@@ -95,6 +96,8 @@ const workdays = countWorkdays(q, now);
 if (out.workdays !== workdays) throw new Error(`workdays ${out.workdays} != ${workdays}`);
 if (out.plan !== HOURS_PER_WORKDAY * workdays) throw new Error("plan hours");
 if (out.employees.length !== 1 || out.employees[0].apps !== MIN_APPS_FOR_LOAD + 1) throw new Error("apps");
+if (out.linesTotal !== MIN_APPS_FOR_LOAD + 1) throw new Error("linesTotal");
+if (out.lines[0].name !== "a") throw new Error("line from a.xlsx");
 const expectPct = ((MIN_APPS_FOR_LOAD + 1) * 20) / (workdays * 8 * 60) * 100;
 if (Math.abs(out.employees[0].loadPct - expectPct) > 1e-9) throw new Error("pct");
 
@@ -180,6 +183,8 @@ if (isFirstLineFile("выгрузка.xlsx")) throw new Error("l1 false positive
 if (fileKind("Залоговая экспертиза MDO.xlsx") !== "mdo") throw new Error("mdo kind");
 if (fileKind("Работа с ОО.xlsx") !== "oo") throw new Error("oo kind");
 if (fileKind("Работа с Онлайн Оценкой.xlsx") !== "oo") throw new Error("oo online kind");
+if (lineNameFromFile("Залоговая экспертиза MDO_07.26.xlsx") !== "Залоговая экспертиза MDO") throw new Error("line name");
+if (lineNameFromFile("Работа с ОО.xlsx") !== "Работа с ОО") throw new Error("line name no _");
 if (!isVolkov("Волков Артем Анатольевич")) throw new Error("volkov");
 if (isVolchkova("Волков Артем Анатольевич")) throw new Error("volchkova vs volkov");
 if (!isVolchkova("Волчкова Анна Ивановна")) throw new Error("volchkova fio");
