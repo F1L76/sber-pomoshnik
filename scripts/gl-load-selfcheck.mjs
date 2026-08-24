@@ -12,6 +12,7 @@ import {
     isFirstLineFile,
     fileKind,
     lineNameFromFile,
+    lineNameFromZ,
     minutesForApp,
     isFzhCell,
     isVolkov,
@@ -27,6 +28,7 @@ import {
     TERR_BANKS,
     HOURS_PER_WORKDAY,
     FIO_COL,
+    Z_COL,
     S_COL,
     T_COL,
     W_COL,
@@ -40,6 +42,17 @@ import { parseVacCell, resolveVacations, isGlEmployee } from "../lib/gl-vacation
 
 const APPS = 41;
 const GL_FIO = "Филинюк А.А. (111)";
+const Z_L1 = "1-я линия поддержки АС Залоги";
+const Z_MDO = "Залоговая экспертиза MDO";
+const Z_OO = "Работа с Онлайн-оценкой";
+const Z_OSM = "Осмотры";
+
+function withZ(row, z) {
+    const copy = [...row];
+    while (copy.length <= Z_COL) copy.push("");
+    copy[Z_COL] = z;
+    return copy;
+}
 
 function repeatRow(row, n) {
     return Array.from({ length: n }, () => {
@@ -104,7 +117,7 @@ if (out.workdays !== workdays) throw new Error(`workdays ${out.workdays} != ${wo
 if (out.plan !== HOURS_PER_WORKDAY * workdays) throw new Error("plan hours");
 if (out.employees.length !== 1 || out.employees[0].apps !== APPS) throw new Error("apps");
 if (out.linesTotal !== APPS) throw new Error("linesTotal");
-if (out.lines[0].name !== "a") throw new Error("line from a.xlsx");
+if (out.lines[0].name !== "Без группы") throw new Error("line from empty Z");
 const expectPct = ((APPS) * 20) / (workdays * 8 * 60) * 100;
 if (Math.abs(out.employees[0].loadPct - expectPct) > 1e-9) throw new Error("pct");
 
@@ -201,15 +214,17 @@ const outTagCol = aggregateEmployeeLoad(
 if (outTagCol.employees[0].appsArb !== APPS) throw new Error("appsArb tag col");
 if (Math.abs(outTagCol.employees[0].minutes - 150 * (APPS)) > 1e-9) throw new Error("tag col minutes");
 
-if (!isFirstLineFile("1-я линия поддержки АС Залоги.xlsx")) throw new Error("l1 name");
-if (!isFirstLineFile("первая линия.xlsx")) throw new Error("l1 первая");
-if (isFirstLineFile("выгрузка.xlsx")) throw new Error("l1 false positive");
-if (fileKind("Залоговая экспертиза MDO.xlsx") !== "mdo") throw new Error("mdo kind");
-if (fileKind("Работа с ОО.xlsx") !== "oo") throw new Error("oo kind");
-if (fileKind("Работа с Онлайн Оценкой.xlsx") !== "oo") throw new Error("oo online kind");
-if (fileKind("Осмотры_07.26.xlsx") !== "osmotr") throw new Error("osmotr kind");
+if (!isFirstLineFile(Z_L1)) throw new Error("l1 name");
+if (!isFirstLineFile("первая линия")) throw new Error("l1 первая");
+if (isFirstLineFile("выгрузка")) throw new Error("l1 false positive");
+if (fileKind(Z_MDO) !== "mdo") throw new Error("mdo kind");
+if (fileKind("Работа с ОО") !== "oo") throw new Error("oo kind");
+if (fileKind(Z_OO) !== "oo") throw new Error("oo online kind");
+if (fileKind(Z_OSM) !== "osmotr") throw new Error("osmotr kind");
 if (lineNameFromFile("Залоговая экспертиза MDO_07.26.xlsx") !== "Залоговая экспертиза MDO") throw new Error("line name");
 if (lineNameFromFile("Работа с ОО.xlsx") !== "Работа с ОО") throw new Error("line name no _");
+if (lineNameFromZ("  Залоговая экспертиза MDO ") !== Z_MDO) throw new Error("z trim");
+if (lineNameFromZ("") !== "Без группы") throw new Error("z empty");
 if (!isFzhCell("ФЖН, срочно")) throw new Error("fzh contains");
 if (isFzhCell("Арбитраж")) throw new Error("fzh false");
 if (!isVolkov("Волков Артем Анатольевич")) throw new Error("volkov");
@@ -220,26 +235,27 @@ if (!isVolchkova("волчкова")) throw new Error("volchkova surname");
 if (isVolchkova("Волочкова")) throw new Error("not volochkova");
 if (isVolchkova("Волков")) throw new Error("not volkov");
 if (isVolchkova("Волкова")) throw new Error("not volkova");
-if (minutesForApp("1-я линия.xlsx", "Иванов", "") !== 24) throw new Error("min l1");
-if (minutesForApp("Осмотры.xlsx", "Иванов", "Арбитраж") !== 20) throw new Error("min osmotr ignores tag");
-if (minutesForApp("Залоговая экспертиза MDO.xlsx", "Иванов", "Арбитраж") !== 150) throw new Error("min arb");
-if (minutesForApp("MDO.xlsx", "Иванов", "Арбитраж, срочно") !== 150) throw new Error("min arb contains");
-if (minutesForApp("MDO.xlsx", "Иванов", "foo Арбитраж bar") !== 150) throw new Error("min arb substring");
-if (minutesForApp("MDO.xlsx", "Иванов", "ФЖН") !== 240) throw new Error("min fzh");
-if (minutesForApp("MDO.xlsx", "Иванов", "Арбитраж, ФЖН") !== 240) throw new Error("min fzh over arb");
-if (minutesForApp("MDO.xlsx", "Волков Артем Анатольевич", "") !== 20) throw new Error("min volkov now mdo default");
-if (minutesForApp("Работа с ОО.xlsx", "Иванов", "") !== 20) throw new Error("min oo");
-if (minutesForApp("Работа с Онлайн Оценкой.xlsx", "Иванов", "Арбитраж") !== 210) throw new Error("min oo arb");
-if (minutesForApp("1-я линия.xlsx", "Волчкова А.А.", "") !== 24) throw new Error("min volchkova l1");
-if (minutesForApp("MDO.xlsx", "Волчкова А.А.", "") !== 20) throw new Error("min volchkova mdo");
-if (minutesForApp("MDO.xlsx", "Волчкова А.А.", "Арбитраж") !== 150) throw new Error("min volchkova arb");
-if (minutesForApp("Работа с ОО.xlsx", "Волчкова А.А.", "") !== 20) throw new Error("min volchkova oo");
+if (minutesForApp(Z_L1, "Иванов", "") !== 24) throw new Error("min l1");
+if (minutesForApp(Z_OSM, "Иванов", "Арбитраж") !== 20) throw new Error("min osmotr ignores tag");
+if (minutesForApp(Z_MDO, "Иванов", "Арбитраж") !== 150) throw new Error("min arb");
+if (minutesForApp(Z_MDO, "Иванов", "Арбитраж, срочно") !== 150) throw new Error("min arb contains");
+if (minutesForApp(Z_MDO, "Иванов", "foo Арбитраж bar") !== 150) throw new Error("min arb substring");
+if (minutesForApp(Z_MDO, "Иванов", "ФЖН") !== 240) throw new Error("min fzh");
+if (minutesForApp(Z_MDO, "Иванов", "Арбитраж, ФЖН") !== 240) throw new Error("min fzh over arb");
+if (minutesForApp(Z_MDO, "Волков Артем Анатольевич", "") !== 20) throw new Error("min volkov now mdo default");
+if (minutesForApp(Z_OO, "Иванов", "") !== 20) throw new Error("min oo");
+if (minutesForApp(Z_OO, "Иванов", "Арбитраж") !== 210) throw new Error("min oo arb");
+if (minutesForApp(Z_L1, "Волчкова А.А.", "") !== 24) throw new Error("min volchkova l1");
+if (minutesForApp(Z_MDO, "Волчкова А.А.", "") !== 20) throw new Error("min volchkova mdo");
+if (minutesForApp(Z_MDO, "Волчкова А.А.", "Арбитраж") !== 150) throw new Error("min volchkova arb");
+if (minutesForApp(Z_OO, "Волчкова А.А.", "") !== 20) throw new Error("min volchkova oo");
 
-const l1Row = Array(25).fill("");
+const l1Row = Array(26).fill("");
 l1Row[3] = "10.07.2026";
 l1Row[FIO_COL] = "Филинюк А.А. (111)";
+l1Row[Z_COL] = Z_L1;
 const outL1 = aggregateEmployeeLoad(
-    [{ file: "1-я линия поддержки АС Залоги.xlsx", sheet: "S", headers, rows: repeatRow(l1Row, APPS) }],
+    [{ file: "dump.xlsx", sheet: "S", headers, rows: repeatRow(l1Row, APPS) }],
     now
 );
 if (outL1.employees[0].appsL1 !== APPS) throw new Error("appsL1");
@@ -248,9 +264,10 @@ if (Math.abs(outL1.employees[0].loadPct - ((APPS) * 24 / (workdays * 8 * 60)) * 
 const l1Arb = Array(34).fill("");
 l1Arb[3] = "10.07.2026";
 l1Arb[FIO_COL] = "Филинюк А.А. (111)";
+l1Arb[Z_COL] = Z_L1;
 l1Arb[33] = "Арбитраж";
 const outL1Arb = aggregateEmployeeLoad(
-    [{ file: "1-я линия.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(l1Arb, APPS) }],
+    [{ file: "dump.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(l1Arb, APPS) }],
     now
 );
 if (outL1Arb.employees[0].appsL1 !== APPS) throw new Error("l1 not arb file");
@@ -260,9 +277,10 @@ const ooArb = Array(34).fill("");
 ooArb[3] = "10.07.2026";
 ooArb[T_COL] = "10.07.2026";
 ooArb[FIO_COL] = "Филинюк А.А. (111)";
+ooArb[Z_COL] = Z_OO;
 ooArb[33] = "Арбитраж";
 const outOoArb = aggregateEmployeeLoad(
-    [{ file: "Работа с Онлайн Оценкой.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(ooArb, APPS) }],
+    [{ file: "dump.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(ooArb, APPS) }],
     now
 );
 if (outOoArb.employees[0].appsOo !== APPS) throw new Error("oo apps");
@@ -273,20 +291,22 @@ const fzhRow = Array(34).fill("");
 fzhRow[3] = "10.07.2026";
 fzhRow[T_COL] = "10.07.2026";
 fzhRow[FIO_COL] = "Филинюк А.А. (111)";
+fzhRow[Z_COL] = Z_MDO;
 fzhRow[33] = "ФЖН";
 const outFzh = aggregateEmployeeLoad(
-    [{ file: "Залоговая экспертиза MDO.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(fzhRow, APPS) }],
+    [{ file: "dump.xlsx", sheet: "S", headers: [...headers, ...Array(9).fill("")], rows: repeatRow(fzhRow, APPS) }],
     now
 );
 if (outFzh.employees[0].appsFzh !== APPS) throw new Error("fzh count");
 if (Math.abs(outFzh.employees[0].minutes - 240 * (APPS)) > 1e-9) throw new Error("fzh minutes");
 
-const osmotrRow = Array(25).fill("");
+const osmotrRow = Array(26).fill("");
 osmotrRow[3] = "10.07.2026";
 osmotrRow[T_COL] = "10.07.2026";
 osmotrRow[FIO_COL] = "Филинюк А.А. (111)";
+osmotrRow[Z_COL] = Z_OSM;
 const outOsmotr = aggregateEmployeeLoad(
-    [{ file: "Осмотры.xlsx", sheet: "S", headers, rows: repeatRow(osmotrRow, APPS) }],
+    [{ file: "dump.xlsx", sheet: "S", headers, rows: repeatRow(osmotrRow, APPS) }],
     now
 );
 if (Math.abs(outOsmotr.employees[0].minutes - 20 * (APPS)) > 1e-9) throw new Error("osmotr minutes");
@@ -339,6 +359,7 @@ metricRow[T_COL] = "04.07.2026";
 metricRow[W_COL] = 2;
 metricRow[AG_COL] = "ДА";
 metricRow[AN_COL] = 5;
+metricRow[Z_COL] = Z_MDO;
 const metricRows = repeatRow(metricRow, APPS);
 metricRows[0][AG_COL] = "НЕТ";
 metricRows[0][W_COL] = 0;
@@ -354,7 +375,7 @@ if (outM.returnsTotal !== 2 * (APPS - 1)) throw new Error("returns total");
 if (JSON.stringify(outM.employees[0].csiCounts) !== JSON.stringify([1, 0, 0, 0, (APPS - 1)])) throw new Error("csi counts emp");
 if (JSON.stringify(outM.csiCounts) !== JSON.stringify([1, 0, 0, 0, (APPS - 1)])) throw new Error("csi counts total");
 if (outM.segments.mdo.Прочее !== APPS) throw new Error("seg mdo other");
-if (!outM.files?.length || outM.files[0].file !== "MDO") throw new Error("files cut");
+if (!outM.files?.length || outM.files[0].file !== Z_MDO) throw new Error("files cut");
 
 const lateT = Array(40).fill("");
 lateT[FIO_COL] = GL_FIO;
@@ -385,9 +406,9 @@ for (const [af] of afVals) {
 }
 const outSeg = aggregateEmployeeLoad(
     [
-        { file: "MDO.xlsx", sheet: "S", headers, rows: segRows.slice(0, APPS) },
-        { file: "1-я линия поддержки АС Залоги.xlsx", sheet: "S", headers, rows: segRows.slice(APPS, (APPS) * 2) },
-        { file: "Работа с Онлайн Оценкой.xlsx", sheet: "S", headers, rows: segRows.slice((APPS) * 2) }
+        { file: "dump.xlsx", sheet: "S", headers, rows: segRows.slice(0, APPS).map((r) => withZ(r, Z_MDO)) },
+        { file: "dump.xlsx", sheet: "S", headers, rows: segRows.slice(APPS, APPS * 2).map((r) => withZ(r, Z_L1)) },
+        { file: "dump.xlsx", sheet: "S", headers, rows: segRows.slice(APPS * 2).map((r) => withZ(r, Z_OO)) }
     ],
     now
 );
@@ -397,6 +418,26 @@ if (outSeg.segments.oo.ПМЗ !== APPS) throw new Error("seg file oo pmz");
 if (outSeg.segments.oo.ЗС !== APPS) throw new Error("seg file oo zs");
 if (outSeg.segments.oo.ПКД !== APPS) throw new Error("seg file oo pkd");
 if (outSeg.segments.oo.Прочее !== APPS) throw new Error("seg file oo other");
+
+const zMixL1 = withZ(
+    Object.assign(Array(26).fill(""), { 3: "10.07.2026", [T_COL]: "10.07.2026", [FIO_COL]: GL_FIO }),
+    Z_L1
+);
+const zMixMdo = withZ(
+    Object.assign(Array(26).fill(""), { 3: "10.07.2026", [T_COL]: "10.07.2026", [FIO_COL]: GL_FIO }),
+    Z_MDO
+);
+const outZMix = aggregateEmployeeLoad(
+    [{ file: "один.xlsx", sheet: "S", headers, rows: [...repeatRow(zMixL1, 2), ...repeatRow(zMixMdo, 3)] }],
+    now
+);
+if (outZMix.lines.length !== 2) throw new Error("z mix lines");
+if (outZMix.employees[0].appsL1 !== 2) throw new Error("z mix l1");
+if (Math.abs(outZMix.employees[0].minutes - (2 * 24 + 3 * 20)) > 1e-9) throw new Error("z mix minutes");
+if (outZMix.lines.some((l) => l.name === "один")) throw new Error("z mix not filename");
+if (!outZMix.lines.some((l) => l.name === Z_L1) || !outZMix.lines.some((l) => l.name === Z_MDO)) {
+    throw new Error("z mix names");
+}
 
 if (tbFromAF("Московский банк") !== "МБ") throw new Error("tb mb");
 if (tbFromAF("Среднерусский банк") !== "СРБ") throw new Error("tb srb");
