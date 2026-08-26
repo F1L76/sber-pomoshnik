@@ -362,6 +362,78 @@
             border-color: #334155;
             color: #e8eef4;
         }
+        .gl-ask-fab {
+            position: fixed;
+            right: 1.25rem;
+            bottom: 1.25rem;
+            z-index: 40;
+            width: 3.4rem;
+            height: 3.4rem;
+            border: 0;
+            border-radius: 999px;
+            background: var(--sber-green);
+            color: #fff;
+            font-size: 1.2rem;
+            box-shadow: 0 8px 24px rgba(33, 160, 56, 0.35);
+        }
+        .gl-ask-fab:hover { background: #1B8A32; color: #fff; }
+        .gl-ask-fab.is-open { background: #1E2A3A; }
+        .gl-ask-panel {
+            position: fixed;
+            right: 1.25rem;
+            bottom: 5.1rem;
+            z-index: 40;
+            width: min(22.5rem, calc(100vw - 2rem));
+            max-height: min(32rem, calc(100vh - 7rem));
+            display: flex;
+            flex-direction: column;
+            background: var(--sber-card);
+            border: 1px solid var(--sber-border);
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(30, 42, 58, 0.16);
+        }
+        .gl-ask-head {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.75rem 0.9rem;
+            border-bottom: 1px solid var(--sber-border);
+            font-weight: 800;
+        }
+        .gl-ask-head button {
+            margin-left: auto;
+            border: 0;
+            background: transparent;
+            color: var(--sber-muted);
+        }
+        .gl-ask-log {
+            flex: 1;
+            overflow: auto;
+            padding: 0.75rem 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+            min-height: 10rem;
+        }
+        .gl-ask-msg {
+            max-width: 92%;
+            padding: 0.55rem 0.7rem;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            line-height: 1.35;
+            white-space: pre-wrap;
+        }
+        .gl-ask-msg.bot { background: var(--sber-bg); color: var(--sber-text); }
+        .gl-ask-msg.user { background: color-mix(in srgb, var(--sber-green) 16%, #fff); margin-left: auto; }
+        .gl-ask-form {
+            display: flex;
+            gap: 0.4rem;
+            padding: 0.65rem 0.75rem 0.75rem;
+            border-top: 1px solid var(--sber-border);
+        }
+        .gl-ask-form input { flex: 1; }
+        html[data-theme="dark"] .gl-ask-panel { background: #1a2330; border-color: #334155; }
+        html[data-theme="dark"] .gl-ask-msg.bot { background: #243044; color: #e8eef4; }
     </style>
     <link rel="stylesheet" href="/theme.css?v=14">
 </head>
@@ -686,6 +758,24 @@
         </form>
     </dialog>
 
+    <button type="button" class="gl-ask-fab" id="glAskFab" title="Спросить ассистента" aria-expanded="false" aria-controls="glAskPanel">
+        <i class="fa-solid fa-comments" aria-hidden="true"></i>
+    </button>
+    <div class="gl-ask-panel" id="glAskPanel" hidden>
+        <div class="gl-ask-head">
+            <i class="fa-solid fa-comments" style="color:var(--sber-green)" aria-hidden="true"></i>
+            Ассистент ГЛ
+            <button type="button" id="glAskClose" title="Закрыть" aria-label="Закрыть">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="gl-ask-log" id="glAskLog"></div>
+        <form class="gl-ask-form" id="glAskForm">
+            <input class="form-control form-control-sm" id="glAskInput" autocomplete="off" placeholder="Сколько заявок закрыл Филинюк 10 июля?">
+            <button type="submit" class="btn btn-sber btn-sm" id="glAskSend">Спросить</button>
+        </form>
+    </div>
+
     <script src="/theme.js?v=2"></script>
     <script type="module">
         import {
@@ -705,8 +795,10 @@
             Z_COL,
             T_COL,
             W_COL,
-            numberCell
-        } from "/lib/gl-load.mjs?v=25";
+            numberCell,
+            answerGlQuestion,
+            assistantDigest
+        } from "/lib/gl-load.mjs?v=26";
         import { resolveVacations } from "/lib/gl-vacations.mjs?v=22";
 
         const VAC_KEY = "gl-dashboard:vacations";
@@ -1277,6 +1369,76 @@
                 parseError.hidden = false;
             } finally {
                 buildBtn.disabled = selectedFiles().length === 0;
+            }
+        });
+
+        const glAskFab = document.getElementById("glAskFab");
+        const glAskPanel = document.getElementById("glAskPanel");
+        const glAskLog = document.getElementById("glAskLog");
+        const glAskForm = document.getElementById("glAskForm");
+        const glAskInput = document.getElementById("glAskInput");
+        const glAskSend = document.getElementById("glAskSend");
+        const ASK_SYSTEM = "Ты ассистент дашборда ГЛ ЦООП. Отвечай только по JSON. «Закрыто» = closedByDay (столбец T). «Поступило» = createdByDay (столбец AC). Если цифры нет в JSON — скажи, что в выгрузке этого нет. Кратко, на русском, с числом.";
+
+        function setAskOpen(on) {
+            glAskPanel.hidden = !on;
+            glAskFab.classList.toggle("is-open", on);
+            glAskFab.setAttribute("aria-expanded", on ? "true" : "false");
+            if (on) glAskInput.focus();
+        }
+        function askMsg(role, text) {
+            const el = document.createElement("div");
+            el.className = `gl-ask-msg ${role}`;
+            el.textContent = text;
+            glAskLog.appendChild(el);
+            glAskLog.scrollTop = glAskLog.scrollHeight;
+            return el;
+        }
+        glAskFab.addEventListener("click", () => {
+            const open = glAskPanel.hidden;
+            setAskOpen(open);
+            if (open && !glAskLog.childElementCount) {
+                askMsg("bot", "Спросите по загруженной выгрузке. Например: сколько заявок закрыл Филинюк 10 июля?");
+            }
+        });
+        document.getElementById("glAskClose").addEventListener("click", () => setAskOpen(false));
+        glAskForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const q = glAskInput.value.trim();
+            if (!q) return;
+            glAskInput.value = "";
+            askMsg("user", q);
+            const agg = lastAgg ? withVacations(lastAgg, loadVacations()) : null;
+            const local = answerGlQuestion(q, agg);
+            if (local) {
+                askMsg("bot", local);
+                return;
+            }
+            if (!agg) {
+                askMsg("bot", "Сначала загрузите Excel и нажмите «Посчитать нагрузку».");
+                return;
+            }
+            const wait = askMsg("bot", "Смотрю выгрузку…");
+            glAskSend.disabled = true;
+            try {
+                const res = await fetch("/api/gigachat/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        systemPrompt: ASK_SYSTEM,
+                        userPrompt: `Вопрос: ${q}\n\nДанные:\n${JSON.stringify(assistantDigest(agg))}`,
+                        temperature: 0.1,
+                        max_tokens: 400
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+                wait.textContent = String(data.content || "").trim() || "Пустой ответ.";
+            } catch (err) {
+                wait.textContent = `Не удалось спросить GigaChat: ${err.message || err}. Уточните ФИО и дату — такие вопросы считаются локально.`;
+            } finally {
+                glAskSend.disabled = false;
+                glAskLog.scrollTop = glAskLog.scrollHeight;
             }
         });
     </script>

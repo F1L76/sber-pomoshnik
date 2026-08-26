@@ -26,6 +26,8 @@ import {
     segmentFromAF,
     tbFromAF,
     isPriorityCell,
+    dateFromQuestion,
+    answerGlQuestion,
     TERR_BANKS,
     ARRIVAL_HOURS,
     WEEKDAYS,
@@ -512,6 +514,18 @@ if (outArr.byHour["09"] !== 1) throw new Error("byHour 09");
 if (outArr.byWeekday["ср"] !== 2) throw new Error("byWeekday wed");
 if (outArr.byWeekday["пт"] !== 1) throw new Error("byWeekday fri");
 if (outArr.used !== 4) throw new Error("arrival still counted");
+
+const d4 = dateFromQuestion("сколько закрыл 4 июля", 2026);
+if (!d4 || d4.getMonth() !== 6 || d4.getDate() !== 4) throw new Error("dateFromQuestion july");
+if (dateFromQuestion("10.07.2026", 2026)?.getDate() !== 10) throw new Error("dateFromQuestion dotted");
+const askClosed = answerGlQuestion("сколько заявок закрыто у Филинюка 10 июля", outArr);
+if (!askClosed.includes("4 заяв")) throw new Error(`ask closed: ${askClosed}`);
+const askCreated = answerGlQuestion("сколько заявок поступило у Филинюка 8 июля", outArr);
+if (!askCreated.includes("2 заяв")) throw new Error(`ask created: ${askCreated}`);
+const askFriIn = answerGlQuestion("сколько поступило у Филинюка 10.07.2026", outArr);
+if (!askFriIn.includes("1 заяв")) throw new Error(`ask fri in: ${askFriIn}`);
+if (!answerGlQuestion("сколько всего заявок", outArr).includes("4 заяв")) throw new Error("ask total");
+if (answerGlQuestion("какой средний CSI", outArr) != null) throw new Error("ask fallback");
 
 console.log("gl-load selfcheck ok", {
     workdays,
