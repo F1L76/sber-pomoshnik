@@ -796,9 +796,8 @@
             T_COL,
             W_COL,
             numberCell,
-            answerGlQuestion,
-            assistantDigest
-        } from "/lib/gl-load.mjs?v=26";
+            answerGlQuestion
+        } from "/lib/gl-load.mjs?v=27";
         import { resolveVacations } from "/lib/gl-vacations.mjs?v=22";
 
         const VAC_KEY = "gl-dashboard:vacations";
@@ -1377,8 +1376,7 @@
         const glAskLog = document.getElementById("glAskLog");
         const glAskForm = document.getElementById("glAskForm");
         const glAskInput = document.getElementById("glAskInput");
-        const glAskSend = document.getElementById("glAskSend");
-        const ASK_SYSTEM = "Ты ассистент дашборда ГЛ ЦООП. Отвечай только по JSON. «Закрыто» = closedByDay (столбец T). «Поступило» = createdByDay (столбец AC). Если цифры нет в JSON — скажи, что в выгрузке этого нет. Кратко, на русском, с числом.";
+        const ASK_HINT = "Спросите по выгрузке, без GigaChat. Например: сколько заявок закрыл Филинюк 10 июля? сколько поступило 8 июля? сколько всего заявок?";
 
         function setAskOpen(on) {
             glAskPanel.hidden = !on;
@@ -1392,54 +1390,21 @@
             el.textContent = text;
             glAskLog.appendChild(el);
             glAskLog.scrollTop = glAskLog.scrollHeight;
-            return el;
         }
         glAskFab.addEventListener("click", () => {
             const open = glAskPanel.hidden;
             setAskOpen(open);
-            if (open && !glAskLog.childElementCount) {
-                askMsg("bot", "Спросите по загруженной выгрузке. Например: сколько заявок закрыл Филинюк 10 июля?");
-            }
+            if (open && !glAskLog.childElementCount) askMsg("bot", ASK_HINT);
         });
         document.getElementById("glAskClose").addEventListener("click", () => setAskOpen(false));
-        glAskForm.addEventListener("submit", async (e) => {
+        glAskForm.addEventListener("submit", (e) => {
             e.preventDefault();
             const q = glAskInput.value.trim();
             if (!q) return;
             glAskInput.value = "";
             askMsg("user", q);
             const agg = lastAgg ? withVacations(lastAgg, loadVacations()) : null;
-            const local = answerGlQuestion(q, agg);
-            if (local) {
-                askMsg("bot", local);
-                return;
-            }
-            if (!agg) {
-                askMsg("bot", "Сначала загрузите Excel и нажмите «Посчитать нагрузку».");
-                return;
-            }
-            const wait = askMsg("bot", "Смотрю выгрузку…");
-            glAskSend.disabled = true;
-            try {
-                const res = await fetch("/api/gigachat/chat", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        systemPrompt: ASK_SYSTEM,
-                        userPrompt: `Вопрос: ${q}\n\nДанные:\n${JSON.stringify(assistantDigest(agg))}`,
-                        temperature: 0.1,
-                        max_tokens: 400
-                    })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-                wait.textContent = String(data.content || "").trim() || "Пустой ответ.";
-            } catch (err) {
-                wait.textContent = `Не удалось спросить GigaChat: ${err.message || err}. Уточните ФИО и дату — такие вопросы считаются локально.`;
-            } finally {
-                glAskSend.disabled = false;
-                glAskLog.scrollTop = glAskLog.scrollHeight;
-            }
+            askMsg("bot", answerGlQuestion(q, agg) || ASK_HINT);
         });
     </script>
 </body>
