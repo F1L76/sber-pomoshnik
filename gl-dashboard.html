@@ -119,10 +119,16 @@
         .kpi-oo { --kpi-accent: #0f9d8e; }
         .kpi-prio-ksb { --kpi-accent: #2b6cb0; }
         .kpi-prio-mmb { --kpi-accent: #0f9d8e; }
+        .kpi-hour { --kpi-accent: #5b4bb7; }
+        .kpi-wd { --kpi-accent: #0f9d8e; }
         .kpi-prio-ksb .seg-chart,
         .kpi-prio-mmb .seg-chart { gap: 0.18rem; }
         .kpi-prio-ksb .seg-lbl,
         .kpi-prio-mmb .seg-lbl { font-size: 0.62rem; }
+        .kpi-hour .seg-chart { gap: 0.08rem; height: 12.5rem; }
+        .kpi-hour .seg-track { width: 92%; max-width: 1.35rem; }
+        .kpi-hour .seg-n,
+        .kpi-hour .seg-lbl { font-size: 0.58rem; }
         .kpi-total-share {
             font-size: 0.95rem;
             font-weight: 700;
@@ -613,6 +619,30 @@
                     <div class="seg-chart" id="prioMmbBody"></div>
                 </section>
             </div>
+            <div class="col-12">
+                <section class="kpi-card kpi-seg kpi-hour">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-clock"></i></span>
+                        <div>
+                            <h2>Поступление по часам</h2>
+                            <p id="hourSub">AC дата создания</p>
+                        </div>
+                    </div>
+                    <div class="seg-chart" id="hourBody"></div>
+                </section>
+            </div>
+            <div class="col-md-6">
+                <section class="kpi-card kpi-seg kpi-wd">
+                    <div class="kpi-head">
+                        <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-calendar-week"></i></span>
+                        <div>
+                            <h2>Поступление по дням недели</h2>
+                            <p id="wdSub">AC дата создания</p>
+                        </div>
+                    </div>
+                    <div class="seg-chart" id="wdBody"></div>
+                </section>
+            </div>
         </div>
     </main>
 
@@ -663,6 +693,8 @@
             withVacations,
             SEGMENTS,
             TERR_BANKS,
+            ARRIVAL_HOURS,
+            WEEKDAYS,
             parseExcelDate,
             fioFromCell,
             isOverdueCell,
@@ -674,7 +706,7 @@
             T_COL,
             W_COL,
             numberCell
-        } from "/lib/gl-load.mjs?v=24";
+        } from "/lib/gl-load.mjs?v=25";
         import { resolveVacations } from "/lib/gl-vacations.mjs?v=22";
 
         const VAC_KEY = "gl-dashboard:vacations";
@@ -694,6 +726,10 @@
         const prioMmbSub = document.getElementById("prioMmbSub");
         const prioKsbBody = document.getElementById("prioKsbBody");
         const prioMmbBody = document.getElementById("prioMmbBody");
+        const hourSub = document.getElementById("hourSub");
+        const wdSub = document.getElementById("wdSub");
+        const hourBody = document.getElementById("hourBody");
+        const wdBody = document.getElementById("wdBody");
         const kpiRow = document.getElementById("kpiRow");
         const termBody = document.getElementById("termBody");
         const termTotal = document.getElementById("termTotal");
@@ -1046,9 +1082,11 @@
             const tot = agg.csiCounts || [0, 0, 0, 0, 0];
             csiFoot.innerHTML = `<tr><th>Итого</th><th class="csi-avg">${fmtAvg(csiAvg(tot))}</th>${tot.map((n) => `<th class="csi-num">${n}</th>`).join("")}</tr>`;
             const segs = agg.segments || {};
-            const fillSeg = (el, counts, keys = SEGMENTS) => {
+            const fillSeg = (el, counts, keys = SEGMENTS, sort = true) => {
                 const c = counts || {};
-                const order = [...keys].sort((a, b) => (c[b] || 0) - (c[a] || 0) || keys.indexOf(a) - keys.indexOf(b));
+                const order = sort
+                    ? [...keys].sort((a, b) => (c[b] || 0) - (c[a] || 0) || keys.indexOf(a) - keys.indexOf(b))
+                    : [...keys];
                 const max = Math.max(1, ...order.map((s) => c[s] || 0));
                 el.innerHTML = order.map((s) => {
                     const n = c[s] || 0;
@@ -1070,6 +1108,14 @@
             prioMmbSub.textContent = `${prioTot.ММБ || 0} заявок · AL «приоритет»`;
             fillSeg(prioKsbBody, prio.КСБ, TERR_BANKS);
             fillSeg(prioMmbBody, prio.ММБ, TERR_BANKS);
+            const hours = agg.byHour || {};
+            const wdays = agg.byWeekday || {};
+            const hourN = ARRIVAL_HOURS.reduce((s, h) => s + (hours[h] || 0), 0);
+            const wdN = WEEKDAYS.reduce((s, d) => s + (wdays[d] || 0), 0);
+            hourSub.textContent = `${hourN} заявок · AC дата создания`;
+            wdSub.textContent = `${wdN} заявок · AC дата создания`;
+            fillSeg(hourBody, hours, ARRIVAL_HOURS, false);
+            fillSeg(wdBody, wdays, WEEKDAYS, false);
             kpiRow.hidden = false;
         }
 

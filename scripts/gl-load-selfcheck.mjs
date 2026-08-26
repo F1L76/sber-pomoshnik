@@ -3,6 +3,7 @@ import {
     startOfQuarter,
     countWorkdays,
     parseExcelDate,
+    parseExcelDateTime,
     findDateColumn,
     findFioColumn,
     isWorkday,
@@ -26,6 +27,8 @@ import {
     tbFromAF,
     isPriorityCell,
     TERR_BANKS,
+    ARRIVAL_HOURS,
+    WEEKDAYS,
     HOURS_PER_WORKDAY,
     FIO_COL,
     Z_COL,
@@ -36,7 +39,8 @@ import {
     AN_COL,
     AF_COL,
     AH_COL,
-    AL_COL
+    AL_COL,
+    AC_COL
 } from "../lib/gl-load.mjs";
 import { parseVacCell, resolveVacations, isGlEmployee } from "../lib/gl-vacations.mjs";
 
@@ -486,6 +490,28 @@ const outBb = aggregateEmployeeLoad(
 );
 if (outBb.priorityTotals.КСБ !== 1) throw new Error("prio bb ksb");
 if (outBb.priorities.КСБ.ББ !== 1) throw new Error("prio bb bar");
+
+if (ARRIVAL_HOURS.length !== 24 || ARRIVAL_HOURS[9] !== "09") throw new Error("hours labels");
+if (WEEKDAYS.join("") !== "пнвтсрчтптсбвс") throw new Error("weekdays");
+const arrivedAt = parseExcelDateTime("08.07.2026 14:30:00");
+if (!arrivedAt || arrivedAt.getHours() !== 14 || arrivedAt.getDay() !== 3) throw new Error("ac parse wed 14");
+const arrRow = Array(40).fill("");
+arrRow[T_COL] = "10.07.2026";
+arrRow[FIO_COL] = GL_FIO;
+arrRow[AC_COL] = "08.07.2026 14:30:00";
+const arrFri = [...arrRow];
+arrFri[AC_COL] = "10.07.2026 09:15:00";
+const arrEmpty = [...arrRow];
+arrEmpty[AC_COL] = "";
+const outArr = aggregateEmployeeLoad(
+    [{ file: "dump.xlsx", sheet: "S", headers: [...headers, ...Array(20).fill("")], rows: [arrRow, arrRow, arrFri, arrEmpty] }],
+    now
+);
+if (outArr.byHour["14"] !== 2) throw new Error("byHour 14");
+if (outArr.byHour["09"] !== 1) throw new Error("byHour 09");
+if (outArr.byWeekday["ср"] !== 2) throw new Error("byWeekday wed");
+if (outArr.byWeekday["пт"] !== 1) throw new Error("byWeekday fri");
+if (outArr.used !== 4) throw new Error("arrival still counted");
 
 console.log("gl-load selfcheck ok", {
     workdays,
