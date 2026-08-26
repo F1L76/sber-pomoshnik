@@ -167,9 +167,14 @@
         }
         .kpi-head p { font-size: 0.72rem; color: var(--sber-muted); margin: 0; }
         .kpi-head-text { min-width: 0; flex: 1; }
+        .kpi-card.kpi-metric {
+            display: grid;
+            grid-template-rows: 4.75rem 2.1rem 2.35rem minmax(0, 1fr);
+        }
         .kpi-metric .kpi-head {
             align-items: flex-start;
-            min-height: 4.55rem;
+            min-height: 0;
+            margin-bottom: 0;
         }
         .kpi-metric .kpi-head h2 {
             font-size: 1.18rem;
@@ -183,15 +188,24 @@
         .kpi-metric .kpi-flip { margin-top: 0.15rem; }
         .kpi-metric .kpi-total {
             display: flex;
-            align-items: baseline;
+            align-items: flex-end;
             gap: 0.4rem;
-            min-height: 2.05rem;
+            min-height: 0;
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
         }
-        .kpi-metric .kpi-total-lbl { min-height: 1.05rem; }
+        .kpi-metric .kpi-total-lbl {
+            min-height: 0;
+            margin-bottom: 0;
+            display: flex;
+            align-items: flex-start;
+            line-height: 1.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         .kpi-metric .kpi-list {
-            flex: 1;
+            flex: unset;
             margin: 0;
         }
         .kpi-metric .kpi-list table { table-layout: fixed; }
@@ -207,6 +221,25 @@
         .kpi-metric .kpi-list th:nth-child(3) {
             width: 4.2rem;
         }
+        .kpi-metric .kpi-list tbody tr { height: 2.75rem; }
+        .kpi-metric .kpi-list td {
+            height: 2.75rem;
+            padding-top: 0;
+            padding-bottom: 0;
+            vertical-align: middle;
+        }
+        .kpi-metric .kpi-list .btn-sm,
+        .kpi-btn-ph {
+            width: 1.75rem;
+            height: 1.75rem;
+            padding: 0;
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .kpi-btn-ph { visibility: hidden; }
         .kpi-flip {
             margin-left: auto;
             flex-shrink: 0;
@@ -1156,14 +1189,15 @@
             const fileLabel = (f) => f.file;
             const fmtNum = (n) => (n == null || !Number.isFinite(n) ? "—" : n.toFixed(1));
             const fmtShare = (n, apps) => (apps ? `${((Number(n) || 0) / apps * 100).toFixed(1)}%` : "—");
+            const valCell = (n, btn) => `<td class="text-end">
+                    <div class="d-flex justify-content-end align-items-center gap-2">
+                        <span>${n}</span>
+                        ${btn || '<span class="kpi-btn-ph" aria-hidden="true"></span>'}
+                    </div>
+                </td>`;
             const metricRow = (label, n, apps, btn) => `<tr>
                     ${nameCell(label)}
-                    <td class="text-end">
-                        <div class="d-flex justify-content-end align-items-center gap-2">
-                            <span>${n || 0}</span>
-                            ${btn}
-                        </div>
-                    </td>
+                    ${valCell(n || 0, btn)}
                     <td class="kpi-share">${fmtShare(n, apps)}</td>
                 </tr>`;
             const byEmp = !kpiFlip.term;
@@ -1171,12 +1205,12 @@
             document.querySelector('[data-flip="term"]')?.classList.toggle("is-on", !byEmp);
             if (byEmp) {
                 termBody.innerHTML = people((a, b) => (b.avgTermHours ?? -1) - (a.avgTermHours ?? -1) || a.fio.localeCompare(b.fio, "ru"))
-                    .map((e) => `<tr>${nameCell(e.fio)}<td class="text-end">${fmtNum(e.avgTermHours)}</td><td></td></tr>`).join("")
+                    .map((e) => `<tr>${nameCell(e.fio)}${valCell(fmtNum(e.avgTermHours))}<td></td></tr>`).join("")
                     || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
             } else {
                 termBody.innerHTML = filesCut()
                     .sort((a, b) => (b.avgTermHours ?? -1) - (a.avgTermHours ?? -1) || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => `<tr>${nameCell(fileLabel(f))}<td class="text-end">${fmtNum(f.avgTermHours)}</td><td></td></tr>`).join("")
+                    .map((f) => `<tr>${nameCell(fileLabel(f))}${valCell(fmtNum(f.avgTermHours))}<td></td></tr>`).join("")
                     || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
             }
             const termTxt = fmtNum(agg.avgTermHours);
