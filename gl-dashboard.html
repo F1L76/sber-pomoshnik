@@ -133,7 +133,7 @@
             font-size: 0.95rem;
             font-weight: 700;
             color: var(--sber-muted);
-            margin-left: 0.4rem;
+            margin-left: 0;
         }
         .kpi-seg .kpi-head {
             align-items: flex-start;
@@ -167,6 +167,46 @@
         }
         .kpi-head p { font-size: 0.72rem; color: var(--sber-muted); margin: 0; }
         .kpi-head-text { min-width: 0; flex: 1; }
+        .kpi-metric .kpi-head {
+            align-items: flex-start;
+            min-height: 4.55rem;
+        }
+        .kpi-metric .kpi-head h2 {
+            font-size: 1.18rem;
+            min-height: 2.4rem;
+        }
+        .kpi-metric .kpi-head p {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .kpi-metric .kpi-flip { margin-top: 0.15rem; }
+        .kpi-metric .kpi-total {
+            display: flex;
+            align-items: baseline;
+            gap: 0.4rem;
+            min-height: 2.05rem;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .kpi-metric .kpi-total-lbl { min-height: 1.05rem; }
+        .kpi-metric .kpi-list {
+            flex: 1;
+            margin: 0;
+        }
+        .kpi-metric .kpi-list table { table-layout: fixed; }
+        .kpi-metric .kpi-list col.kpi-val { width: 4.4rem; }
+        .kpi-metric .kpi-list col.kpi-share-col { width: 4.2rem; }
+        .kpi-metric .kpi-list td:nth-child(2),
+        .kpi-metric .kpi-list th:nth-child(2) {
+            width: 4.4rem;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        .kpi-metric .kpi-list td:nth-child(3),
+        .kpi-metric .kpi-list th:nth-child(3) {
+            width: 4.2rem;
+        }
         .kpi-flip {
             margin-left: auto;
             flex-shrink: 0;
@@ -524,7 +564,7 @@
 
         <div class="row g-3 mt-1" id="kpiRow" hidden>
             <div class="col-md-4">
-                <section class="kpi-card kpi-term">
+                <section class="kpi-card kpi-term kpi-metric">
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-stopwatch"></i></span>
                         <div class="kpi-head-text">
@@ -539,13 +579,25 @@
                     <div class="kpi-total-lbl">Общий срок</div>
                     <div class="kpi-list">
                         <table>
+                            <colgroup>
+                                <col>
+                                <col class="kpi-val">
+                                <col class="kpi-share-col">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th class="text-end">ч</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
                             <tbody id="termBody"></tbody>
                         </table>
                     </div>
                 </section>
             </div>
             <div class="col-md-4">
-                <section class="kpi-card kpi-returns">
+                <section class="kpi-card kpi-returns kpi-metric">
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-reply"></i></span>
                         <div class="kpi-head-text">
@@ -560,6 +612,11 @@
                     <div class="kpi-total-lbl">Общее количество · доля заявок</div>
                     <div class="kpi-list">
                         <table>
+                            <colgroup>
+                                <col>
+                                <col class="kpi-val">
+                                <col class="kpi-share-col">
+                            </colgroup>
                             <thead>
                                 <tr>
                                     <th></th>
@@ -573,7 +630,7 @@
                 </section>
             </div>
             <div class="col-md-4">
-                <section class="kpi-card kpi-overdue">
+                <section class="kpi-card kpi-overdue kpi-metric">
                     <div class="kpi-head">
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-calendar-xmark"></i></span>
                         <div class="kpi-head-text">
@@ -588,6 +645,11 @@
                     <div class="kpi-total-lbl">Общее количество · доля заявок</div>
                     <div class="kpi-list">
                         <table>
+                            <colgroup>
+                                <col>
+                                <col class="kpi-val">
+                                <col class="kpi-share-col">
+                            </colgroup>
                             <thead>
                                 <tr>
                                     <th></th>
@@ -1109,13 +1171,13 @@
             document.querySelector('[data-flip="term"]')?.classList.toggle("is-on", !byEmp);
             if (byEmp) {
                 termBody.innerHTML = people((a, b) => (b.avgTermHours ?? -1) - (a.avgTermHours ?? -1) || a.fio.localeCompare(b.fio, "ru"))
-                    .map((e) => `<tr>${nameCell(e.fio)}<td class="text-end">${fmtNum(e.avgTermHours)}</td></tr>`).join("")
-                    || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
+                    .map((e) => `<tr>${nameCell(e.fio)}<td class="text-end">${fmtNum(e.avgTermHours)}</td><td></td></tr>`).join("")
+                    || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
             } else {
                 termBody.innerHTML = filesCut()
                     .sort((a, b) => (b.avgTermHours ?? -1) - (a.avgTermHours ?? -1) || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => `<tr>${nameCell(fileLabel(f))}<td class="text-end">${fmtNum(f.avgTermHours)}</td></tr>`).join("")
-                    || `<tr><td colspan="2" class="text-muted">Нет данных</td></tr>`;
+                    .map((f) => `<tr>${nameCell(fileLabel(f))}<td class="text-end">${fmtNum(f.avgTermHours)}</td><td></td></tr>`).join("")
+                    || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
             }
             const termTxt = fmtNum(agg.avgTermHours);
             termTotal.textContent = termTxt === "—" ? "—" : `${termTxt} ч`;
