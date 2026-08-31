@@ -12,6 +12,7 @@ import https from "https";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import zlib from "zlib";
 import { fileURLToPath } from "url";
 import { WebSocketServer } from "ws";
 import { searchByCadastralNumber, streamCadastralSearch } from "./lib/cadastral-search.mjs";
@@ -25,6 +26,7 @@ import { getZalogConverterHealth, probeZalogPythonDeps, probeZalogPythonDepsCach
 import { createZalogConvertJob, getZalogConvertJob } from "./lib/zalog-jobs.mjs";
 import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigachat-config.mjs";
 import { getConclusionQaInfo, searchConclusionQa } from "./lib/conclusion-qa.mjs";
+import { loadGeocodeMapPayload, readStatus } from "./lib/nspd-geocode-store.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
@@ -663,6 +665,36 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/cadastral") {
         serveStatic(req, res, path.join(__dirname, "cadastral-search.html"));
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/cadastral-map") {
+        serveStatic(req, res, path.join(__dirname, "cadastral-map.html"));
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/cadastral-map/status") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify(readStatus() || { done: 0, total: 0, ok: 0, fail: 0, running: false }));
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/cadastral-map/points") {
+        const payload = loadGeocodeMapPayload();
+        const json = JSON.stringify(payload);
+        const accept = String(req.headers["accept-encoding"] || "");
+        if (accept.includes("gzip") && json.length > 40_000) {
+            const body = zlib.gzipSync(json);
+            res.writeHead(200, {
+                "Content-Type": "application/json; charset=utf-8",
+                "Content-Encoding": "gzip",
+                "Access-Control-Allow-Origin": "*"
+            });
+            res.end(body);
+            return;
+        }
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+        res.end(json);
         return;
     }
 

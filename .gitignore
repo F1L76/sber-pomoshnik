@@ -9,6 +9,9 @@ python-deps/
 data/drom-rate.json
 data/drom-rate.tmp
 
+# Кэш координат НСПД по пользовательскому списку КН
+data/nspd-geocode/
+
 # Старые прототипы и резервные копии
 Резерв/
 Прототип*.html

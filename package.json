@@ -6,6 +6,8 @@
     "start": "node gigachat-proxy.mjs",
     "dev": "node gigachat-proxy.mjs",
     "cadastral": "node scripts/cadastral-cli.mjs",
+    "geocode-list": "node scripts/geocode-cadastral-list.mjs",
+    "nspd-geocode:check": "node scripts/check-nspd-geocode.mjs",
     "deals:index": "node scripts/build-deals-quarter-index.mjs",
     "deals:import": "node scripts/import-deals-sqlite.mjs",
     "conclusion-qa:build": "PYTHONPATH=python-deps python3 scripts/build_conclusion_qa.py",
