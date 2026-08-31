@@ -15,6 +15,7 @@ import {
     COORDS_JSONL_PATH,
     GEOCODE_DIR,
     KN_LIST_PATH,
+    PROGRESS_LOG_PATH,
     STATUS_PATH,
     compactPoint,
     ensureGeocodeDir
@@ -177,6 +178,7 @@ async function main() {
     const t0 = Date.now();
     let ok = 0;
     let fail = 0;
+    const recent = [];
     for (const kn of done) {
         /* already counted in file; recount ok/fail lazily via status only for this run */
         void kn;
@@ -222,7 +224,8 @@ async function main() {
             etaSec: rate > 0 ? Math.round(left / rate) : null,
             startedAt,
             updatedAt: new Date().toISOString(),
-            source: path.basename(xlsx)
+            source: path.basename(xlsx),
+            recent
         });
     };
     flushStatus(true);
@@ -242,10 +245,21 @@ async function main() {
             pauseUntil = Date.now() + 5000;
         }
         processed += 1;
+        let line;
         if (result.found) {
             ok += 1;
+            const knOut = result.cadastralNumber || kn;
             await appendRow({
-                kn: result.cadastralNumber || kn,
+                kn: knOut,
+                ok: true,
+                lat: result.lat,
+                lon: result.lon,
+                t: result.objectType || "",
+                addr: result.address || ""
+            });
+            line = `+ ${knOut}  ${result.lat.toFixed(6)}  ${result.lon.toFixed(6)}  ${result.objectType || ""}`.trim();
+            recent.push({
+                kn: knOut,
                 ok: true,
                 lat: result.lat,
                 lon: result.lon,
@@ -255,15 +269,18 @@ async function main() {
         } else if (result.permanent) {
             fail += 1;
             await appendRow({ kn, ok: false, err: result.message || "ошибка" });
+            line = `− ${kn}  ${result.message || "ошибка"}`;
+            recent.push({ kn, ok: false, err: result.message || "ошибка" });
         } else {
             fail += 1;
-            // ponytail: не пишем в кэш — повторим при следующем запуске
+            line = `~ ${kn}  ${result.message || "НСПД временно недоступен, повторю позже"}`;
+            recent.push({ kn, ok: false, err: result.message || "повтор" });
         }
-        if (processed % 25 === 0 || processed === total) {
-            flushStatus(true);
-            const eta = readEta(t0, processed - processedAtStart, total - processed);
-            console.log(`${processed}/${total} ок=${ok} нет=${fail}${eta}`);
-        }
+        if (recent.length > 40) recent.shift();
+        const full = `${processed}/${total} ${line}`;
+        fs.appendFileSync(PROGRESS_LOG_PATH, full + "\n");
+        console.log(full);
+        flushStatus(true);
         if (processed % 200 === 0) writeCoordsToXlsx(xlsx);
     });
 
@@ -271,15 +288,6 @@ async function main() {
     flushStatus(false);
     writeCoordsToXlsx(xlsx, { wait: true });
     console.log(`готово: ${ok} координат, ${fail} без точки, файл ${xlsx}`);
-}
-
-function readEta(t0, newly, left) {
-    if (newly <= 0) return "";
-    const rate = newly / Math.max((Date.now() - t0) / 1000, 0.001);
-    const sec = Math.round(left / rate);
-    if (!Number.isFinite(sec) || sec < 0) return "";
-    const min = Math.round(sec / 60);
-    return ` ~${min} мин`;
 }
 
 main().catch((err) => {

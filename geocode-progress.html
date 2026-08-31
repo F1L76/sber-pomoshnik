@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ход геокодирования НСПД — СберБизнес Помощник</title>
+    <script>(function(){try{if(localStorage.getItem("sber-pomoshnik:theme")==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}})();</script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link href="https://fonts.cdnfonts.com/css/sb-sans-interface" rel="stylesheet">
+    <style>
+        :root {
+            --sber-green: #21A038;
+            --sber-bg: #F0F4F8;
+            --sber-card: #FFFFFF;
+            --sber-text: #1E2A3A;
+            --sber-muted: #617188;
+            --sber-border: #E2EAF2;
+        }
+        html, body { height: 100%; }
+        body {
+            font-family: 'SB Sans Interface', system-ui, sans-serif;
+            background: var(--sber-bg);
+            color: var(--sber-text);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .hero {
+            background: #1E2A3A;
+            color: #fff;
+            border-bottom: 3px solid var(--sber-green);
+            padding: 1.1rem 0;
+            flex-shrink: 0;
+        }
+        .hero a { color: inherit; text-decoration: none; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.75rem;
+            padding: 1rem 0 0.5rem;
+        }
+        .stat {
+            background: var(--sber-card);
+            border: 1px solid var(--sber-border);
+            border-radius: 14px;
+            padding: 0.85rem 1rem;
+        }
+        .stat .label { font-size: 0.75rem; color: var(--sber-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+        .stat .value { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .progress { height: 10px; }
+        #log {
+            flex: 1;
+            min-height: 280px;
+            margin: 0 0 1rem;
+            background: #141c27;
+            color: #d7e0ea;
+            border-radius: 14px;
+            padding: 1rem 1.1rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            overflow: auto;
+            white-space: pre;
+        }
+        #log .ok { color: #6fdd8b; }
+        #log .bad { color: #ffb4a8; }
+        #log .wait { color: #f0c36d; }
+        .live-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #888; display: inline-block; margin-right: 6px;
+        }
+        .live-dot.on { background: #21A038; }
+    </style>
+    <link rel="stylesheet" href="/theme.css?v=13">
+</head>
+<body>
+    <header class="hero">
+        <div class="container-fluid px-4">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div>
+                    <p class="small mb-1 opacity-75"><a href="/">СберБизнес Помощник</a> · геокодирование НСПД</p>
+                    <h1 class="h4 mb-0"><span class="live-dot" id="liveDot"></span>Ход обработки списка КН</h1>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="/cadastral-map" class="btn btn-outline-light btn-sm">Карта</a>
+                    <a href="/?view=services" class="btn btn-outline-light btn-sm">← Назад</a>
+                </div>
+            </div>
+        </div>
+    </header>
+    <main class="container-fluid px-4 d-flex flex-column flex-grow-1 pb-3">
+        <div class="stats">
+            <div class="stat"><div class="label">Обработано</div><div class="value" id="vDone">—</div></div>
+            <div class="stat"><div class="label">Всего в списке</div><div class="value" id="vTotal">—</div></div>
+            <div class="stat"><div class="label">С координатами</div><div class="value" id="vOk">—</div></div>
+            <div class="stat"><div class="label">Без точки</div><div class="value" id="vFail">—</div></div>
+            <div class="stat"><div class="label">Скорость</div><div class="value" id="vRate">—</div></div>
+            <div class="stat"><div class="label">Осталось</div><div class="value" id="vEta">—</div></div>
+        </div>
+        <div class="progress my-2">
+            <div class="progress-bar bg-success" id="bar" style="width:0%"></div>
+        </div>
+        <p class="small text-muted mb-2" id="vState">ожидание статуса…</p>
+        <div id="log" aria-live="polite"></div>
+    </main>
+    <script>
+        const logEl = document.getElementById("log");
+        let stickBottom = true;
+        logEl.addEventListener("scroll", () => {
+            stickBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
+        });
+        function fmt(n) { return Number(n || 0).toLocaleString("ru-RU"); }
+        function escapeHtml(s) {
+            return String(s || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+        }
+        function paintLog(lines) {
+            logEl.innerHTML = (lines || []).map((raw) => {
+                const cls = raw.includes(" + ") ? "ok" : (raw.includes(" − ") ? "bad" : (raw.includes(" ~ ") ? "wait" : ""));
+                return `<div class="${cls}">${escapeHtml(raw)}</div>`;
+            }).join("");
+            if (stickBottom) logEl.scrollTop = logEl.scrollHeight;
+        }
+        async function tick() {
+            const res = await fetch("/api/geocode/progress");
+            const data = await res.json();
+            const s = data.status || {};
+            const done = s.done || 0;
+            const total = s.total || 0;
+            const pct = total ? Math.round((done / total) * 1000) / 10 : 0;
+            document.getElementById("vDone").textContent = fmt(done);
+            document.getElementById("vTotal").textContent = fmt(total);
+            document.getElementById("vOk").textContent = fmt(s.ok);
+            document.getElementById("vFail").textContent = fmt(s.fail);
+            document.getElementById("vRate").textContent = s.ratePerSec != null ? `${s.ratePerSec} / сек` : "—";
+            document.getElementById("vEta").textContent = s.etaSec != null ? `~${Math.round(s.etaSec / 60)} мин` : "—";
+            document.getElementById("bar").style.width = `${pct}%`;
+            document.getElementById("liveDot").classList.toggle("on", Boolean(s.running));
+            document.getElementById("vState").textContent = s.running
+                ? `идёт запрос в НСПД · ${pct}% · файл Список.xlsx`
+                : (done && done >= total ? "геокодирование завершено" : "скрипт сейчас не запущен");
+            paintLog(data.log || []);
+        }
+        tick().catch((e) => { document.getElementById("vState").textContent = e.message; });
+        setInterval(() => tick().catch(() => {}), 800);
+    </script>
+    <script src="/theme.js?v=2"></script>
+</body>
+</html>
