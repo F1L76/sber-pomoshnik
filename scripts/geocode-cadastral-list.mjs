@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
  * Геокодирует кадастровые номера из xlsx через поиск НСПД (тот же API, что pynspd).
- * Кэш: data/nspd-geocode/coords.jsonl — можно перезапускать, уже найденные пропускаются.
+ * Кэш: data/nspd-geocode/coords.jsonl; широта/долгота пишутся в тот же xlsx.
  *
  *   node scripts/geocode-cadastral-list.mjs [xlsx]
  *   NSPD_GEOCODE_CONCURRENCY=4 node scripts/geocode-cadastral-list.mjs --limit 100
  */
-import { spawnSync } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -22,6 +22,7 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_XLSX = "/Users/avfilinyuk/Downloads/Список.xlsx";
+const WRITE_XLSX_PY = path.join(__dirname, "write-coords-to-xlsx.py");
 
 function parseArgs(argv) {
     let xlsx = DEFAULT_XLSX;
@@ -108,6 +109,24 @@ function loadDoneKn() {
 
 function writeStatus(status) {
     fs.writeFileSync(STATUS_PATH, JSON.stringify(status, null, 2));
+}
+
+function writeCoordsToXlsx(xlsxPath, { wait = false } = {}) {
+    const args = ["python3", WRITE_XLSX_PY, xlsxPath, COORDS_JSONL_PATH];
+    if (wait) {
+        const result = spawnSync(args[0], args.slice(1), { encoding: "utf8" });
+        if (result.stdout) process.stdout.write(result.stdout);
+        if (result.status !== 0) {
+            console.error(result.stderr || "не удалось записать координаты в xlsx");
+        }
+        return;
+    }
+    if (writeCoordsToXlsx.child) return;
+    const child = spawn(args[0], args.slice(1), { stdio: ["ignore", "inherit", "inherit"] });
+    writeCoordsToXlsx.child = child;
+    child.on("exit", () => {
+        writeCoordsToXlsx.child = null;
+    });
 }
 
 async function poolMap(items, concurrency, worker) {
@@ -245,11 +264,13 @@ async function main() {
             const eta = readEta(t0, processed - processedAtStart, total - processed);
             console.log(`${processed}/${total} ок=${ok} нет=${fail}${eta}`);
         }
+        if (processed % 200 === 0) writeCoordsToXlsx(xlsx);
     });
 
     await appendChain;
     flushStatus(false);
-    console.log(`готово: ${ok} координат, ${fail} без точки, файл ${COORDS_JSONL_PATH}`);
+    writeCoordsToXlsx(xlsx, { wait: true });
+    console.log(`готово: ${ok} координат, ${fail} без точки, файл ${xlsx}`);
 }
 
 function readEta(t0, newly, left) {
