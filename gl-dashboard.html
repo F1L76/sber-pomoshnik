@@ -332,6 +332,21 @@
             text-align: center;
             font-weight: 700;
         }
+        .csi-drill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.3rem;
+        }
+        .csi-drill .btn-sm {
+            width: 1.7rem;
+            height: 1.7rem;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
         .csi-table tfoot th.csi-num { text-align: center; }
         .csi-table tfoot th { font-weight: 800; padding: 0.42rem 0.4rem; }
         .kpi-csi .kpi-list td:last-child { text-align: center; }
@@ -883,16 +898,18 @@
             parseExcelDate,
             fioFromCell,
             isOverdueCell,
+            csiBucket,
             lineNameFromFile,
             lineNameFromZ,
             AG_COL,
+            AN_COL,
             FIO_COL,
             Z_COL,
             T_COL,
             W_COL,
             numberCell,
             answerGlQuestion
-        } from "/lib/gl-load.mjs?v=27";
+        } from "/lib/gl-load.mjs?v=28";
         import { resolveVacations } from "/lib/gl-vacations.mjs?v=22";
 
         const VAC_KEY = "gl-dashboard:vacations";
@@ -1056,7 +1073,7 @@
             return new Set((lastAgg?.employees || []).map((e) => e.fio));
         }
 
-        function collectApps({ fio, file, overdueOnly = false } = {}) {
+        function collectApps({ fio, file, overdueOnly = false, csiScore = null } = {}) {
             if (!lastTables || !lastAgg) return [];
             const out = [];
             const { qStart, today } = lastAgg;
@@ -1070,11 +1087,12 @@
                     if (!rowFioUsed || !fios.has(rowFioUsed)) continue;
                     if (fio && rowFioUsed !== fio) continue;
                     if (overdueOnly && !isOverdueCell(row[AG_COL])) continue;
+                    if (csiScore != null && csiBucket(row[AN_COL]) !== csiScore) continue;
                     const dt = parseExcelDate(row[T_COL]);
                     if (!dt || dt < qStart || dt > today) continue;
                     const rowFioDisplay = fioFromCell(row[AD_COL]) || rowFioUsed;
                     const rowFioY = fioFromCell(row[FIO_COL]) || rowFioUsed;
-                    if (!overdueOnly) {
+                    if (!overdueOnly && csiScore == null) {
                         const returnsN = numberCell(row[W_COL]);
                         const copies = returnsN > 0 ? Math.max(1, Math.round(returnsN)) : 0;
                         for (let i = 0; i < copies; i++) {
@@ -1088,11 +1106,15 @@
             return out;
         }
 
-        function showAppsDialog({ fio, file, overdueOnly = false } = {}) {
-            const apps = collectApps({ fio, file, overdueOnly });
-            const who = fio || file || "";
-            returnsDialogTitle.textContent = overdueOnly ? "Заявки по просрочкам" : "Заявки по возвратам";
-            returnsDialogNote.innerHTML = overdueOnly
+        function showAppsDialog({ fio, file, overdueOnly = false, csiScore = null } = {}) {
+            const apps = collectApps({ fio, file, overdueOnly, csiScore });
+            const who = fio || file || (csiScore != null ? "все" : "");
+            returnsDialogTitle.textContent = csiScore != null
+                ? `Заявки с оценкой ${csiScore}`
+                : overdueOnly ? "Заявки по просрочкам" : "Заявки по возвратам";
+            returnsDialogNote.innerHTML = csiScore != null
+                ? `Только строки с CSI (<strong>AN</strong> = ${csiScore}): сотрудник из <strong>Y</strong>, ФИО из <strong>AD</strong> (до «(») и столбец <strong>A</strong>.`
+                : overdueOnly
                 ? "Только строки с просрочкой (<strong>AG</strong> = ДА): сотрудник из <strong>Y</strong>, ФИО из <strong>AD</strong> (до «(») и столбец <strong>A</strong>."
                 : "Отображаются строки, учтённые в дашборде: сотрудник из <strong>Y</strong>, ФИО из <strong>AD</strong> (до «(») и столбец <strong>A</strong>.";
             returnsFioEl.textContent = who;
@@ -1120,6 +1142,16 @@
                     class="btn btn-outline-secondary btn-sm"
                     ${attr}="${encodeURIComponent(value)}"
                     title="Показать заявки (столбец A)">
+                <i class="fas fa-file-alt" aria-hidden="true"></i>
+            </button>`;
+        }
+
+        function csiScoreBtn(score, attr, value) {
+            const who = attr ? ` ${attr}="${encodeURIComponent(value)}"` : "";
+            return `<button type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    data-csi-score="${score}"${who}
+                    title="Показать заявки с оценкой ${score}">
                 <i class="fas fa-file-alt" aria-hidden="true"></i>
             </button>`;
         }
@@ -1252,22 +1284,26 @@
                 return n ? csiRank(c) / n : null;
             };
             const fmtAvg = (v) => (v == null || !Number.isFinite(v) ? "—" : v.toFixed(2));
-            const csiRow = (label, c) => `<tr>${nameCell(label)}<td class="csi-avg">${fmtAvg(csiAvg(c))}</td>${c.map((n) => `<td class="csi-num">${n}</td>`).join("")}</tr>`;
+            const csiCountCell = (n, score, attr, value, tag) => {
+                if (score > 2) return `<${tag} class="csi-num">${n}</${tag}>`;
+                return `<${tag} class="csi-num"><span class="csi-drill"><span>${n}</span>${csiScoreBtn(score, attr, value)}</span></${tag}>`;
+            };
+            const csiRow = (label, c, attr, value) => `<tr>${nameCell(label)}<td class="csi-avg">${fmtAvg(csiAvg(c))}</td>${c.map((n, i) => csiCountCell(n, i + 1, attr, value, "td")).join("")}</tr>`;
             const csiEmp = !kpiFlip.csi;
             csiSub.textContent = csiEmp ? "оценка AN, 1–5 · сотрудники" : "оценка AN, 1–5 · линии";
             csiNameHead.textContent = csiEmp ? "ФИО" : "Линия";
             document.querySelector('[data-flip="csi"]')?.classList.toggle("is-on", !csiEmp);
             const csiRows = csiEmp
                 ? people((a, b) => (csiAvg(b.csiCounts) ?? -1) - (csiAvg(a.csiCounts) ?? -1) || a.fio.localeCompare(b.fio, "ru"))
-                    .map((e) => csiRow(e.fio, e.csiCounts || [0, 0, 0, 0, 0]))
+                    .map((e) => csiRow(e.fio, e.csiCounts || [0, 0, 0, 0, 0], "data-csi-fio", e.fio))
                 : filesCut()
                     .sort((a, b) => (csiAvg(b.csiCounts) ?? -1) - (csiAvg(a.csiCounts) ?? -1) || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => csiRow(fileLabel(f), f.csiCounts || [0, 0, 0, 0, 0]));
+                    .map((f) => csiRow(fileLabel(f), f.csiCounts || [0, 0, 0, 0, 0], "data-csi-file", fileLabel(f)));
             csiBody.innerHTML = csiRows.length
                 ? csiRows.join("")
                 : `<tr><td colspan="7" class="text-muted">Нет данных</td></tr>`;
             const tot = agg.csiCounts || [0, 0, 0, 0, 0];
-            csiFoot.innerHTML = `<tr><th>Итого</th><th class="csi-avg">${fmtAvg(csiAvg(tot))}</th>${tot.map((n) => `<th class="csi-num">${n}</th>`).join("")}</tr>`;
+            csiFoot.innerHTML = `<tr><th>Итого</th><th class="csi-avg">${fmtAvg(csiAvg(tot))}</th>${tot.map((n, i) => csiCountCell(n, i + 1, "", "", "th")).join("")}</tr>`;
             const segs = agg.segments || {};
             const fillSeg = (el, counts, keys = SEGMENTS, sort = true) => {
                 const c = counts || {};
@@ -1370,6 +1406,25 @@
                 return;
             }
             showAppsDialog({ fio: decodeURIComponent(byFio.getAttribute("data-overdue-fio") || ""), overdueOnly: true });
+        });
+
+        document.querySelector(".kpi-csi")?.addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-csi-score]");
+            if (!btn) return;
+            if (!lastTables || !lastAgg) return;
+            const csiScore = Number(btn.getAttribute("data-csi-score"));
+            if (csiScore !== 1 && csiScore !== 2) return;
+            const byFile = btn.getAttribute("data-csi-file");
+            const byFio = btn.getAttribute("data-csi-fio");
+            if (byFile) {
+                showAppsDialog({ file: decodeURIComponent(byFile), csiScore });
+                return;
+            }
+            if (byFio) {
+                showAppsDialog({ fio: decodeURIComponent(byFio), csiScore });
+                return;
+            }
+            showAppsDialog({ csiScore });
         });
 
         loadBody.addEventListener("click", (e) => {
