@@ -4,7 +4,7 @@
  * Кэш: data/nspd-geocode/coords.jsonl; широта/долгота пишутся в тот же xlsx.
  *
  *   node scripts/geocode-cadastral-list.mjs [xlsx]
- *   NSPD_GEOCODE_CONCURRENCY=4 node scripts/geocode-cadastral-list.mjs --limit 100
+ *   NSPD_GEOCODE_CONCURRENCY=10 node scripts/geocode-cadastral-list.mjs
  */
 import { spawn, spawnSync } from "child_process";
 import fs from "fs";
@@ -144,7 +144,7 @@ async function poolMap(items, concurrency, worker) {
 
 async function main() {
     const { xlsx, limit } = parseArgs(process.argv.slice(2));
-    const concurrency = Math.max(1, Number(process.env.NSPD_GEOCODE_CONCURRENCY) || 4);
+    const concurrency = Math.max(1, Number(process.env.NSPD_GEOCODE_CONCURRENCY) || 10);
     ensureGeocodeDir();
     const pruned = pruneRetryableFails();
     if (pruned.dropped) console.log(`убрано ложных отказов НСПД: ${pruned.dropped}, осталось ${pruned.kept}`);
@@ -196,11 +196,9 @@ async function main() {
         }
     }
 
-    let appendChain = Promise.resolve();
+    const jsonlStream = fs.createWriteStream(COORDS_JSONL_PATH, { flags: "a" });
     const appendRow = (row) => {
-        const line = JSON.stringify(row) + "\n";
-        appendChain = appendChain.then(() => fs.promises.appendFile(COORDS_JSONL_PATH, line));
-        return appendChain;
+        jsonlStream.write(JSON.stringify(row) + "\n");
     };
 
     const total = kns.length;
@@ -230,26 +228,19 @@ async function main() {
     };
     flushStatus(true);
 
-    let pauseUntil = 0;
-    const waitIfPaused = async () => {
-        const wait = pauseUntil - Date.now();
-        if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-    };
-
     await poolMap(queue, concurrency, async (kn) => {
         let result = { found: false, permanent: false, message: "ошибка" };
-        for (let attempt = 0; attempt < 8; attempt++) {
-            await waitIfPaused();
-            result = await geocodeCadastralCoords(kn, { retries: 2 });
+        for (let attempt = 0; attempt < 3; attempt++) {
+            result = await geocodeCadastralCoords(kn, { retries: 1 });
             if (result.found || result.permanent) break;
-            pauseUntil = Date.now() + 5000;
+            await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
         }
         processed += 1;
         let line;
         if (result.found) {
             ok += 1;
             const knOut = result.cadastralNumber || kn;
-            await appendRow({
+            appendRow({
                 kn: knOut,
                 ok: true,
                 lat: result.lat,
@@ -258,17 +249,10 @@ async function main() {
                 addr: result.address || ""
             });
             line = `+ ${knOut}  ${result.lat.toFixed(6)}  ${result.lon.toFixed(6)}  ${result.objectType || ""}`.trim();
-            recent.push({
-                kn: knOut,
-                ok: true,
-                lat: result.lat,
-                lon: result.lon,
-                t: result.objectType || "",
-                addr: result.address || ""
-            });
+            recent.push({ kn: knOut, ok: true, lat: result.lat, lon: result.lon, t: result.objectType || "" });
         } else if (result.permanent) {
             fail += 1;
-            await appendRow({ kn, ok: false, err: result.message || "ошибка" });
+            appendRow({ kn, ok: false, err: result.message || "ошибка" });
             line = `− ${kn}  ${result.message || "ошибка"}`;
             recent.push({ kn, ok: false, err: result.message || "ошибка" });
         } else {
@@ -278,13 +262,13 @@ async function main() {
         }
         if (recent.length > 40) recent.shift();
         const full = `${processed}/${total} ${line}`;
-        fs.appendFileSync(PROGRESS_LOG_PATH, full + "\n");
+        fs.appendFile(PROGRESS_LOG_PATH, full + "\n", () => {});
         console.log(full);
-        flushStatus(true);
+        if (processed % 10 === 0 || processed === total) flushStatus(true);
         if (processed % 200 === 0) writeCoordsToXlsx(xlsx);
     });
 
-    await appendChain;
+    await new Promise((resolve) => jsonlStream.end(resolve));
     flushStatus(false);
     writeCoordsToXlsx(xlsx, { wait: true });
     console.log(`готово: ${ok} координат, ${fail} без точки, файл ${xlsx}`);
