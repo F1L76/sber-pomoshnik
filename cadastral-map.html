@@ -177,7 +177,7 @@
                 marker.bindPopup(
                     `<div style="min-width:220px">
                         <div class="fw-semibold">${escapeHtml(p.kn)}</div>
-                        <div class="small text-muted">${escapeHtml(p.t || "объект")}</div>
+                        <div class="small text-muted">${escapeHtml(p.t || "объект")}${p.src === "kadbase" ? " · примерно по адресу" : ""}</div>
                         <div class="small mt-1">${p.lat.toFixed(6)}, ${p.lon.toFixed(6)}</div>
                         <div class="mt-2 d-flex gap-2">
                             <a href="/cadastral?kn=${encodeURIComponent(p.kn)}">Карточка</a>

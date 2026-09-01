@@ -8,6 +8,7 @@
  *   NSPD_GEOCODE_TIMEOUT_MS=30000 — таймаут одного запроса к НСПД (по умолчанию 30с)
  *   npm run geocode-list:awake — не спать при блокировке экрана (крышку не закрывать).
  *   npm run geocode-list:lid — то же + sudo pmset disablesleep, крышку можно закрыть (зарядка, не в сумку).
+ *   npm run geocode-fallback — КН без НСПД: адрес kadbase.ru → точка OSM (примерно).
  *   Запускать в Terminal.app, не в терминале Cursor: агент убивает фоновые процессы.
  */
 import { spawn, spawnSync } from "child_process";
