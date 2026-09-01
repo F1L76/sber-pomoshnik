@@ -132,7 +132,7 @@
         .kpi-total-share {
             font-size: 1.45rem;
             font-weight: 800;
-            margin-left: 0.15rem;
+            margin-right: 0.35rem;
             font-variant-numeric: tabular-nums;
         }
         .share-ok { color: var(--sber-green); }
@@ -212,13 +212,15 @@
         .kpi-metric .kpi-list col.kpi-share-col { width: 4.2rem; }
         .kpi-metric .kpi-list td:nth-child(2),
         .kpi-metric .kpi-list th:nth-child(2) {
-            width: 4.4rem;
-            text-align: right;
+            width: 4.2rem;
+            text-align: left;
             font-variant-numeric: tabular-nums;
         }
         .kpi-metric .kpi-list td:nth-child(3),
         .kpi-metric .kpi-list th:nth-child(3) {
-            width: 4.2rem;
+            width: 4.4rem;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
         }
         .kpi-metric .kpi-list tbody tr { height: 2.75rem; }
         .kpi-metric .kpi-list td {
@@ -294,6 +296,7 @@
         .kpi-list td:last-child { font-weight: 600; white-space: nowrap; text-align: right; }
         .kpi-list td.kpi-share {
             width: 4.1rem;
+            text-align: left;
             font-variant-numeric: tabular-nums;
         }
         .kpi-list .fio-cell {
@@ -325,7 +328,7 @@
         .csi-table tfoot th:first-child { text-align: left; }
         .csi-table .csi-avg { text-align: right; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
         .csi-table thead th:nth-child(2),
-        .csi-table tfoot th:nth-child(2),
+        .csi-table tfoot th:nth-child(2) { text-align: left; }
         .csi-table thead th:nth-child(3),
         .csi-table tfoot th:nth-child(3) { text-align: right; }
         .csi-table .csi-num {
@@ -653,14 +656,14 @@
                         <table>
                             <colgroup>
                                 <col>
-                                <col class="kpi-val">
                                 <col class="kpi-share-col">
+                                <col class="kpi-val">
                             </colgroup>
                             <thead>
                                 <tr>
                                     <th></th>
+                                    <th>доля</th>
                                     <th class="text-end">шт</th>
-                                    <th class="text-end">доля</th>
                                 </tr>
                             </thead>
                             <tbody id="returnsBody"></tbody>
@@ -684,14 +687,14 @@
                         <table>
                             <colgroup>
                                 <col>
-                                <col class="kpi-val">
                                 <col class="kpi-share-col">
+                                <col class="kpi-val">
                             </colgroup>
                             <thead>
                                 <tr>
                                     <th></th>
+                                    <th>доля</th>
                                     <th class="text-end">шт</th>
-                                    <th class="text-end">доля</th>
                                 </tr>
                             </thead>
                             <tbody id="overdueBody"></tbody>
@@ -716,8 +719,8 @@
                             <thead>
                                 <tr>
                                     <th id="csiNameHead">ФИО</th>
-                                    <th>средняя</th>
                                     <th>доля</th>
+                                    <th>средняя</th>
                                     <th><span class="kpi-stars csi-head-stars" aria-label="1"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
                                     <th><span class="kpi-stars csi-head-stars" aria-label="2"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
                                     <th><span class="kpi-stars csi-head-stars" aria-label="3"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
@@ -1201,7 +1204,7 @@
                 const num = Number(n) || 0;
                 const pct = sharePct(num, apps);
                 if (pct == null) return `${num}`;
-                return `${num} <span class="kpi-total-share ${shareClass(pct, limit)}">${pct.toFixed(1)}%</span>`;
+                return `<span class="kpi-total-share ${shareClass(pct, limit)}">${pct.toFixed(1)}%</span> ${num}`;
             };
             const valCell = (n, btn) => `<td class="text-end">
                     <div class="d-flex justify-content-end align-items-center gap-2">
@@ -1211,8 +1214,8 @@
                 </td>`;
             const metricRow = (label, n, apps, btn, limit) => `<tr>
                     ${nameCell(label)}
-                    ${valCell(n || 0, btn)}
                     <td class="kpi-share">${fmtShare(n, apps, limit)}</td>
+                    ${valCell(n || 0, btn)}
                 </tr>`;
             const byEmp = !kpiFlip.term;
             document.querySelector('[data-flip="term"]')?.classList.toggle("is-on", !byEmp);
@@ -1262,7 +1265,7 @@
                 if (score > 2) return `<${tag} class="csi-num">${n}</${tag}>`;
                 return `<${tag} class="csi-num"><span class="csi-drill"><span>${n}</span>${csiScoreBtn(score, attr, value)}</span></${tag}>`;
             };
-            const csiRow = (label, c, apps, attr, value) => `<tr>${nameCell(label)}<td class="csi-avg">${fmtAvg(csiAvg(c))}</td><td class="kpi-share">${fmtShare(csiBadCount(c), apps, SHARE_LIMIT.csi)}</td>${c.map((n, i) => csiCountCell(n, i + 1, attr, value, "td")).join("")}</tr>`;
+            const csiRow = (label, c, apps, attr, value) => `<tr>${nameCell(label)}<td class="kpi-share">${fmtShare(csiBadCount(c), apps, SHARE_LIMIT.csi)}</td><td class="csi-avg">${fmtAvg(csiAvg(c))}</td>${c.map((n, i) => csiCountCell(n, i + 1, attr, value, "td")).join("")}</tr>`;
             const csiEmp = !kpiFlip.csi;
             csiNameHead.textContent = csiEmp ? "ФИО" : "Линия";
             document.querySelector('[data-flip="csi"]')?.classList.toggle("is-on", !csiEmp);
@@ -1278,7 +1281,7 @@
             const tot = agg.csiCounts || [0, 0, 0, 0, 0];
             const csiBad = csiBadCount(tot);
             csiTotal.innerHTML = fmtTotalShare(csiBad, agg.used, SHARE_LIMIT.csi);
-            csiFoot.innerHTML = `<tr><th>Итого</th><th class="csi-avg">${fmtAvg(csiAvg(tot))}</th><th class="kpi-share">${fmtShare(csiBad, agg.used, SHARE_LIMIT.csi)}</th>${tot.map((n, i) => csiCountCell(n, i + 1, "", "", "th")).join("")}</tr>`;
+            csiFoot.innerHTML = `<tr><th>Итого</th><th class="kpi-share">${fmtShare(csiBad, agg.used, SHARE_LIMIT.csi)}</th><th class="csi-avg">${fmtAvg(csiAvg(tot))}</th>${tot.map((n, i) => csiCountCell(n, i + 1, "", "", "th")).join("")}</tr>`;
             const segs = agg.segments || {};
             const fillSeg = (el, counts, keys = SEGMENTS, sort = true) => {
                 const c = counts || {};
