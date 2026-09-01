@@ -6,7 +6,7 @@
     "start": "node gigachat-proxy.mjs",
     "dev": "node gigachat-proxy.mjs",
     "cadastral": "node scripts/cadastral-cli.mjs",
-    "geocode-list": "node scripts/geocode-cadastral-list.mjs",
+    "geocode-list:missing": "node scripts/geocode-cadastral-list.mjs --missing",
     "geocode-list:awake": "caffeinate -dims node scripts/geocode-cadastral-list.mjs",
     "geocode-list:lid": "bash scripts/geocode-allow-lid.sh",
     "geocode-fallback": "node scripts/geocode-fallback-list.mjs",

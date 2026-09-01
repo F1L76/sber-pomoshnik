@@ -8,7 +8,7 @@
  *   NSPD_GEOCODE_TIMEOUT_MS=30000 — таймаут одного запроса к НСПД (по умолчанию 30с)
  *   npm run geocode-list:awake — не спать при блокировке экрана (крышку не закрывать).
  *   npm run geocode-list:lid — то же + sudo pmset disablesleep, крышку можно закрыть (зарядка, не в сумку).
- *   npm run geocode-fallback — КН без НСПД: адрес kadbase.ru → точка OSM (примерно).
+ *   node scripts/geocode-cadastral-list.mjs --missing — ещё раз НСПД только по КН без точки.
  *   Запускать в Terminal.app, не в терминале Cursor: агент убивает фоновые процессы.
  */
 import { spawn, spawnSync } from "child_process";
@@ -33,15 +33,18 @@ const WRITE_XLSX_PY = path.join(__dirname, "write-coords-to-xlsx.py");
 function parseArgs(argv) {
     let xlsx = DEFAULT_XLSX;
     let limit = 0;
+    let missing = false;
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === "--limit") {
             limit = Number(argv[++i]) || 0;
+        } else if (a === "--missing") {
+            missing = true;
         } else if (!a.startsWith("-")) {
             xlsx = a;
         }
     }
-    return { xlsx, limit };
+    return { xlsx, limit, missing };
 }
 
 function extractKnList(xlsxPath, outPath) {
@@ -96,21 +99,67 @@ function pruneRetryableFails() {
     return { kept: keep.length, dropped };
 }
 
-function loadDoneKn() {
-    const done = new Set();
-    if (!fs.existsSync(COORDS_JSONL_PATH)) return done;
-    const raw = fs.readFileSync(COORDS_JSONL_PATH, "utf8");
-    for (const line of raw.split("\n")) {
+function lastRowByKn() {
+    const last = new Map();
+    if (!fs.existsSync(COORDS_JSONL_PATH)) return last;
+    for (const line of fs.readFileSync(COORDS_JSONL_PATH, "utf8").split("\n")) {
         if (!line) continue;
         try {
             const row = JSON.parse(line);
-            const kn = row.kn || row.cadastralNumber;
-            if (kn) done.add(String(kn));
+            const kn = String(row.kn || row.cadastralNumber || "").trim();
+            if (kn) last.set(kn, row);
         } catch {
-            /* skip broken line */
+            /* skip */
         }
     }
-    return done;
+    return last;
+}
+
+function orderQuarterFirst(pending) {
+    const seenQuarter = new Set();
+    const firstOfQuarter = [];
+    const rest = [];
+    for (const kn of pending) {
+        const quarter = kn.split(":").slice(0, 3).join(":");
+        if (seenQuarter.has(quarter)) rest.push(kn);
+        else {
+            seenQuarter.add(quarter);
+            firstOfQuarter.push(kn);
+        }
+    }
+    return { queue: firstOfQuarter.concat(rest), firstOfQuarter };
+}
+
+/** Уже спрашивали НСПД, но точки нет — отказы из jsonl и таймауты текущего прогона. */
+function knsTriedWithoutPoint(kns) {
+    const last = lastRowByKn();
+    const sessionKn = new Set();
+    if (fs.existsSync(PROGRESS_LOG_PATH)) {
+        const entries = [];
+        let prev = 0;
+        let sessionStart = 0;
+        for (const line of fs.readFileSync(PROGRESS_LOG_PATH, "utf8").split("\n")) {
+            const m = line.match(/^(\d+)\/\d+\s/);
+            if (!m) continue;
+            const n = Number(m[1]);
+            if (prev && n + 50 < prev) sessionStart = entries.length;
+            prev = n;
+            entries.push(line);
+        }
+        for (const line of entries.slice(sessionStart)) {
+            const kn = line.match(/(\d{1,2}:\d{1,3}:\d+:\d+)/);
+            if (kn) sessionKn.add(kn[1]);
+        }
+    }
+    return kns.filter((kn) => {
+        if (compactPoint(last.get(kn))) return false;
+        if (last.has(kn)) return true;
+        return sessionKn.has(kn);
+    });
+}
+
+function loadDoneKn() {
+    return new Set(lastRowByKn().keys());
 }
 
 function writeStatus(status) {
@@ -148,7 +197,7 @@ async function poolMap(items, concurrency, worker) {
 }
 
 async function main() {
-    const { xlsx, limit } = parseArgs(process.argv.slice(2));
+    const { xlsx, limit, missing } = parseArgs(process.argv.slice(2));
     const concurrency = Math.max(1, Number(process.env.NSPD_GEOCODE_CONCURRENCY) || 10);
     ensureGeocodeDir();
     const pruned = pruneRetryableFails();
@@ -162,43 +211,28 @@ async function main() {
     let kns = fs.readFileSync(KN_LIST_PATH, "utf8").split("\n").map((s) => s.trim()).filter(Boolean);
     if (limit > 0) kns = kns.slice(0, limit);
     const done = loadDoneKn();
-    const pending = kns.filter((kn) => !done.has(kn));
-    const seenQuarter = new Set();
-    const firstOfQuarter = [];
-    const rest = [];
-    for (const kn of pending) {
-        const quarter = kn.split(":").slice(0, 3).join(":");
-        if (seenQuarter.has(quarter)) rest.push(kn);
-        else {
-            seenQuarter.add(quarter);
-            firstOfQuarter.push(kn);
-        }
+    let queue;
+    let firstOfQuarter = [];
+    if (missing) {
+        const pending = knsTriedWithoutPoint(kns);
+        ({ queue, firstOfQuarter } = orderQuarterFirst(pending));
+        console.log(`повтор НСПД без точки: ${queue.length}, потоков ${concurrency}`);
+    } else {
+        const pending = kns.filter((kn) => !done.has(kn));
+        ({ queue, firstOfQuarter } = orderQuarterFirst(pending));
+        console.log(
+            `в списке ${extracted}, к обработке ${queue.length} (уже есть ${done.size}), сначала ${firstOfQuarter.length} кварталов, потоков ${concurrency}`
+        );
     }
-    const queue = firstOfQuarter.concat(rest);
-    console.log(
-        `в списке ${extracted}, к обработке ${queue.length} (уже есть ${done.size}), сначала ${firstOfQuarter.length} кварталов, потоков ${concurrency}`
-    );
 
     const startedAt = new Date().toISOString();
     const t0 = Date.now();
     let ok = 0;
     let fail = 0;
     const recent = [];
-    for (const kn of done) {
-        /* already counted in file; recount ok/fail lazily via status only for this run */
-        void kn;
-    }
-    if (fs.existsSync(COORDS_JSONL_PATH)) {
-        for (const line of fs.readFileSync(COORDS_JSONL_PATH, "utf8").split("\n")) {
-            if (!line) continue;
-            try {
-                const row = JSON.parse(line);
-                if (compactPoint(row)) ok += 1;
-                else fail += 1;
-            } catch {
-                fail += 1;
-            }
-        }
+    for (const row of lastRowByKn().values()) {
+        if (compactPoint(row)) ok += 1;
+        else fail += 1;
     }
 
     const jsonlStream = fs.createWriteStream(COORDS_JSONL_PATH, { flags: "a" });
@@ -206,8 +240,8 @@ async function main() {
         jsonlStream.write(JSON.stringify(row) + "\n");
     };
 
-    const total = kns.length;
-    const processedAtStart = done.size;
+    const total = missing ? queue.length : kns.length;
+    const processedAtStart = missing ? 0 : ok + fail;
     let processed = processedAtStart;
 
     const flushStatus = (running = true) => {
@@ -227,7 +261,7 @@ async function main() {
             etaSec: rate > 0 ? Math.round(left / rate) : null,
             startedAt,
             updatedAt: new Date().toISOString(),
-            source: path.basename(xlsx),
+            source: missing ? "повтор без точки" : path.basename(xlsx),
             recent
         });
     };
@@ -243,6 +277,7 @@ async function main() {
         processed += 1;
         let line;
         if (result.found) {
+            if (missing) fail = Math.max(0, fail - 1);
             ok += 1;
             const knOut = result.cadastralNumber || kn;
             appendRow({
@@ -256,12 +291,12 @@ async function main() {
             line = `+ ${knOut}  ${result.lat.toFixed(6)}  ${result.lon.toFixed(6)}  ${result.objectType || ""}`.trim();
             recent.push({ kn: knOut, ok: true, lat: result.lat, lon: result.lon, t: result.objectType || "" });
         } else if (result.permanent) {
-            fail += 1;
+            if (!missing) fail += 1;
             appendRow({ kn, ok: false, err: result.message || "ошибка" });
             line = `− ${kn}  ${result.message || "ошибка"}`;
             recent.push({ kn, ok: false, err: result.message || "ошибка" });
         } else {
-            fail += 1;
+            if (!missing) fail += 1;
             line = `~ ${kn}  ${result.message || "НСПД временно недоступен, повторю позже"}`;
             recent.push({ kn, ok: false, err: result.message || "повтор" });
         }
