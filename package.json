@@ -7,6 +7,7 @@
     "dev": "node gigachat-proxy.mjs",
     "cadastral": "node scripts/cadastral-cli.mjs",
     "geocode-list": "node scripts/geocode-cadastral-list.mjs",
+    "geocode-list:awake": "caffeinate -dims node scripts/geocode-cadastral-list.mjs",
     "geocode-xlsx": "python3 scripts/write-coords-to-xlsx.py",
     "nspd-geocode:check": "node scripts/check-nspd-geocode.mjs && python3 scripts/write-coords-to-xlsx.py --check",
     "deals:index": "node scripts/build-deals-quarter-index.mjs",
