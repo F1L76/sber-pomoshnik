@@ -112,6 +112,19 @@
             stickBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 40;
         });
         function fmt(n) { return Number(n || 0).toLocaleString("ru-RU"); }
+        function formatEta(sec) {
+            if (sec == null || !Number.isFinite(Number(sec)) || Number(sec) < 0) return "—";
+            let s = Math.round(Number(sec));
+            const d = Math.floor(s / 86400);
+            s %= 86400;
+            const h = Math.floor(s / 3600);
+            const m = Math.round((s % 3600) / 60);
+            const parts = [];
+            if (d) parts.push(`${d} д`);
+            if (h) parts.push(`${h} ч`);
+            if (m || !parts.length) parts.push(`${m} мин`);
+            return `~${parts.join(" ")}`;
+        }
         function escapeHtml(s) {
             return String(s || "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
         }
@@ -134,7 +147,7 @@
             document.getElementById("vOk").textContent = fmt(s.ok);
             document.getElementById("vFail").textContent = fmt(s.fail);
             document.getElementById("vRate").textContent = s.ratePerSec != null ? `${s.ratePerSec} / сек` : "—";
-            document.getElementById("vEta").textContent = s.etaSec != null ? `~${Math.round(s.etaSec / 60)} мин` : "—";
+            document.getElementById("vEta").textContent = formatEta(s.etaSec);
             document.getElementById("bar").style.width = `${pct}%`;
             document.getElementById("liveDot").classList.toggle("on", Boolean(s.running));
             document.getElementById("vState").textContent = s.running

@@ -203,6 +203,20 @@
             if ([...sel.options].some((o) => o.value === current)) sel.value = current;
         }
 
+        function formatEta(sec) {
+            if (sec == null || !Number.isFinite(Number(sec)) || Number(sec) < 0) return "";
+            let s = Math.round(Number(sec));
+            const d = Math.floor(s / 86400);
+            s %= 86400;
+            const h = Math.floor(s / 3600);
+            const m = Math.round((s % 3600) / 60);
+            const parts = [];
+            if (d) parts.push(`${d} д`);
+            if (h) parts.push(`${h} ч`);
+            if (m || !parts.length) parts.push(`${m} мин`);
+            return ` · осталось ${parts.join(" ")}`;
+        }
+
         function renderStatus(status) {
             const total = status.total || 0;
             const done = status.done || 0;
@@ -217,8 +231,7 @@
             if (status.running && total) {
                 wrap.hidden = false;
                 bar.style.width = `${Math.round((done / total) * 100)}%`;
-                const eta = status.etaSec != null ? ` · осталось ~${Math.round(status.etaSec / 60)} мин` : "";
-                run.textContent = `геокодирование НСПД… ${done.toLocaleString("ru-RU")} / ${total.toLocaleString("ru-RU")}${eta}`;
+                run.textContent = `геокодирование НСПД… ${done.toLocaleString("ru-RU")} / ${total.toLocaleString("ru-RU")}${formatEta(status.etaSec)}`;
             } else {
                 wrap.hidden = done > 0 && done < total ? false : true;
                 if (done && total) bar.style.width = `${Math.round((done / total) * 100)}%`;
