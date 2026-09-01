@@ -23,6 +23,10 @@ import {
     isOverdueCell,
     numberCell,
     csiScore,
+    csiBadCount,
+    sharePct,
+    shareTone,
+    SHARE_LIMIT,
     segmentFromAF,
     tbFromAF,
     isPriorityCell,
@@ -345,6 +349,10 @@ if (termHoursFromST("", "04.07.2026") != null) throw new Error("termHours empty"
 if (!isOverdueCell("ДА") || !isOverdueCell("да") || isOverdueCell("нет")) throw new Error("overdue cell");
 if (numberCell("1,5") !== 1.5 || numberCell("") !== 0) throw new Error("numberCell");
 if (csiScore(5) !== 5 || csiScore("4") !== 4 || csiScore(0) != null || csiScore("") != null) throw new Error("csiScore");
+if (csiBadCount([1, 2, 3, 0, 0]) !== 3) throw new Error("csiBadCount");
+if (Math.abs(sharePct(2, 50) - 4) > 1e-9 || sharePct(1, 0) != null) throw new Error("sharePct");
+if (shareTone(1.9, 4) !== "ok" || shareTone(4, 4) !== "warn" || shareTone(4.1, 4) !== "bad") throw new Error("shareTone");
+if (SHARE_LIMIT.overdue !== 4 || SHARE_LIMIT.returns !== 4 || SHARE_LIMIT.csi !== 3) throw new Error("share limits");
 if (segmentFromAF("клиент малого бизнеса") !== "ММБ") throw new Error("seg mmb");
 if (segmentFromAF("работа с корпоративным блоком") !== "КСБ") throw new Error("seg ksb");
 if (segmentFromAF("центр данных и аналитики") !== "ПМЗ") throw new Error("seg pmz");

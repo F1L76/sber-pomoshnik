@@ -130,14 +130,17 @@
         .kpi-hour .seg-n,
         .kpi-hour .seg-lbl { font-size: 0.58rem; }
         .kpi-total-share {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: var(--sber-muted);
-            margin-left: 0;
+            font-size: 1.45rem;
+            font-weight: 800;
+            margin-left: 0.15rem;
+            font-variant-numeric: tabular-nums;
         }
+        .share-ok { color: var(--sber-green); }
+        .share-warn { color: #c9a227; }
+        .share-bad { color: #c62828; }
         .kpi-seg .kpi-head {
             align-items: flex-start;
-            min-height: 4.9rem;
+            min-height: 3.4rem;
         }
         .kpi-head {
             display: flex;
@@ -169,7 +172,7 @@
         .kpi-head-text { min-width: 0; flex: 1; }
         .kpi-card.kpi-metric {
             display: grid;
-            grid-template-rows: 4.75rem 2.1rem 2.35rem minmax(0, 1fr);
+            grid-template-rows: 3.2rem 2.55rem minmax(0, 1fr);
         }
         .kpi-metric .kpi-head {
             align-items: flex-start;
@@ -180,11 +183,6 @@
             font-size: 1.18rem;
             min-height: 2.4rem;
         }
-        .kpi-metric .kpi-head p {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
         .kpi-metric .kpi-flip { margin-top: 0.15rem; }
         .kpi-metric .kpi-total {
             display: flex;
@@ -194,6 +192,7 @@
             font-variant-numeric: tabular-nums;
             white-space: nowrap;
         }
+        .kpi-term .kpi-total { justify-content: flex-end; }
         .kpi-metric .kpi-total-lbl {
             min-height: 0;
             margin-bottom: 0;
@@ -295,7 +294,6 @@
         .kpi-list td:last-child { font-weight: 600; white-space: nowrap; text-align: right; }
         .kpi-list td.kpi-share {
             width: 4.1rem;
-            color: var(--sber-muted);
             font-variant-numeric: tabular-nums;
         }
         .kpi-list .fio-cell {
@@ -327,7 +325,9 @@
         .csi-table tfoot th:first-child { text-align: left; }
         .csi-table .csi-avg { text-align: right; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
         .csi-table thead th:nth-child(2),
-        .csi-table tfoot th:nth-child(2) { text-align: right; }
+        .csi-table tfoot th:nth-child(2),
+        .csi-table thead th:nth-child(3),
+        .csi-table tfoot th:nth-child(3) { text-align: right; }
         .csi-table .csi-num {
             text-align: center;
             font-weight: 700;
@@ -444,7 +444,6 @@
         html[data-theme="dark"] .load-table .fio-cell { color: #e8eef4; }
         html[data-theme="dark"] .kpi-head h2 { color: #e8eef4; }
         html[data-theme="dark"] .line-name { color: #e8eef4; }
-        html[data-theme="dark"] .kpi-total-share { color: #94a3b8; }
         html[data-theme="dark"] .kpi-flip {
             background: #1a2330;
             border-color: #334155;
@@ -551,8 +550,7 @@
 
     <main class="container py-4">
         <section class="card-panel p-4 mb-4">
-            <h2 class="h5 mb-2">Источники данных</h2>
-            <p class="text-muted small mb-3">ФИО — столбец <strong>Y</strong> до «(». Тип ГЛ — столбец <strong>Z</strong> (рабочая группа исполнителя), не имя файла. В дашбордах только сотрудники ГЛ из графика отсутствий: Горчагова, Вавинова, Филинюк, Пасхина, Пирогова, Сироткина, Волчкова, Волков. Минуты по типу ГЛ и тегу: <strong>Осмотры</strong> — 20; <strong>1-я линия поддержки</strong> — 24; <strong>Работа с Онлайн оценкой</strong> — 20, тег «Арбитраж» — 210; <strong>Залоговая экспертиза MDO</strong> — 20, тег «Арбитраж» — 150, тег «ФЖН» — 240. Выполнение = сумма минут по заявкам ÷ плановые часы (8 ч × рабочие дни).</p>
+            <h2 class="h5 mb-3">Источники данных</h2>
             <div class="d-flex flex-wrap align-items-end gap-3">
                 <div class="flex-grow-1">
                     <label class="form-label small fw-semibold mb-1" for="excelFiles">Файлы Excel</label>
@@ -578,7 +576,6 @@
             <p class="text-muted mb-0" id="loadEmpty">Загрузите Excel и нажмите «Посчитать нагрузку».</p>
             <div id="loadResult" hidden>
                 <div class="row g-3 mb-4" id="loadStats"></div>
-                <p class="small text-muted" id="loadNote"></p>
                 <div class="table-responsive">
                     <table class="table load-table align-middle mb-0">
                         <thead>
@@ -602,11 +599,9 @@
                 <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
                 <div class="kpi-head-text">
                     <h2>Закрытые заявки по линиям</h2>
-                    <p>только заявки сотрудников ГЛ · период по T</p>
                 </div>
             </div>
             <div class="kpi-total" id="linesTotal">—</div>
-            <div class="kpi-total-lbl">Всего заявок</div>
             <div class="line-bars" id="linesBody"></div>
         </section>
 
@@ -617,14 +612,12 @@
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-stopwatch"></i></span>
                         <div class="kpi-head-text">
                             <h2>Средний срок</h2>
-                            <p id="termSub">T − S, часы · сотрудники</p>
                         </div>
                         <button type="button" class="kpi-flip" data-flip="term" title="Сотрудники / линии">
                             <i class="fas fa-right-left" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="kpi-total" id="termTotal">—</div>
-                    <div class="kpi-total-lbl">Общий срок</div>
                     <div class="kpi-list">
                         <table>
                             <colgroup>
@@ -635,8 +628,8 @@
                             <thead>
                                 <tr>
                                     <th></th>
-                                    <th class="text-end">ч</th>
                                     <th></th>
+                                    <th class="text-end">ч</th>
                                 </tr>
                             </thead>
                             <tbody id="termBody"></tbody>
@@ -650,14 +643,12 @@
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-reply"></i></span>
                         <div class="kpi-head-text">
                             <h2>Количество возвратов</h2>
-                            <p id="returnsSub">сумма W · сотрудники</p>
                         </div>
                         <button type="button" class="kpi-flip" data-flip="returns" title="Сотрудники / линии">
                             <i class="fas fa-right-left" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="kpi-total" id="returnsTotal">—</div>
-                    <div class="kpi-total-lbl">Общее количество · доля заявок</div>
                     <div class="kpi-list">
                         <table>
                             <colgroup>
@@ -683,14 +674,12 @@
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-calendar-xmark"></i></span>
                         <div class="kpi-head-text">
                             <h2>Просрочки</h2>
-                            <p id="overdueSub">AG = ДА · сотрудники</p>
                         </div>
                         <button type="button" class="kpi-flip" data-flip="overdue" title="Сотрудники / линии">
                             <i class="fas fa-right-left" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div class="kpi-total" id="overdueTotal">—</div>
-                    <div class="kpi-total-lbl">Общее количество · доля заявок</div>
                     <div class="kpi-list">
                         <table>
                             <colgroup>
@@ -716,18 +705,19 @@
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-face-smile"></i></span>
                         <div class="kpi-head-text">
                             <h2>CSI</h2>
-                            <p id="csiSub">оценка AN, 1–5 · сотрудники</p>
                         </div>
                         <button type="button" class="kpi-flip" data-flip="csi" title="Сотрудники / линии">
                             <i class="fas fa-right-left" aria-hidden="true"></i>
                         </button>
                     </div>
+                    <div class="kpi-total" id="csiTotal">—</div>
                     <div class="kpi-list">
                         <table class="csi-table">
                             <thead>
                                 <tr>
                                     <th id="csiNameHead">ФИО</th>
                                     <th>средняя</th>
+                                    <th>доля</th>
                                     <th><span class="kpi-stars csi-head-stars" aria-label="1"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
                                     <th><span class="kpi-stars csi-head-stars" aria-label="2"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
                                     <th><span class="kpi-stars csi-head-stars" aria-label="3"><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star is-off"></i><i class="fa-solid fa-star is-off"></i></span></th>
@@ -747,7 +737,6 @@
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-file-lines"></i></span>
                         <div>
                             <h2 id="segMdoTitle">MDO</h2>
-                            <p>сегмент AF</p>
                         </div>
                     </div>
                     <div class="seg-chart" id="segMdo"></div>
@@ -759,7 +748,6 @@
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-headset"></i></span>
                         <div>
                             <h2 id="segL1Title">1-я линия поддержки АС Залоги</h2>
-                            <p>сегмент AF</p>
                         </div>
                     </div>
                     <div class="seg-chart" id="segL1"></div>
@@ -771,7 +759,6 @@
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-globe"></i></span>
                         <div>
                             <h2 id="segOoTitle">Работа с Онлайн Оценкой</h2>
-                            <p>сегмент AF</p>
                         </div>
                     </div>
                     <div class="seg-chart" id="segOo"></div>
@@ -783,7 +770,6 @@
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
                         <div>
                             <h2>Приоритеты КСБ</h2>
-                            <p id="prioKsbSub">AL «приоритет» · ТБ из AF</p>
                         </div>
                     </div>
                     <div class="seg-chart" id="prioKsbBody"></div>
@@ -795,7 +781,6 @@
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
                         <div>
                             <h2>Приоритеты ММБ</h2>
-                            <p id="prioMmbSub">AL «приоритет» · ТБ из AF</p>
                         </div>
                     </div>
                     <div class="seg-chart" id="prioMmbBody"></div>
@@ -807,7 +792,6 @@
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-clock"></i></span>
                         <div>
                             <h2>Поступление по часам</h2>
-                            <p id="hourSub">AC дата создания</p>
                         </div>
                     </div>
                     <div class="seg-chart" id="hourBody"></div>
@@ -819,7 +803,6 @@
                         <span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-calendar-week"></i></span>
                         <div>
                             <h2>Поступление по дням недели</h2>
-                            <p id="wdSub">AC дата создания</p>
                         </div>
                     </div>
                     <div class="seg-chart" id="wdBody"></div>
@@ -830,8 +813,7 @@
 
     <dialog id="vacDialog" class="card-panel p-4" style="border:1px solid var(--sber-border); border-radius: 16px; max-width: 32rem; width: calc(100% - 2rem);">
         <form method="dialog" id="vacForm">
-            <h3 class="h6 mb-1"><i class="fas fa-sun me-2" style="color:#e6a817"></i>Отсутствия: <span id="vacFio"></span></h3>
-            <p class="small text-muted mb-3">Несколько периодов. После даты «с» сразу откроется календарь «по».</p>
+            <h3 class="h6 mb-3"><i class="fas fa-sun me-2" style="color:#e6a817"></i>Отсутствия: <span id="vacFio"></span></h3>
             <div id="vacPeriods" class="d-flex flex-column gap-2 mb-3"></div>
             <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="vacAdd">
                 <i class="fas fa-plus me-1" aria-hidden="true"></i>Добавить период
@@ -847,14 +829,13 @@
     <dialog id="returnsDialog" class="card-panel p-4" style="border:1px solid var(--sber-border); border-radius: 16px; max-width: 54rem; width: calc(100% - 2rem);">
         <form method="dialog" id="returnsDialogForm">
             <h3 class="h6 mb-3"><i class="fas fa-file-alt me-2" aria-hidden="true"></i><span id="returnsDialogTitle">Заявки по возвратам</span>: <span id="returnsFio"></span></h3>
-            <p class="text-muted small mb-3" id="returnsDialogNote">Отображаются строки, учтённые в дашборде: столбец <strong>A</strong> и ФИО из <strong>AD</strong> (до «(»).</p>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
                     <thead>
                         <tr>
-                            <th>ФИО (Y)</th>
-                            <th>ФИО (AD)</th>
-                            <th>Заявка (A)</th>
+                            <th>Исполнитель</th>
+                            <th>Создатель</th>
+                            <th>Заявка</th>
                             <th>Линия</th>
                         </tr>
                     </thead>
@@ -895,10 +876,14 @@
             TERR_BANKS,
             ARRIVAL_HOURS,
             WEEKDAYS,
+            SHARE_LIMIT,
             parseExcelDate,
             fioFromCell,
             isOverdueCell,
             csiBucket,
+            csiBadCount,
+            sharePct,
+            shareTone,
             lineNameFromFile,
             lineNameFromZ,
             AG_COL,
@@ -909,7 +894,7 @@
             W_COL,
             numberCell,
             answerGlQuestion
-        } from "/lib/gl-load.mjs?v=28";
+        } from "/lib/gl-load.mjs?v=29";
         import { resolveVacations } from "/lib/gl-vacations.mjs?v=22";
 
         const VAC_KEY = "gl-dashboard:vacations";
@@ -920,17 +905,12 @@
         const loadEmpty = document.getElementById("loadEmpty");
         const loadResult = document.getElementById("loadResult");
         const loadStats = document.getElementById("loadStats");
-        const loadNote = document.getElementById("loadNote");
         const loadBody = document.getElementById("loadBody");
         const linesBlock = document.getElementById("linesBlock");
         const linesBody = document.getElementById("linesBody");
         const linesTotal = document.getElementById("linesTotal");
-        const prioKsbSub = document.getElementById("prioKsbSub");
-        const prioMmbSub = document.getElementById("prioMmbSub");
         const prioKsbBody = document.getElementById("prioKsbBody");
         const prioMmbBody = document.getElementById("prioMmbBody");
-        const hourSub = document.getElementById("hourSub");
-        const wdSub = document.getElementById("wdSub");
         const hourBody = document.getElementById("hourBody");
         const wdBody = document.getElementById("wdBody");
         const kpiRow = document.getElementById("kpiRow");
@@ -942,12 +922,12 @@
         const returnsTotal = document.getElementById("returnsTotal");
         const returnsDialog = document.getElementById("returnsDialog");
         const returnsDialogTitle = document.getElementById("returnsDialogTitle");
-        const returnsDialogNote = document.getElementById("returnsDialogNote");
         const returnsFioEl = document.getElementById("returnsFio");
         const returnsAppsBody = document.getElementById("returnsAppsBody");
         const returnsMeta = document.getElementById("returnsMeta");
         const csiBody = document.getElementById("csiBody");
         const csiFoot = document.getElementById("csiFoot");
+        const csiTotal = document.getElementById("csiTotal");
         const segMdo = document.getElementById("segMdo");
         const segL1 = document.getElementById("segL1");
         const segOo = document.getElementById("segOo");
@@ -957,10 +937,6 @@
         const vacPeriods = document.getElementById("vacPeriods");
         const vacAdd = document.getElementById("vacAdd");
         const asOfInput = document.getElementById("asOfDate");
-        const termSub = document.getElementById("termSub");
-        const returnsSub = document.getElementById("returnsSub");
-        const overdueSub = document.getElementById("overdueSub");
-        const csiSub = document.getElementById("csiSub");
         const csiNameHead = document.getElementById("csiNameHead");
 
         let lastAgg = null;
@@ -1112,11 +1088,6 @@
             returnsDialogTitle.textContent = csiScore != null
                 ? `Заявки с оценкой ${csiScore}`
                 : overdueOnly ? "Заявки по просрочкам" : "Заявки по возвратам";
-            returnsDialogNote.innerHTML = csiScore != null
-                ? `Только строки с CSI (<strong>AN</strong> = ${csiScore}): сотрудник из <strong>Y</strong>, ФИО из <strong>AD</strong> (до «(») и столбец <strong>A</strong>.`
-                : overdueOnly
-                ? "Только строки с просрочкой (<strong>AG</strong> = ДА): сотрудник из <strong>Y</strong>, ФИО из <strong>AD</strong> (до «(») и столбец <strong>A</strong>."
-                : "Отображаются строки, учтённые в дашборде: сотрудник из <strong>Y</strong>, ФИО из <strong>AD</strong> (до «(») и столбец <strong>A</strong>.";
             returnsFioEl.textContent = who;
             returnsMeta.textContent = `Строк: ${apps.length}`;
             returnsAppsBody.innerHTML = apps.length
@@ -1141,7 +1112,7 @@
             return `<button type="button"
                     class="btn btn-outline-secondary btn-sm"
                     ${attr}="${encodeURIComponent(value)}"
-                    title="Показать заявки (столбец A)">
+                    title="Показать заявки">
                 <i class="fas fa-file-alt" aria-hidden="true"></i>
             </button>`;
         }
@@ -1166,9 +1137,6 @@
                 chip("Квартал с", fmtDate(agg.qStart)) +
                 chip("Рабочих дней", String(agg.workdays)) +
                 chip("Сотрудников", String(agg.employees.length));
-            const dateBit = `Дата заявки — столбец <strong>T</strong>, период ${fmtDate(agg.qStart)} – ${fmtDate(agg.today)} («На дату»). Строк без T или вне периода отброшено: ${agg.skippedOutOfQuarter}.`;
-            loadNote.innerHTML =
-                `% выполнения = сумма минут по заявкам ÷ (план ${agg.hoursPerDay || 8} ч × раб. дни). Тип ГЛ — столбец <strong>Z</strong>. Только сотрудники ГЛ (отсеяно ${agg.skippedNotGl || 0} строк). Осмотры — 20 мин, 1-я линия — 24, ОО — 20 / Арбитраж 210, MDO — 20 / Арбитраж 150 / ФЖН 240. Рабочих дней: ${agg.workdays}, план ${agg.planHours} ч. Количество заявок: ${agg.used}. ${dateBit}`;
             loadBody.innerHTML = agg.employees.map((e) => {
                 const pct = e.loadPct;
                 const width = Math.min(pct, 100);
@@ -1220,62 +1188,68 @@
             };
             const fileLabel = (f) => f.file;
             const fmtNum = (n) => (n == null || !Number.isFinite(n) ? "—" : n.toFixed(1));
-            const fmtShare = (n, apps) => (apps ? `${((Number(n) || 0) / apps * 100).toFixed(1)}%` : "—");
+            const shareClass = (pct, limit) => {
+                const t = shareTone(pct, limit);
+                return t ? `share-${t}` : "";
+            };
+            const fmtShare = (n, apps, limit) => {
+                const pct = sharePct(n, apps);
+                if (pct == null) return "—";
+                return `<span class="${shareClass(pct, limit)}">${pct.toFixed(1)}%</span>`;
+            };
+            const fmtTotalShare = (n, apps, limit) => {
+                const num = Number(n) || 0;
+                const pct = sharePct(num, apps);
+                if (pct == null) return `${num}`;
+                return `${num} <span class="kpi-total-share ${shareClass(pct, limit)}">${pct.toFixed(1)}%</span>`;
+            };
             const valCell = (n, btn) => `<td class="text-end">
                     <div class="d-flex justify-content-end align-items-center gap-2">
                         <span>${n}</span>
                         ${btn || '<span class="kpi-btn-ph" aria-hidden="true"></span>'}
                     </div>
                 </td>`;
-            const metricRow = (label, n, apps, btn) => `<tr>
+            const metricRow = (label, n, apps, btn, limit) => `<tr>
                     ${nameCell(label)}
                     ${valCell(n || 0, btn)}
-                    <td class="kpi-share">${fmtShare(n, apps)}</td>
+                    <td class="kpi-share">${fmtShare(n, apps, limit)}</td>
                 </tr>`;
             const byEmp = !kpiFlip.term;
-            termSub.textContent = byEmp ? "T − S, часы · сотрудники" : "T − S, часы · линии";
             document.querySelector('[data-flip="term"]')?.classList.toggle("is-on", !byEmp);
             if (byEmp) {
                 termBody.innerHTML = people((a, b) => (b.avgTermHours ?? -1) - (a.avgTermHours ?? -1) || a.fio.localeCompare(b.fio, "ru"))
-                    .map((e) => `<tr>${nameCell(e.fio)}${valCell(fmtNum(e.avgTermHours))}<td></td></tr>`).join("")
+                    .map((e) => `<tr>${nameCell(e.fio)}<td></td><td class="text-end">${fmtNum(e.avgTermHours)}</td></tr>`).join("")
                     || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
             } else {
                 termBody.innerHTML = filesCut()
                     .sort((a, b) => (b.avgTermHours ?? -1) - (a.avgTermHours ?? -1) || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => `<tr>${nameCell(fileLabel(f))}${valCell(fmtNum(f.avgTermHours))}<td></td></tr>`).join("")
+                    .map((f) => `<tr>${nameCell(fileLabel(f))}<td></td><td class="text-end">${fmtNum(f.avgTermHours)}</td></tr>`).join("")
                     || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
             }
             const termTxt = fmtNum(agg.avgTermHours);
             termTotal.textContent = termTxt === "—" ? "—" : `${termTxt} ч`;
 
             const overdueEmp = !kpiFlip.overdue;
-            overdueSub.textContent = overdueEmp ? "AG = ДА · доля от заявок · сотрудники" : "AG = ДА · доля от заявок линии";
             document.querySelector('[data-flip="overdue"]')?.classList.toggle("is-on", !overdueEmp);
             const overdueRows = overdueEmp
                 ? people((a, b) => b.overdue - a.overdue || a.fio.localeCompare(b.fio, "ru"))
-                    .map((e) => metricRow(e.fio, e.overdue, e.apps, appsBtn("data-overdue-fio", e.fio)))
+                    .map((e) => metricRow(e.fio, e.overdue, e.apps, appsBtn("data-overdue-fio", e.fio), SHARE_LIMIT.overdue))
                 : filesCut()
                     .sort((a, b) => b.overdue - a.overdue || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => metricRow(fileLabel(f), f.overdue, f.apps, appsBtn("data-overdue-file", f.file)));
+                    .map((f) => metricRow(fileLabel(f), f.overdue, f.apps, appsBtn("data-overdue-file", f.file), SHARE_LIMIT.overdue));
             overdueBody.innerHTML = overdueRows.join("") || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
-            const fmtTotalShare = (n, apps) => {
-                const num = Number(n) || 0;
-                const share = apps ? ` <span class="kpi-total-share">${((num / apps) * 100).toFixed(1)}%</span>` : "";
-                return `${num}${share}`;
-            };
-            overdueTotal.innerHTML = fmtTotalShare(agg.overdueTotal, agg.used);
+            overdueTotal.innerHTML = fmtTotalShare(agg.overdueTotal, agg.used, SHARE_LIMIT.overdue);
 
             const returnsEmp = !kpiFlip.returns;
-            returnsSub.textContent = returnsEmp ? "сумма W · доля от заявок · сотрудники" : "сумма W · доля от заявок линии";
             document.querySelector('[data-flip="returns"]')?.classList.toggle("is-on", !returnsEmp);
             const returnsRows = returnsEmp
                 ? people((a, b) => b.returns - a.returns || a.fio.localeCompare(b.fio, "ru"))
-                    .map((e) => metricRow(e.fio, e.returns, e.apps, appsBtn("data-returns-fio", e.fio)))
+                    .map((e) => metricRow(e.fio, e.returns, e.apps, appsBtn("data-returns-fio", e.fio), SHARE_LIMIT.returns))
                 : filesCut()
                     .sort((a, b) => b.returns - a.returns || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => metricRow(fileLabel(f), f.returns, f.apps, appsBtn("data-returns-file", f.file)));
+                    .map((f) => metricRow(fileLabel(f), f.returns, f.apps, appsBtn("data-returns-file", f.file), SHARE_LIMIT.returns));
             returnsBody.innerHTML = returnsRows.join("") || `<tr><td colspan="3" class="text-muted">Нет данных</td></tr>`;
-            returnsTotal.innerHTML = fmtTotalShare(agg.returnsTotal, agg.used);
+            returnsTotal.innerHTML = fmtTotalShare(agg.returnsTotal, agg.used, SHARE_LIMIT.returns);
 
             const csiRank = (c) => (c || []).reduce((acc, n, i) => acc + n * (i + 1), 0);
             const csiN = (c) => (c || []).reduce((s, n) => s + n, 0);
@@ -1288,22 +1262,23 @@
                 if (score > 2) return `<${tag} class="csi-num">${n}</${tag}>`;
                 return `<${tag} class="csi-num"><span class="csi-drill"><span>${n}</span>${csiScoreBtn(score, attr, value)}</span></${tag}>`;
             };
-            const csiRow = (label, c, attr, value) => `<tr>${nameCell(label)}<td class="csi-avg">${fmtAvg(csiAvg(c))}</td>${c.map((n, i) => csiCountCell(n, i + 1, attr, value, "td")).join("")}</tr>`;
+            const csiRow = (label, c, apps, attr, value) => `<tr>${nameCell(label)}<td class="csi-avg">${fmtAvg(csiAvg(c))}</td><td class="kpi-share">${fmtShare(csiBadCount(c), apps, SHARE_LIMIT.csi)}</td>${c.map((n, i) => csiCountCell(n, i + 1, attr, value, "td")).join("")}</tr>`;
             const csiEmp = !kpiFlip.csi;
-            csiSub.textContent = csiEmp ? "оценка AN, 1–5 · сотрудники" : "оценка AN, 1–5 · линии";
             csiNameHead.textContent = csiEmp ? "ФИО" : "Линия";
             document.querySelector('[data-flip="csi"]')?.classList.toggle("is-on", !csiEmp);
             const csiRows = csiEmp
                 ? people((a, b) => (csiAvg(b.csiCounts) ?? -1) - (csiAvg(a.csiCounts) ?? -1) || a.fio.localeCompare(b.fio, "ru"))
-                    .map((e) => csiRow(e.fio, e.csiCounts || [0, 0, 0, 0, 0], "data-csi-fio", e.fio))
+                    .map((e) => csiRow(e.fio, e.csiCounts || [0, 0, 0, 0, 0], e.apps, "data-csi-fio", e.fio))
                 : filesCut()
                     .sort((a, b) => (csiAvg(b.csiCounts) ?? -1) - (csiAvg(a.csiCounts) ?? -1) || a.file.localeCompare(b.file, "ru"))
-                    .map((f) => csiRow(fileLabel(f), f.csiCounts || [0, 0, 0, 0, 0], "data-csi-file", fileLabel(f)));
+                    .map((f) => csiRow(fileLabel(f), f.csiCounts || [0, 0, 0, 0, 0], f.apps, "data-csi-file", fileLabel(f)));
             csiBody.innerHTML = csiRows.length
                 ? csiRows.join("")
-                : `<tr><td colspan="7" class="text-muted">Нет данных</td></tr>`;
+                : `<tr><td colspan="8" class="text-muted">Нет данных</td></tr>`;
             const tot = agg.csiCounts || [0, 0, 0, 0, 0];
-            csiFoot.innerHTML = `<tr><th>Итого</th><th class="csi-avg">${fmtAvg(csiAvg(tot))}</th>${tot.map((n, i) => csiCountCell(n, i + 1, "", "", "th")).join("")}</tr>`;
+            const csiBad = csiBadCount(tot);
+            csiTotal.innerHTML = fmtTotalShare(csiBad, agg.used, SHARE_LIMIT.csi);
+            csiFoot.innerHTML = `<tr><th>Итого</th><th class="csi-avg">${fmtAvg(csiAvg(tot))}</th><th class="kpi-share">${fmtShare(csiBad, agg.used, SHARE_LIMIT.csi)}</th>${tot.map((n, i) => csiCountCell(n, i + 1, "", "", "th")).join("")}</tr>`;
             const segs = agg.segments || {};
             const fillSeg = (el, counts, keys = SEGMENTS, sort = true) => {
                 const c = counts || {};
@@ -1326,17 +1301,10 @@
             fillSeg(segL1, segs.l1);
             fillSeg(segOo, segs.oo);
             const prio = agg.priorities || {};
-            const prioTot = agg.priorityTotals || {};
-            prioKsbSub.textContent = `${prioTot.КСБ || 0} заявок · AL «приоритет»`;
-            prioMmbSub.textContent = `${prioTot.ММБ || 0} заявок · AL «приоритет»`;
             fillSeg(prioKsbBody, prio.КСБ, TERR_BANKS);
             fillSeg(prioMmbBody, prio.ММБ, TERR_BANKS);
             const hours = agg.byHour || {};
             const wdays = agg.byWeekday || {};
-            const hourN = ARRIVAL_HOURS.reduce((s, h) => s + (hours[h] || 0), 0);
-            const wdN = WEEKDAYS.reduce((s, d) => s + (wdays[d] || 0), 0);
-            hourSub.textContent = `${hourN} заявок · AC дата создания`;
-            wdSub.textContent = `${wdN} заявок · AC дата создания`;
             fillSeg(hourBody, hours, ARRIVAL_HOURS, false);
             fillSeg(wdBody, wdays, WEEKDAYS, false);
             kpiRow.hidden = false;
