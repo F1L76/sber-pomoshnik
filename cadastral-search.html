@@ -434,11 +434,11 @@
             const map = L.map(el, { scrollWheelZoom: true });
             // ponytail: Leaflet 1.9.4 prefix ships UA-flag SVG — plain text only
             map.attributionControl.setPrefix("Leaflet");
-            // ponytail: тайлы Яндекса в Leaflet не в WGS84 — контур НСПД уезжает на сотни метров;
-            // Esri Street Map совпадает со спутником и геометрией EPSG:4326 из geo-utils.
+            // ponytail: тайлы Яндекса в Leaflet не в WGS84 — контур НСПД уезжает на сотни метров.
+            // osm.org с этой сети отдаёт 451; HOT/openstreetmap.fr — OSM name, EPSG:3857, как спутник Esri.
             const scheme = L.tileLayer(
-                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-                { maxZoom: 19, attribution: "© Esri" }
+                "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+                { maxZoom: 19, subdomains: "abc", attribution: "© OpenStreetMap" }
             );
             const satellite = L.tileLayer(
                 "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",

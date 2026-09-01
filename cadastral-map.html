@@ -133,8 +133,8 @@
         const map = L.map("map", { scrollWheelZoom: true });
         map.attributionControl.setPrefix("Leaflet");
         const scheme = L.tileLayer(
-            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-            { maxZoom: 19, attribution: "© Esri" }
+            "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+            { maxZoom: 19, subdomains: "abc", attribution: "© OpenStreetMap" }
         );
         const satellite = L.tileLayer(
             "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
