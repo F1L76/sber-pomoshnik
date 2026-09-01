@@ -70,6 +70,10 @@ async function main() {
         }
         fs.appendFile(PROGRESS_LOG_PATH, line + "\n", () => {});
         console.log(`${ok + fail}/${kns.length} ${line}`);
+        if (/ограничил автоматический доступ/i.test(result.message || "")) {
+            console.log("kadbase упёрся в лимит запросов — останавливаюсь, чтобы не жечь дальше");
+            break;
+        }
     }
     await new Promise((resolve) => jsonl.end(resolve));
     console.log(`готово: ${ok} точек по адресу, ${fail} без точки`);
