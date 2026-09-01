@@ -5,6 +5,7 @@
  *
  *   node scripts/geocode-cadastral-list.mjs [xlsx]
  *   NSPD_GEOCODE_CONCURRENCY=10 node scripts/geocode-cadastral-list.mjs
+ *   NSPD_GEOCODE_TIMEOUT_MS=30000 — таймаут одного запроса к НСПД (по умолчанию 30с)
  */
 import { spawn, spawnSync } from "child_process";
 import fs from "fs";
