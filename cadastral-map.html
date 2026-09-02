@@ -62,9 +62,9 @@
         .marker-cluster-small { background: rgba(33, 160, 56, 0.28); }
         .marker-cluster-small div { background: rgba(33, 160, 56, 0.72); color: #fff; }
         .marker-cluster-medium { background: rgba(33, 160, 56, 0.32); }
-        .marker-cluster-medium div { background: rgba(27, 138, 50, 0.82); color: #fff; }
-        .marker-cluster-large { background: rgba(30, 42, 58, 0.28); }
-        .marker-cluster-large div { background: #1E2A3A; color: #fff; }
+        .marker-cluster-medium div { background: rgba(33, 160, 56, 0.85); color: #fff; }
+        .marker-cluster-large { background: rgba(33, 160, 56, 0.36); }
+        .marker-cluster-large div { background: #1B8A32; color: #fff; }
         .type-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
     </style>
     <link rel="stylesheet" href="/theme.css?v=13">
@@ -119,16 +119,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script>
-        const TYPE_COLOR = {
-            "Помещения": "#21A038",
-            "Здания": "#1B8A32",
-            "Земельные участки ЕГРН": "#0F6B4A",
-            "Машино-места": "#0098F8",
-            "Сооружения": "#617188",
-            "Сооружения ЕГРН": "#617188",
-            "Объекты незавершённого строительства": "#c47a00"
-        };
-        function colorFor(type) { return TYPE_COLOR[type] || "#21A038"; }
+        const POINT_COLOR = "#21A038";
 
         const map = L.map("map", { scrollWheelZoom: true });
         map.attributionControl.setPrefix("Leaflet");
@@ -169,8 +160,8 @@
                 if (filter && p.t !== filter) continue;
                 const marker = L.circleMarker([p.lat, p.lon], {
                     radius: 7,
-                    color: colorFor(p.t),
-                    fillColor: colorFor(p.t),
+                    color: POINT_COLOR,
+                    fillColor: POINT_COLOR,
                     fillOpacity: 0.85,
                     weight: 1
                 });
