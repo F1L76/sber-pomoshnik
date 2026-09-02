@@ -26,6 +26,7 @@ import { getZalogConverterHealth, probeZalogPythonDeps, probeZalogPythonDepsCach
 import { createZalogConvertJob, getZalogConvertJob } from "./lib/zalog-jobs.mjs";
 import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigachat-config.mjs";
 import { getConclusionQaInfo, searchConclusionQa } from "./lib/conclusion-qa.mjs";
+import { getNspdBases } from "./lib/nspd-config.mjs";
 import { loadGeocodeMapPayload, loadGeocodeProgress, readStatus } from "./lib/nspd-geocode-store.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -947,6 +948,16 @@ wss.on("connection", (ws) => {
         console.log(`GigaChat proxy: http://${HOST}:${PORT}`);
         console.log(`Откройте: http://localhost:${PORT}/ (локально) или URL вашего сервера`);
         logGigaChatEnvDiagnostics();
+        const nspdBases = getNspdBases();
+        if (process.env.NSPD_BASES?.trim()) {
+            console.log(`НСПД: через edge ${nspdBases.join(", ")}`);
+        } else if (process.env.RENDER || process.env.RENDER_SERVICE_ID) {
+            console.warn(
+                "⚠ НСПД: задайте NSPD_BASES + NSPD_PROXY_KEY (npm run nspd-tunnel на Mac в РФ, см. scripts/nspd-edge-proxy.mjs)"
+            );
+        } else {
+            console.log(`НСПД: напрямую ${nspdBases.join(", ")} (для Render — NSPD_BASES)`);
+        }
         warmupDealsIndexes();
         if (!process.env.GIGACHAT_CREDENTIALS) {
             console.warn("⚠ Создайте .env из .env.example и укажите GIGACHAT_CREDENTIALS");

@@ -23,3 +23,7 @@ services:
         sync: false
       - key: LANGFLOW_RUN_URL
         sync: false
+      - key: NSPD_BASES
+        sync: false
+      - key: NSPD_PROXY_KEY
+        sync: false
