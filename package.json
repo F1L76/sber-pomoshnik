@@ -11,6 +11,7 @@
     "geocode-list:awake": "caffeinate -dims node scripts/geocode-cadastral-list.mjs",
     "geocode-list:lid": "bash scripts/geocode-allow-lid.sh",
     "geocode-fallback": "node scripts/geocode-fallback-list.mjs",
+    "geocode-fallback:kadbase": "GEOCODE_FALLBACK_KADBASE=1 node scripts/geocode-fallback-list.mjs",
     "geocode-xlsx": "python3 scripts/write-coords-to-xlsx.py",
     "nspd-edge": "node scripts/nspd-edge-proxy.mjs",
     "nspd-tunnel": "bash scripts/start-nspd-tunnel.sh",
