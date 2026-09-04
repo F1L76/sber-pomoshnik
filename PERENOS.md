@@ -13,15 +13,12 @@
    npm start
    ```
 3. Откройте http://localhost:8787/
-4. Заметки со встречи: http://localhost:8787/meeting-notes  
-   OCR через **macOS Vision** работает только на Mac.
 
 Либо двойной щелчок по `start.command` в папке проекта.
 
 ## Windows / Linux
 
 Те же шаги `npm install` → правки `.env` → `npm start`.  
-OCR заметок на сервере (Vision) **недоступен** — на странице `/meeting-notes` сработает запасной Tesseract в браузере, либо вставляйте текст вручную.
 
 ## База сделок (опционально)
 

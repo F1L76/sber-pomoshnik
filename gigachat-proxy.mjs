@@ -28,7 +28,6 @@ import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigach
 import { getConclusionQaInfo, searchConclusionQa } from "./lib/conclusion-qa.mjs";
 import { getNspdBases } from "./lib/nspd-config.mjs";
 import { loadGeocodeMapPayload, loadGeocodeProgress, readStatus } from "./lib/nspd-geocode-store.mjs";
-import { ocrFromMultipart } from "./lib/meeting-notes-ocr.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
@@ -721,24 +720,6 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
-    if (req.method === "GET" && (url.pathname === "/meeting-notes" || url.pathname === "/notes")) {
-        serveStatic(req, res, path.join(__dirname, "meeting-notes.html"));
-        return;
-    }
-
-    if (req.method === "POST" && url.pathname === "/api/meeting-notes/ocr") {
-        try {
-            const result = await ocrFromMultipart(req);
-            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
-            res.end(JSON.stringify({ ok: true, ...result }));
-        } catch (e) {
-            const msg = e.message || String(e);
-            const status = /пустое|ожидается|нет поля|больше/i.test(msg) ? 400 : 500;
-            res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
-            res.end(JSON.stringify({ ok: false, error: msg }));
-        }
-        return;
-    }
 
     if (req.method === "GET" && (url.pathname === "/gl-dashboard" || url.pathname === "/gl-dashboard/")) {
         serveStatic(req, res, path.join(__dirname, "gl-dashboard.html"));
