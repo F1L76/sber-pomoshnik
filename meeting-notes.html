@@ -143,6 +143,7 @@
                         <div id="ocrBar" class="progress-bar bg-success" style="width:0%"></div>
                     </div>
                 </div>
+                <p class="hint mb-3">Сначала macOS Vision на сервере; если недоступен — Tesseract в браузере (JPG/PNG).</p>
 
                 <label class="form-label fw-semibold" for="ocrText">Текст (можно править)</label>
                 <textarea id="ocrText" class="form-control" rows="10" placeholder="Иван — подготовить отчёт до пятницы&#10;отв. Мария: согласовать оценку к 12.09"></textarea>
@@ -255,7 +256,12 @@ function parseFromText() {
 }
 
 function setImage(file) {
-    if (!file || !file.type.startsWith("image/")) return;
+    if (!file) return;
+    const okType = !file.type || file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif|heic|heif|tif{1,2})$/i.test(file.name || "");
+    if (!okType) {
+        alert("Нужен файл изображения (JPG, PNG, HEIC…)");
+        return;
+    }
     currentFile = file;
     sourceName = file.name || "фото";
     btnOcr.disabled = false;
@@ -264,34 +270,105 @@ function setImage(file) {
     preview.classList.remove("d-none");
 }
 
+function setProgress(label, pct) {
+    ocrStatus.textContent = label;
+    if (pct != null) {
+        ocrPct.textContent = Math.round(pct) + "%";
+        ocrBar.style.width = Math.round(pct) + "%";
+    }
+}
+
+/** Canvas JPEG — Tesseract стабильнее читает его, чем сырой File/HEIC. */
+async function fileToJpegDataUrl(file) {
+    const url = URL.createObjectURL(file);
+    try {
+        const img = await new Promise((resolve, reject) => {
+            const el = new Image();
+            el.onload = () => resolve(el);
+            el.onerror = () => reject(new Error("Браузер не смог открыть изображение (попробуйте JPG/PNG)"));
+            el.src = url;
+        });
+        const maxSide = 2400;
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        if (!w || !h) throw new Error("Пустое изображение");
+        const scale = Math.min(1, maxSide / Math.max(w, h));
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        return canvas.toDataURL("image/jpeg", 0.92);
+    } finally {
+        URL.revokeObjectURL(url);
+    }
+}
+
+async function ocrViaServer(file) {
+    const fd = new FormData();
+    fd.append("image", file, file.name || "notes.jpg");
+    const res = await fetch("/api/meeting-notes/ocr", { method: "POST", body: fd });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.ok) {
+        throw new Error(json.error || `Сервер OCR HTTP ${res.status}`);
+    }
+    return json.text || "";
+}
+
+async function ocrViaTesseract(file) {
+    setProgress("Подготовка изображения…", 5);
+    const dataUrl = await fileToJpegDataUrl(file);
+    setProgress("Tesseract (браузер)…", 10);
+    const CDN = "https://cdn.jsdelivr.net/npm";
+    const worker = await Tesseract.createWorker("rus+eng", 1, {
+        workerPath: `${CDN}/tesseract.js@5/dist/worker.min.js`,
+        corePath: `${CDN}/tesseract.js-core@5/tesseract-core-simd.wasm.js`,
+        langPath: "https://tessdata.projectnaptha.com/4.0.0",
+        logger: (m) => {
+            if (m.status === "recognizing text" && m.progress != null) {
+                setProgress("Распознавание…", 10 + m.progress * 85);
+            } else if (m.status) {
+                setProgress(m.status, null);
+            }
+        },
+    });
+    try {
+        const result = await worker.recognize(dataUrl);
+        return (result?.data?.text || "").trim();
+    } finally {
+        await worker.terminate().catch(() => {});
+    }
+}
+
 async function runOcr() {
     if (!currentFile) return;
     btnOcr.disabled = true;
     ocrProgress.classList.remove("d-none");
-    ocrStatus.textContent = "Загрузка OCR…";
-    ocrPct.textContent = "0%";
-    ocrBar.style.width = "0%";
+    setProgress("OCR через сервер (Vision)…", 15);
     try {
-        const result = await Tesseract.recognize(currentFile, "rus+eng", {
-            logger: (m) => {
-                if (m.status === "recognizing text" && m.progress != null) {
-                    const pct = Math.round(m.progress * 100);
-                    ocrStatus.textContent = "Распознавание…";
-                    ocrPct.textContent = pct + "%";
-                    ocrBar.style.width = pct + "%";
-                } else if (m.status) {
-                    ocrStatus.textContent = m.status;
-                }
-            },
-        });
-        ocrText.value = (result?.data?.text || "").trim();
+        let text = "";
+        let used = "vision";
+        try {
+            text = await ocrViaServer(currentFile);
+            setProgress("Vision готов", 100);
+        } catch (serverErr) {
+            console.warn("server OCR failed, fallback Tesseract:", serverErr);
+            setProgress("Сервер недоступен → Tesseract…", 20);
+            text = await ocrViaTesseract(currentFile);
+            used = "tesseract";
+            setProgress("Tesseract готов", 100);
+        }
+        if (!text) throw new Error("Текст не найден — попробуйте более чёткое фото или вставьте текст вручную");
+        ocrText.value = text;
         parseFromText();
-        ocrStatus.textContent = "Готово";
-        ocrPct.textContent = "100%";
-        ocrBar.style.width = "100%";
+        ocrStatus.textContent = used === "vision" ? "Готово (macOS Vision)" : "Готово (Tesseract)";
     } catch (e) {
         ocrStatus.textContent = "Ошибка OCR: " + (e.message || e);
-        alert("OCR не удался: " + (e.message || e));
+        alert("OCR не удался: " + (e.message || e) + "\n\nМожно вставить текст вручную в поле ниже.");
     } finally {
         btnOcr.disabled = !currentFile;
     }

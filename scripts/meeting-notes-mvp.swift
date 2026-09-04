@@ -4,6 +4,7 @@
 //
 // Usage:
 //   swift scripts/meeting-notes-mvp.swift photo.jpg
+//   swift scripts/meeting-notes-mvp.swift photo.jpg --ocr-only
 //   swift scripts/meeting-notes-mvp.swift photo.jpg -o out.md
 //   swift scripts/meeting-notes-mvp.swift --text $'Иван — отчёт до пятницы\n...'
 //   swift scripts/meeting-notes-mvp.swift --self-check
@@ -197,7 +198,7 @@ func usage() -> Never {
     fputs(
         """
         Usage:
-          swift scripts/meeting-notes-mvp.swift <image> [-o out.md]
+          swift scripts/meeting-notes-mvp.swift <image> [-o out.md] [--ocr-only]
           swift scripts/meeting-notes-mvp.swift --text "строки…" [-o out.md]
           swift scripts/meeting-notes-mvp.swift --self-check
 
@@ -240,6 +241,7 @@ func main() {
     var outPath: String?
     var textArg: String?
     var imagePath: String?
+    var ocrOnly = false
     var i = 0
     while i < args.count {
         let a = args[i]
@@ -248,6 +250,9 @@ func main() {
         }
         if a == "--text", i + 1 < args.count {
             textArg = args[i + 1]; i += 2; continue
+        }
+        if a == "--ocr-only" {
+            ocrOnly = true; i += 1; continue
         }
         if a.hasPrefix("-") { usage() }
         imagePath = a; i += 1
@@ -274,6 +279,11 @@ func main() {
     if ocrText.isEmpty {
         fputs("OCR вернул пустой текст — проверьте фото/качество рукописи.\n", stderr)
         exit(1)
+    }
+
+    if ocrOnly {
+        print(ocrText)
+        return
     }
 
     let (actions, rest) = extractActions(from: ocrText)
