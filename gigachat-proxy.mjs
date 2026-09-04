@@ -720,6 +720,11 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === "GET" && (url.pathname === "/meeting-notes" || url.pathname === "/notes")) {
+        serveStatic(req, res, path.join(__dirname, "meeting-notes.html"));
+        return;
+    }
+
     if (req.method === "GET" && (url.pathname === "/gl-dashboard" || url.pathname === "/gl-dashboard/")) {
         serveStatic(req, res, path.join(__dirname, "gl-dashboard.html"));
         return;
