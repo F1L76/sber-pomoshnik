@@ -351,12 +351,15 @@ def lookup_vin(vin: str, *, try_corrections: bool = True) -> VehicleInfo:
     return base
 
 
-def lookup_batch(queries: list[str]) -> list[VehicleInfo]:
+def lookup_batch(queries: list[str], on_result=None) -> list[VehicleInfo]:
     try_corrections = len(queries) == 1
     out: list[VehicleInfo] = []
     for i, q in enumerate(queries):
         if i:
             # ponytail: slow batch to reduce 429 from drom
             time.sleep(1.2 if not drom_cooling_down() else 0.3)
-        out.append(lookup_query(q, try_corrections=try_corrections))
+        info = lookup_query(q, try_corrections=try_corrections)
+        out.append(info)
+        if on_result is not None:
+            on_result(i, info)
     return out

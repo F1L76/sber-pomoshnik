@@ -42,6 +42,10 @@ def _parse_queries(data: dict) -> list[str]:
     return []
 
 
+def _emit(obj: dict) -> None:
+    print(json.dumps(obj, ensure_ascii=False), flush=True)
+
+
 def main() -> int:
     try:
         raw = sys.stdin.read() if not sys.stdin.isatty() else (sys.argv[1] if len(sys.argv) > 1 else "")
@@ -51,19 +55,53 @@ def main() -> int:
         return 2
 
     queries = _parse_queries(data)
+    stream = bool(data.get("stream"))
 
     if not queries:
-        print(json.dumps({"error": "Укажите VIN или госномер"}, ensure_ascii=False))
+        msg = {"error": "Укажите VIN или госномер"}
+        if stream:
+            _emit({"type": "error", **msg})
+        else:
+            print(json.dumps(msg, ensure_ascii=False))
         return 2
 
     if len(queries) > MAX_QUERIES:
-        print(json.dumps({"error": f"Не более {MAX_QUERIES} номеров за один запрос"}, ensure_ascii=False))
+        msg = {"error": f"Не более {MAX_QUERIES} номеров за один запрос"}
+        if stream:
+            _emit({"type": "error", **msg})
+        else:
+            print(json.dumps(msg, ensure_ascii=False))
         return 2
 
     try:
+        if stream:
+            found_count = 0
+
+            def on_result(index: int, info) -> None:
+                nonlocal found_count
+                if info.found:
+                    found_count += 1
+                _emit({"type": "result", "index": index, "item": info.to_dict()})
+
+            results = lookup_batch(queries, on_result=on_result)
+            _emit(
+                {
+                    "type": "done",
+                    "total": len(results),
+                    "found_count": found_count,
+                    "not_found_count": len(results) - found_count,
+                    "source": "drom",
+                }
+            )
+            return 0
+
         results = lookup_batch(queries)
     except Exception as exc:
-        print(json.dumps({"error": f"Ошибка поиска: {exc}"}, ensure_ascii=False))
+        msg = {"error": f"Ошибка поиска: {exc}"}
+        if stream:
+            _emit({"type": "error", **msg})
+        else:
+            print(json.dumps(msg, ensure_ascii=False))
         return 1
 
     found_count = sum(1 for r in results if r.found)

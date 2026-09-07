@@ -16,7 +16,7 @@ import zlib from "zlib";
 import { fileURLToPath } from "url";
 import { WebSocketServer } from "ws";
 import { searchByCadastralNumber, streamCadastralSearch } from "./lib/cadastral-search.mjs";
-import { checkVinHealth, lookupVins } from "./lib/vin-lookup.mjs";
+import { checkVinHealth, lookupVins, lookupVinsNdjson } from "./lib/vin-lookup.mjs";
 import { getPanoramaCachePath } from "./lib/yandex-panorama-screenshot.mjs";
 import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
 import { searchDealsByQuarter, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
@@ -737,13 +737,33 @@ const server = http.createServer(async (req, res) => {
         try {
             const raw = await readBody(req);
             const body = JSON.parse(raw || "{}");
-            const result = await lookupVins({
+            const opts = {
                 vins: Array.isArray(body.vins) ? body.vins : undefined,
                 plates: Array.isArray(body.plates) ? body.plates : undefined,
                 queries: Array.isArray(body.queries) ? body.queries : undefined,
                 text: body.text,
                 plate: body.plate
-            });
+            };
+            if (body.stream) {
+                res.writeHead(200, {
+                    "Content-Type": "application/x-ndjson; charset=utf-8",
+                    "Access-Control-Allow-Origin": "*",
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no"
+                });
+                if (typeof res.flushHeaders === "function") res.flushHeaders();
+                try {
+                    await lookupVinsNdjson(opts, res);
+                    res.end();
+                } catch (err) {
+                    if (!res.writableEnded) {
+                        res.write(JSON.stringify({ type: "error", error: err.message || "Ошибка поиска по VIN" }) + "\n");
+                        res.end();
+                    }
+                }
+                return;
+            }
+            const result = await lookupVins(opts);
             res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
             res.end(JSON.stringify(result));
         } catch (err) {

@@ -643,6 +643,118 @@
             return Math.min(String(payload.text || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean).length || 1, MAX_VINS);
         }
 
+        function updateBatchStats(done, total, found, notFound) {
+            statsRow.classList.remove("d-none");
+            const progress = done < total
+                ? `<span class="stat-chip">Проверено: ${done} / ${total}</span>`
+                : `<span class="stat-chip">Всего: ${total}</span>`;
+            statsRow.innerHTML = `
+                ${progress}
+                <span class="stat-chip ok">Найдено: ${found}</span>
+                <span class="stat-chip bad">Без данных: ${notFound}</span>`;
+        }
+
+        function applyLookupResults(data) {
+            emptyState.classList.add("d-none");
+            statsRow.classList.remove("d-none");
+            statsRow.innerHTML = `
+                <span class="stat-chip">Всего: ${data.total}</span>
+                <span class="stat-chip ok">Найдено: ${data.found_count}</span>
+                <span class="stat-chip bad">Без данных: ${data.not_found_count}</span>`;
+            resultsEl.innerHTML = data.results.map(renderCard).join("");
+        }
+
+        async function runLookupStream(payload, vinCount, ctrl, timeoutSec) {
+            emptyState.classList.add("d-none");
+            resultsEl.innerHTML = "";
+            updateBatchStats(0, vinCount, 0, 0);
+
+            const title = document.getElementById("loadingTitle");
+            title.textContent = `Котик проверяет ${vinCount} ${pluralRu(vinCount, "номер", "номера", "номеров")}…`;
+
+            const res = await fetch(`${API_BASE}/api/vin/lookup`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" },
+                body: JSON.stringify({ ...payload, stream: true }),
+                signal: ctrl.signal
+            });
+            if (!res.ok) {
+                let errMsg = `HTTP ${res.status}`;
+                try {
+                    const errData = await res.json();
+                    errMsg = errData.error || errMsg;
+                } catch (_) {
+                    try {
+                        errMsg = (await res.text()) || errMsg;
+                    } catch (_) {}
+                }
+                throw new Error(errMsg);
+            }
+            if (!res.body) throw new Error("Поток ответа недоступен");
+
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = "";
+            let doneCount = 0;
+            let found = 0;
+            let notFound = 0;
+            let finished = false;
+
+            while (!finished) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || "";
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    let msg;
+                    try {
+                        msg = JSON.parse(trimmed);
+                    } catch {
+                        continue;
+                    }
+                    if (msg.type === "error") throw new Error(msg.error || "Ошибка поиска");
+                    if (msg.type === "result" && msg.item) {
+                        doneCount += 1;
+                        if (msg.item.found && !msg.item.lookup_error) found += 1;
+                        else notFound += 1;
+                        resultsEl.insertAdjacentHTML("beforeend", renderCard(msg.item));
+                        updateBatchStats(doneCount, vinCount, found, notFound);
+                        title.textContent = `Получено ${doneCount} из ${vinCount}…`;
+                        resultsEl.lastElementChild?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                    }
+                    if (msg.type === "done") {
+                        finished = true;
+                        updateBatchStats(
+                            msg.total ?? doneCount,
+                            msg.total ?? vinCount,
+                            msg.found_count ?? found,
+                            msg.not_found_count ?? notFound
+                        );
+                    }
+                }
+            }
+            if (buffer.trim()) {
+                try {
+                    const msg = JSON.parse(buffer.trim());
+                    if (msg.type === "error") throw new Error(msg.error || "Ошибка поиска");
+                    if (msg.type === "done") {
+                        updateBatchStats(
+                            msg.total ?? doneCount,
+                            msg.total ?? vinCount,
+                            msg.found_count ?? found,
+                            msg.not_found_count ?? notFound
+                        );
+                    }
+                } catch (err) {
+                    if (err.message && !/JSON/.test(err.message)) throw err;
+                }
+            }
+            if (!doneCount) throw new Error(`Превышено время ожидания (${timeoutSec} с). Разбейте список или повторите позже.`);
+        }
+
         async function runLookup() {
             let payload;
             if (activeTab === "plate") {
@@ -660,6 +772,7 @@
             const vinCount = estimateVinCount(payload);
             const timeoutMs = vinCount <= 1 ? 180000 : Math.min(900000, 60000 + vinCount * 20000);
             const timeoutSec = Math.round(timeoutMs / 1000);
+            const useStream = activeTab === "batch" && vinCount > 1;
 
             alertBox.innerHTML = "";
             showSearchLoading(vinCount);
@@ -668,23 +781,20 @@
             const timer = setTimeout(() => ctrl.abort(), timeoutMs);
 
             try {
-                const res = await fetch(`${API_BASE}/api/vin/lookup`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                    signal: ctrl.signal
-                });
-                clearTimeout(timer);
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-
-                emptyState.classList.add("d-none");
-                statsRow.classList.remove("d-none");
-                statsRow.innerHTML = `
-                    <span class="stat-chip">Всего: ${data.total}</span>
-                    <span class="stat-chip ok">Найдено: ${data.found_count}</span>
-                    <span class="stat-chip bad">Без данных: ${data.not_found_count}</span>`;
-                resultsEl.innerHTML = data.results.map(renderCard).join("");
+                if (useStream) {
+                    await runLookupStream(payload, vinCount, ctrl, timeoutSec);
+                } else {
+                    const res = await fetch(`${API_BASE}/api/vin/lookup`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                        signal: ctrl.signal
+                    });
+                    clearTimeout(timer);
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+                    applyLookupResults(data);
+                }
             } catch (err) {
                 clearTimeout(timer);
                 const msg = err.name === "AbortError"
@@ -692,6 +802,7 @@
                     : (err.message || "Ошибка запроса");
                 alertBox.innerHTML = `<div class="alert alert-danger">${escapeHtml(msg)}</div>`;
             } finally {
+                clearTimeout(timer);
                 hideSearchLoading();
             }
         }
