@@ -32,6 +32,7 @@ if str(_VIN_ROOT) not in sys.path:
     sys.path.insert(0, str(_VIN_ROOT))
 
 from vin_lookup.drom import cooldown_remaining, drom_cooling_down, lookup_drom  # noqa: E402
+from vin_lookup.nhtsa import lookup_nhtsa  # noqa: E402
 from vin_lookup.service import lookup_query  # noqa: E402
 from vin_validator.iso3779 import normalize_vin  # noqa: E402
 
@@ -42,6 +43,10 @@ STATUS_PATH = OUT_DIR / "status.json"
 PROGRESS_LOG_PATH = OUT_DIR / "progress.log"
 WRITE_XLSX_PY = Path(__file__).resolve().parent / "write-vin-to-xlsx.py"
 NHTSA_BATCH_URL = "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVINValuesBatch/"
+
+# ponytail: быстрый режим — не сидим 3 минуты на 429; drom добираем короткими паузами
+PARSE_GAP = float(os.environ.get("VIN_PARSE_GAP", "2.5"))
+MAX_COOLDOWN_WAIT = float(os.environ.get("VIN_PARSE_MAX_COOLDOWN_WAIT", "8"))
 
 
 def _now() -> str:
@@ -196,8 +201,7 @@ def try_drom_cache(vin: str) -> dict | None:
     }
 
 
-def live_lookup(vin: str) -> dict:
-    info = lookup_query(vin, try_corrections=False)
+def _info_to_row(vin: str, info, source: str) -> dict:
     make = _clean(info.make)
     model = _clean(info.model)
     year = _clean(info.model_year)
@@ -208,9 +212,34 @@ def live_lookup(vin: str) -> dict:
         "make": make,
         "model": model,
         "year": year,
-        "source": ",".join(info.sources_used or ([info.source] if info.source else [])) or "lookup",
-        "err": None if ok else (info.lookup_error or "нет данных"),
+        "source": source,
+        "err": None if ok else (getattr(info, "lookup_error", None) or "нет данных"),
     }
+
+
+def live_lookup(vin: str, *, allow_drom: bool = True) -> dict:
+    if allow_drom and not drom_cooling_down():
+        info = lookup_query(vin, try_corrections=False)
+        src = ",".join(info.sources_used or ([info.source] if info.source else [])) or "lookup"
+        return _info_to_row(vin, info, src)
+    # быстро: только NHTSA, без ожидания drom
+    normalized = normalize_vin(vin) if len(vin) >= 11 else vin
+    info = lookup_nhtsa(vin, normalized)
+    return _info_to_row(vin, info, "nhtsa")
+
+
+def wait_cooldown_brief() -> bool:
+    """Ждём cooldown не дольше MAX_COOLDOWN_WAIT. True = можно снова бить в drom."""
+    if not drom_cooling_down():
+        return True
+    rem = cooldown_remaining()
+    if rem > MAX_COOLDOWN_WAIT:
+        return False
+    left = rem + 0.3
+    while left > 0 and drom_cooling_down():
+        time.sleep(min(1.0, left))
+        left -= 1.0
+    return not drom_cooling_down()
 
 
 def parse_args(argv: list[str]) -> tuple[Path, bool, int]:
@@ -365,26 +394,41 @@ def main() -> int:
         write_xlsx(xlsx)
         flush(True)
 
-    # --- pass 3: live lookup ---
+    # --- pass 3: живой поиск (быстро: короткие паузы, без ожидания 180с) ---
     need_live = [v for v in still if not _is_complete(rows.get(v) or {})]
-    # также те, кого NHTSA не закрыл и не было в still как complete
-    _log(f"живой поиск: {len(need_live)} VIN (drom+NHTSA, с паузой)")
+    _log(
+        f"живой поиск: {len(need_live)} VIN "
+        f"(gap={PARSE_GAP}s, max_cooldown_wait={MAX_COOLDOWN_WAIT}s)"
+    )
 
+    deferred: list[str] = []
     for i, vin in enumerate(need_live):
+        allow_drom = True
         if drom_cooling_down():
-            wait = min(cooldown_remaining() + 0.5, 180)
-            _log(f"~ пауза drom {wait:.0f} с…")
-            # обновляем статус кусками — экран прогресса не «замирает»
-            left = wait
-            while left > 0 and drom_cooling_down():
-                flush(True)
-                step = min(5.0, left)
-                time.sleep(step)
-                left -= step
-        if i:
-            time.sleep(1.2 if not drom_cooling_down() else 0.3)
+            if not wait_cooldown_brief():
+                allow_drom = False
+                deferred.append(vin)
+                # не блокируемся: оставляем то, что уже есть / добьём drom позже
+                if rows.get(vin) and (rows[vin].get("make") or rows[vin].get("model") or rows[vin].get("year")):
+                    rows[vin]["ok"] = True
+                    note(vin, rows[vin], rows[vin].get("source") or "partial")
+                    continue
+                live = live_lookup(vin, allow_drom=False)
+                rows[vin] = _merge(rows.get(vin) or {"vin": vin}, live, prefer_src=True)
+                rows[vin]["ok"] = bool(rows[vin].get("make") or rows[vin].get("model") or rows[vin].get("year"))
+                if not rows[vin]["ok"]:
+                    rows[vin]["err"] = "ждём drom (cooldown)"
+                note(vin, rows[vin], "nhtsa-fast")
+                if (i + 1) % 5 == 0:
+                    save_results(rows)
+                    write_xlsx(xlsx)
+                    flush(True)
+                continue
+
+        if i and allow_drom:
+            time.sleep(PARSE_GAP)
         try:
-            live = live_lookup(vin)
+            live = live_lookup(vin, allow_drom=allow_drom)
         except Exception as exc:
             live = {
                 "vin": vin,
@@ -403,6 +447,8 @@ def main() -> int:
         elif not (rows[vin].get("make") or rows[vin].get("model") or rows[vin].get("year")):
             rows[vin]["ok"] = False
             rows[vin]["err"] = live.get("err") or "нет данных"
+            if "лимит" in str(rows[vin].get("err") or "").lower() or "429" in str(rows[vin].get("err") or ""):
+                deferred.append(vin)
         else:
             rows[vin]["ok"] = True
 
@@ -411,6 +457,40 @@ def main() -> int:
             save_results(rows)
             write_xlsx(xlsx)
             flush(True)
+
+    # --- pass 4: короткий добор drom только по неполным (без долгих sleep) ---
+    need_drom = []
+    seen = set()
+    for vin in deferred + [v for v in still if not _is_complete(rows.get(v) or {})]:
+        if vin in seen:
+            continue
+        seen.add(vin)
+        if not _is_complete(rows.get(vin) or {}):
+            need_drom.append(vin)
+
+    if need_drom:
+        _log(f"добор drom: {len(need_drom)} VIN (без ожидания длинного cooldown)")
+        for i, vin in enumerate(need_drom):
+            if drom_cooling_down() and not wait_cooldown_brief():
+                _log(f"~ drom всё ещё в cooldown — останавливаем добор, осталось {len(need_drom) - i}")
+                break
+            if i:
+                time.sleep(PARSE_GAP)
+            try:
+                live = live_lookup(vin, allow_drom=True)
+            except Exception as exc:
+                live = {"vin": vin, "ok": False, "err": str(exc), "make": None, "model": None, "year": None, "source": "error"}
+            rows[vin] = _merge(rows.get(vin) or {"vin": vin}, live, prefer_src=True)
+            rows[vin]["ok"] = bool(rows[vin].get("make") or rows[vin].get("model") or rows[vin].get("year"))
+            if not rows[vin]["ok"]:
+                rows[vin]["err"] = live.get("err") or rows[vin].get("err") or "нет данных"
+            else:
+                rows[vin].pop("err", None)
+            note(vin, rows[vin], rows[vin].get("source") or "drom")
+            if (i + 1) % 3 == 0 or i + 1 == len(need_drom):
+                save_results(rows)
+                write_xlsx(xlsx)
+                flush(True)
 
     for vin in vins:
         if vin not in rows:
