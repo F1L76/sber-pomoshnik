@@ -28,6 +28,7 @@ import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigach
 import { getConclusionQaInfo, searchConclusionQa } from "./lib/conclusion-qa.mjs";
 import { getNspdBases } from "./lib/nspd-config.mjs";
 import { loadGeocodeMapPayload, loadGeocodeProgress, readStatus } from "./lib/nspd-geocode-store.mjs";
+import { loadVinParseProgress } from "./lib/vin-parse-store.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 8787;
@@ -676,6 +677,17 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === "GET" && url.pathname === "/geocode-progress") {
         serveStatic(req, res, path.join(__dirname, "geocode-progress.html"));
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/vin-parse-progress") {
+        serveStatic(req, res, path.join(__dirname, "vin-parse-progress.html"));
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/vin-parse/progress") {
+        res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify(loadVinParseProgress()));
         return;
     }
 
