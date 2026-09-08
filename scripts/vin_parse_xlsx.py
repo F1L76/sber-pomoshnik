@@ -151,39 +151,44 @@ def read_vins(xlsx: Path) -> list[str]:
 def nhtsa_batch(vins: list[str]) -> dict[str, dict]:
     if not vins:
         return {}
-    body = urllib.parse.urlencode({"format": "json", "DATA": ";".join(vins)}).encode()
-    req = urllib.request.Request(
-        NHTSA_BATCH_URL,
-        data=body,
-        method="POST",
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": "sber-pomoshnik-vin-parse/1.0",
-        },
-    )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        payload = json.loads(resp.read().decode("utf-8"))
     out: dict[str, dict] = {}
-    for item in payload.get("Results") or []:
-        vin = str(item.get("VIN") or "").strip().upper()
-        if not vin:
+    chunk_size = 200
+    for i in range(0, len(vins), chunk_size):
+        chunk = vins[i : i + chunk_size]
+        body = urllib.parse.urlencode({"format": "json", "DATA": ";".join(chunk)}).encode()
+        req = urllib.request.Request(
+            NHTSA_BATCH_URL,
+            data=body,
+            method="POST",
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "User-Agent": "sber-pomoshnik-vin-parse/1.0",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=45) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+        except Exception:  # noqa: BLE001
             continue
-        make = _clean(item.get("Make")) or _clean(item.get("Manufacturer"))
-        model = _clean(item.get("Model"))
-        year = _clean(item.get("ModelYear"))
-        if not (make or model or year):
-            continue
-        # NHTSA иногда отдаёт длинный manufacturer вместо марки
-        if make and len(make) > 40 and not _clean(item.get("Make")):
-            make = make.split(",")[0].strip()[:40]
-        out[vin] = {
-            "vin": vin,
-            "ok": True,
-            "make": make,
-            "model": model,
-            "year": year,
-            "source": "nhtsa",
-        }
+        for item in payload.get("Results") or []:
+            vin = str(item.get("VIN") or "").strip().upper()
+            if not vin:
+                continue
+            make = _clean(item.get("Make")) or _clean(item.get("Manufacturer"))
+            model = _clean(item.get("Model"))
+            year = _clean(item.get("ModelYear"))
+            if not (make or model or year):
+                continue
+            if make and len(make) > 40 and not _clean(item.get("Make")):
+                make = make.split(",")[0].strip()[:40]
+            out[vin] = {
+                "vin": vin,
+                "ok": True,
+                "make": make,
+                "model": model,
+                "year": year,
+                "source": "nhtsa",
+            }
     return out
 
 
@@ -428,29 +433,32 @@ def main() -> int:
         )
     ]
     if os.environ.get("VIN_PARSE_SKIP_AVTOCOD", "").lower() not in ("1", "true", "yes"):
-        _log(f"Avtocod превью: {len(need_avtocod)} VIN…")
-        for i, vin in enumerate(need_avtocod):
-            try:
-                hit = try_avtocod(vin)
-            except Exception as exc:  # noqa: BLE001
-                _log(f"~ avtocod {vin}: {exc}")
-                hit = None
-            if not hit:
-                continue
-            before = dict(rows.get(vin) or {"vin": vin})
-            # ponytail: Avtocod только дополняет пустое — title иногда врёт (Lada вместо URAL)
-            merged = _merge(before, {**hit, "ok": True}, prefer_src=False)
-            if any(_clean(hit.get(k)) for k in ("make", "model", "year")):
-                if "avtocod" not in (merged.get("source") or ""):
-                    merged["source"] = ((before.get("source") or "") + "+avtocod").strip("+")
-                merged.pop("err", None)
-            rows[vin] = merged
-            note(vin, rows[vin], "avtocod")
-            if (i + 1) % 2 == 0 or i + 1 == len(need_avtocod):
-                save_results(rows)
-                write_xlsx(xlsx)
-                flush(True)
-            time.sleep(0.4)
+        if len(need_avtocod) > 40 and os.environ.get("VIN_PARSE_WITH_AVTOCOD", "").lower() not in ("1", "true", "yes"):
+            _log(f"Avtocod: пропуск для большого пакета ({len(need_avtocod)} VIN > 40), используйте npm run vin-parse:avtocod для добора")
+        else:
+            _log(f"Avtocod превью: {len(need_avtocod)} VIN…")
+            for i, vin in enumerate(need_avtocod):
+                try:
+                    hit = try_avtocod(vin)
+                except Exception as exc:  # noqa: BLE001
+                    _log(f"~ avtocod {vin}: {exc}")
+                    hit = None
+                if not hit:
+                    continue
+                before = dict(rows.get(vin) or {"vin": vin})
+                # ponytail: Avtocod только дополняет пустое — title иногда врёт (Lada вместо URAL)
+                merged = _merge(before, {**hit, "ok": True}, prefer_src=False)
+                if any(_clean(hit.get(k)) for k in ("make", "model", "year")):
+                    if "avtocod" not in (merged.get("source") or ""):
+                        merged["source"] = ((before.get("source") or "") + "+avtocod").strip("+")
+                    merged.pop("err", None)
+                rows[vin] = merged
+                note(vin, rows[vin], "avtocod")
+                if (i + 1) % 10 == 0 or i + 1 == len(need_avtocod):
+                    save_results(rows)
+                    write_xlsx(xlsx)
+                    flush(True)
+                time.sleep(0.4)
 
     # пересчитать queue: что ещё неполное
     still: list[str] = [v for v in queue if not _is_complete(rows.get(v) or {})]
@@ -501,10 +509,14 @@ def main() -> int:
 
     # --- pass 3: живой поиск (быстро: короткие паузы, без ожидания 180с) ---
     need_live = [v for v in still if not _is_complete(rows.get(v) or {})]
-    _log(
-        f"живой поиск: {len(need_live)} VIN "
-        f"(gap={PARSE_GAP}s, max_cooldown_wait={MAX_COOLDOWN_WAIT}s)"
-    )
+    if len(need_live) > 50 and os.environ.get("VIN_PARSE_WITH_LIVE", "").lower() not in ("1", "true", "yes"):
+        _log(f"живой drom: пропуск для большого пакета ({len(need_live)} VIN > 50), без риска 429")
+        need_live = []
+    else:
+        _log(
+            f"живой поиск: {len(need_live)} VIN "
+            f"(gap={PARSE_GAP}s, max_cooldown_wait={MAX_COOLDOWN_WAIT}s)"
+        )
 
     deferred: list[str] = []
     for i, vin in enumerate(need_live):
