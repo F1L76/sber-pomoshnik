@@ -370,6 +370,52 @@ def _parse_report(raw_query: str, normalized: str, payload: dict[str, Any]) -> V
     )
 
 
+def lookup_autoru_query(raw_query: str, normalized: str | None = None) -> VehicleInfo:
+    """Госномер или VIN — то же превью Авто.ру (без валидации как у номера)."""
+    q = (normalized or raw_query or "").strip().upper()
+    if len(q) < 5:
+        return VehicleInfo(
+            vin=raw_query,
+            normalized=q,
+            found=False,
+            source="autoru",
+            lookup_error="Пустой запрос",
+        )
+    try:
+        if _edge_bases():
+            try:
+                payload = _edge_post_report(q)
+                return _parse_report(raw_query, q, payload)
+            except RuntimeError:
+                pass
+        if _curl_bin():
+            try:
+                payload = _curl_post_report(q)
+                # ponytail: IN_PROGRESS — короткий poll
+                for _ in range(5):
+                    err = payload.get("error") or payload.get("status")
+                    if payload.get("report") or err not in ("IN_PROGRESS", None):
+                        break
+                    time.sleep(1.2)
+                    payload = _curl_post_report(q)
+                return _parse_report(raw_query, q, payload)
+            except RuntimeError:
+                pass
+        opener = _open_opener()
+        csrf = _warm_session(opener)
+        payload = _post_report(opener, csrf, q)
+        return _parse_report(raw_query, q, payload)
+    except Exception as exc:  # noqa: BLE001
+        return VehicleInfo(
+            vin=raw_query,
+            normalized=q,
+            found=False,
+            source="autoru",
+            sources_used=["autoru"],
+            lookup_error=f"Авто.ру: {exc}",
+        )
+
+
 def lookup_autoru_plate(raw_plate: str, normalized: str | None = None) -> VehicleInfo:
     """Бесплатное превью отчёта Авто.ру по госномеру (или VIN в том же поле)."""
     from vin_validator.plate import normalize_plate, plate_error
@@ -377,6 +423,10 @@ def lookup_autoru_plate(raw_plate: str, normalized: str | None = None) -> Vehicl
     normalized = normalized or normalize_plate(raw_plate)
     err = plate_error(normalized)
     if err:
+        # если это похоже на VIN — пробуем как VIN без plate-валидации
+        raw_up = str(raw_plate or "").strip().upper()
+        if len(raw_up) >= 11 and re.match(r"^[A-HJ-NPR-Z0-9]+$", raw_up):
+            return lookup_autoru_query(raw_plate, raw_up)
         return VehicleInfo(
             vin=raw_plate,
             normalized=normalized,
@@ -384,54 +434,7 @@ def lookup_autoru_plate(raw_plate: str, normalized: str | None = None) -> Vehicl
             source="autoru",
             lookup_error=err,
         )
-
-    try:
-        # 1) RF edge (Render) → 2) curl → 3) urllib
-        if _edge_bases():
-            try:
-                payload = _edge_post_report(normalized)
-                return _parse_report(raw_plate, normalized, payload)
-            except RuntimeError:
-                pass
-
-        if _curl_bin():
-            try:
-                payload = _curl_post_report(normalized)
-                return _parse_report(raw_plate, normalized, payload)
-            except RuntimeError:
-                pass
-
-        opener = _open_opener()
-        csrf = _warm_session(opener)
-        payload = _post_report(opener, csrf, normalized)
-        return _parse_report(raw_plate, normalized, payload)
-    except urllib.error.HTTPError as exc:
-        if exc.code == 429:
-            msg = (
-                "Слишком много запросов к Авто.ру (HTTP 429). "
-                "Подождите минуту и повторите."
-            )
-        elif exc.code in (403, 401):
-            msg = "Авто.ру временно недоступен. Повторите позже."
-        else:
-            msg = f"Ошибка Авто.ру (HTTP {exc.code})"
-        return VehicleInfo(
-            vin=raw_plate,
-            normalized=normalized,
-            found=False,
-            source="autoru",
-            sources_used=["autoru"],
-            lookup_error=msg,
-        )
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError, RuntimeError) as exc:
-        return VehicleInfo(
-            vin=raw_plate,
-            normalized=normalized,
-            found=False,
-            source="autoru",
-            sources_used=["autoru"],
-            lookup_error=f"Ошибка сети Авто.ру: {exc}",
-        )
+    return lookup_autoru_query(raw_plate, normalized)
 
 
 if __name__ == "__main__":

@@ -16,6 +16,7 @@
     "geocode-xlsx": "python3 scripts/write-coords-to-xlsx.py",
     "vin-parse": "DROM_MIN_GAP=2.5 DROM_COOLDOWN_SEC=45 VIN_PARSE_GAP=2.5 VIN_PARSE_MAX_COOLDOWN_WAIT=8 python3 scripts/vin_parse_xlsx.py",
     "vin-parse:missing": "DROM_MIN_GAP=2.5 DROM_COOLDOWN_SEC=45 VIN_PARSE_GAP=2.5 VIN_PARSE_MAX_COOLDOWN_WAIT=8 python3 scripts/vin_parse_xlsx.py --missing",
+    "vin-parse:avtocod": "python3 scripts/vin_avtocod_fill.py",
     "vin-parse:awake": "caffeinate -dims npm run vin-parse",
     "vin-parse:xlsx": "python3 scripts/write-vin-to-xlsx.py",
     "nspd-edge": "node scripts/nspd-edge-proxy.mjs",

@@ -4,8 +4,10 @@
 
 Бесплатные источники, по приоритету качества:
   1) кэш drom (уже скачанные превью)
-  2) NHTSA DecodeVINValuesBatch (быстрый пакетный)
-  3) живой drom / NHTSA через lookup_query (по одному, с паузой)
+  2) локальная расшифровка WMI/год/модели РФ (мгновенно, без сети)
+  3) Avtocod превью (марка+год через Chrome/Playwright)
+  4) NHTSA DecodeVINValuesBatch (быстрый пакетный)
+  5) живой drom / NHTSA через lookup_query (по одному, с паузой)
 
   python3 scripts/vin_parse_xlsx.py [xlsx]
   python3 scripts/vin_parse_xlsx.py --missing   # только пустые / неуспешные
@@ -31,7 +33,9 @@ _VIN_ROOT = _ROOT / "vin_checker"
 if str(_VIN_ROOT) not in sys.path:
     sys.path.insert(0, str(_VIN_ROOT))
 
+from vin_lookup.avtocod import lookup_avtocod_vin  # noqa: E402
 from vin_lookup.drom import cooldown_remaining, drom_cooling_down, lookup_drom  # noqa: E402
+from vin_lookup.local_ru import decode_local  # noqa: E402
 from vin_lookup.nhtsa import lookup_nhtsa  # noqa: E402
 from vin_lookup.service import lookup_query  # noqa: E402
 from vin_validator.iso3779 import normalize_vin  # noqa: E402
@@ -181,6 +185,34 @@ def nhtsa_batch(vins: list[str]) -> dict[str, dict]:
             "source": "nhtsa",
         }
     return out
+
+
+def try_local(vin: str) -> dict | None:
+    d = decode_local(vin)
+    if not (d.make or d.model or d.year):
+        return None
+    return {
+        "vin": vin,
+        "ok": True,
+        "make": d.make,
+        "model": d.model,
+        "year": d.year,
+        "source": "local",
+    }
+
+
+def try_avtocod(vin: str) -> dict | None:
+    info = lookup_avtocod_vin(vin)
+    if not info.found:
+        return None
+    return {
+        "vin": vin,
+        "ok": True,
+        "make": _clean(info.make),
+        "model": _clean(info.model),
+        "year": _clean(info.model_year),
+        "source": "avtocod",
+    }
 
 
 def try_drom_cache(vin: str) -> dict | None:
@@ -351,9 +383,89 @@ def main() -> int:
     _log(f"старт: {xlsx.name}, всего {total}, к обработке {len(queue)}")
     flush(True)
 
+    # --- pass 0: локальная расшифровка (мгновенно, без сети) ---
+    # Заполняем пробелы у всех VIN из файла, не только queue.
+    local_hits = 0
+    for vin in vins:
+        loc = try_local(vin)
+        if not loc:
+            continue
+        before = dict(rows.get(vin) or {"vin": vin})
+        rows[vin] = _merge(before, loc, prefer_src=False)  # онлайн-данные важнее
+        # но пустые поля берём из local; «год из будущего» тоже чиним
+        for key in ("make", "model", "year"):
+            cur = _clean(rows[vin].get(key))
+            neu = _clean(loc.get(key))
+            if not cur and neu:
+                rows[vin][key] = loc[key]
+            elif key == "year" and neu and cur:
+                try:
+                    if int(cur) > 2026 and int(neu) <= 2026:
+                        rows[vin][key] = loc[key]
+                except ValueError:
+                    pass
+        if rows[vin].get("make") or rows[vin].get("model") or rows[vin].get("year"):
+            rows[vin]["ok"] = True
+            rows[vin].pop("err", None)
+        if rows[vin] != before:
+            local_hits += 1
+            if vin in queue or not _is_complete(before):
+                note(vin, rows[vin], "local")
+    if local_hits:
+        save_results(rows)
+        write_xlsx(xlsx)
+        flush(True)
+        _log(f"локально дополнено: {local_hits}")
+
+    # --- pass 0b: Avtocod превью (марка/год; правит ошибки local WMI) ---
+    need_avtocod = [
+        v
+        for v in vins
+        if not _is_complete(rows.get(v) or {})
+        or (
+            (rows.get(v) or {}).get("source") == "local"
+            and not _clean((rows.get(v) or {}).get("model"))
+        )
+    ]
+    if os.environ.get("VIN_PARSE_SKIP_AVTOCOD", "").lower() not in ("1", "true", "yes"):
+        _log(f"Avtocod превью: {len(need_avtocod)} VIN…")
+        for i, vin in enumerate(need_avtocod):
+            try:
+                hit = try_avtocod(vin)
+            except Exception as exc:  # noqa: BLE001
+                _log(f"~ avtocod {vin}: {exc}")
+                hit = None
+            if not hit:
+                continue
+            before = dict(rows.get(vin) or {"vin": vin})
+            merged = dict(before)
+            # Avtocod: дополняем пустое; марку правим только если была local/nhtsa
+            if _clean(hit.get("make")):
+                src0 = (before.get("source") or "")
+                if not _clean(before.get("make")) or src0 in ("local", "nhtsa", "nhtsa-fast", ""):
+                    merged["make"] = hit["make"]
+            if _clean(hit.get("year")) and not _clean(before.get("year")):
+                merged["year"] = hit["year"]
+            if _clean(hit.get("model")) and not _clean(before.get("model")):
+                merged["model"] = hit["model"]
+            if any(_clean(hit.get(k)) for k in ("make", "model", "year")):
+                merged["source"] = ((before.get("source") or "") + "+avtocod").strip("+")
+                merged["ok"] = True
+                merged.pop("err", None)
+            rows[vin] = merged
+            note(vin, rows[vin], "avtocod")
+            if (i + 1) % 2 == 0 or i + 1 == len(need_avtocod):
+                save_results(rows)
+                write_xlsx(xlsx)
+                flush(True)
+            time.sleep(0.4)
+
+    # пересчитать queue: что ещё неполное
+    still: list[str] = [v for v in queue if not _is_complete(rows.get(v) or {})]
+
     # --- pass 1: drom cache (мгновенно) ---
-    still: list[str] = []
-    for vin in queue:
+    still2: list[str] = []
+    for vin in still:
         cached = try_drom_cache(vin)
         if cached and (cached.get("make") or cached.get("model") or cached.get("year")):
             rows[vin] = _merge(rows.get(vin) or {"vin": vin}, cached, prefer_src=True)
@@ -361,7 +473,8 @@ def main() -> int:
             note(vin, rows[vin], "cache")
             if _is_complete(rows[vin]):
                 continue
-        still.append(vin)
+        still2.append(vin)
+    still = still2
     if any(v in rows for v in queue):
         save_results(rows)
         write_xlsx(xlsx)
