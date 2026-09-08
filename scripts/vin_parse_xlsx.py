@@ -438,19 +438,11 @@ def main() -> int:
             if not hit:
                 continue
             before = dict(rows.get(vin) or {"vin": vin})
-            merged = dict(before)
-            # Avtocod: дополняем пустое; марку правим только если была local/nhtsa
-            if _clean(hit.get("make")):
-                src0 = (before.get("source") or "")
-                if not _clean(before.get("make")) or src0 in ("local", "nhtsa", "nhtsa-fast", ""):
-                    merged["make"] = hit["make"]
-            if _clean(hit.get("year")) and not _clean(before.get("year")):
-                merged["year"] = hit["year"]
-            if _clean(hit.get("model")) and not _clean(before.get("model")):
-                merged["model"] = hit["model"]
+            # ponytail: Avtocod только дополняет пустое — title иногда врёт (Lada вместо URAL)
+            merged = _merge(before, {**hit, "ok": True}, prefer_src=False)
             if any(_clean(hit.get(k)) for k in ("make", "model", "year")):
-                merged["source"] = ((before.get("source") or "") + "+avtocod").strip("+")
-                merged["ok"] = True
+                if "avtocod" not in (merged.get("source") or ""):
+                    merged["source"] = ((before.get("source") or "") + "+avtocod").strip("+")
                 merged.pop("err", None)
             rows[vin] = merged
             note(vin, rows[vin], "avtocod")

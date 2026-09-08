@@ -163,7 +163,7 @@ def decode_local(vin: str) -> LocalDecode:
     model = None
     if wmi in ("XTA", "XTB", "ZXV"):
         model = _vaz_model(vds)
-    elif wmi in ("XTY", "X96", "X89", "X90", "X1F", "Y3M", "XVL", "XWM", "X1M"):
+    elif wmi in ("XTY", "X96", "X89", "X90", "X1F", "Y3M", "XVL", "XWM", "X1M", "X3E", "Z0V", "XUB", "X60", "Y39"):
         model = _bus_model(vds)
     elif wmi == "X8A" and vds.startswith("964"):
         model = "Patriot / Pickup"

@@ -62,10 +62,9 @@ def main() -> int:
         info = lookup_avtocod_vin(vin)
         row = dict(rows.get(vin) or {"vin": vin})
         if info.found:
-            if info.make and (not row.get("make") or (row.get("source") or "").startswith("local")):
-                # только дополняем/правим local
-                if not row.get("make"):
-                    row["make"] = info.make
+            # только пустые поля — не затираем WMI/drom/local
+            if info.make and not row.get("make"):
+                row["make"] = info.make
             if info.model_year and not row.get("year"):
                 row["year"] = info.model_year
             if info.model and not row.get("model"):
