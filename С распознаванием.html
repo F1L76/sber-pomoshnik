@@ -2196,7 +2196,12 @@
         }
         if (scenario === "recentConclusion") {
             const concl = currentClientData.conclusions?.[0];
-            const conclId = concl?.id || "ASZ";
+            const rawId = concl?.id || "ASZ";
+            // ponytail: не светим полный ASZ/SD — цифры → точки
+            const conclId = String(rawId).replace(
+                /\b((?:ASZ|SD)[\s\-_/]*)(\d[\d\s\-_/]*)/gi,
+                (_, p, d) => p + d.replace(/\d/g, ".")
+            );
             assistantInsightEl.innerHTML =
                 `<div class="assistant-insight-eyebrow">Подсказка помощника</div>` +
                 `<h2 class="assistant-insight-title">${hello}!<br>Вы недавно получили залоговое заключение № ${escapeHtml(conclId)}.</h2>` +
