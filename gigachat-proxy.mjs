@@ -738,6 +738,11 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === "GET" && (url.pathname === "/gl-zs" || url.pathname === "/gl-zs/")) {
+        serveStatic(req, res, path.join(__dirname, "gl-zs-landing.html"));
+        return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/vin/health") {
         const health = await checkVinHealth();
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });

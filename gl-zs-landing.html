@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ГЛ ЗС — горячая линия Залоговой службы</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #0f1c1a;
+            --ink-soft: #1a2e2a;
+            --paper: #f3efe6;
+            --paper-2: #e8e2d4;
+            --lime: #c8f542;
+            --lime-deep: #9fc41a;
+            --mist: rgba(243, 239, 230, 0.72);
+            --line: rgba(15, 28, 26, 0.12);
+            --chat-bg: #102420;
+        }
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            margin: 0;
+            font-family: Manrope, sans-serif;
+            color: var(--ink);
+            background: var(--paper);
+            line-height: 1.5;
+        }
+        a { color: inherit; }
+        .wrap {
+            width: min(1120px, calc(100% - 2.5rem));
+            margin-inline: auto;
+        }
+
+        /* —— Hero —— */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: grid;
+            align-items: end;
+            color: #f7f4ec;
+            overflow: hidden;
+            background: #0b1614;
+        }
+        .hero__media {
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(8, 18, 16, 0.25) 0%, rgba(8, 18, 16, 0.78) 58%, rgba(8, 18, 16, 0.94) 100%),
+                url("https://images.unsplash.com/photo-1525182008055-f88b95ff7980?auto=format&fit=crop&w=1800&q=80")
+                    center / cover no-repeat;
+        }
+        .hero__noise {
+            position: absolute;
+            inset: 0;
+            opacity: 0.18;
+            pointer-events: none;
+            background-image: radial-gradient(rgba(255,255,255,0.35) 0.5px, transparent 0.5px);
+            background-size: 3px 3px;
+            mix-blend-mode: soft-light;
+        }
+        .hero__inner {
+            position: relative;
+            z-index: 1;
+            padding: clamp(1.5rem, 4vw, 3rem) 0 clamp(2.5rem, 6vw, 4.5rem);
+        }
+        .brand {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 0.65rem;
+            font-family: Unbounded, sans-serif;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            font-size: clamp(1.35rem, 3vw, 1.85rem);
+            margin-bottom: 1.4rem;
+            opacity: 0;
+            animation: rise 0.8s ease 0.1s forwards;
+        }
+        .brand mark {
+            display: inline-grid;
+            place-items: center;
+            width: 2.1rem;
+            height: 2.1rem;
+            border-radius: 0.45rem;
+            background: var(--lime);
+            color: var(--ink);
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+        .hero h1 {
+            font-family: Unbounded, sans-serif;
+            font-weight: 600;
+            font-size: clamp(2.1rem, 6.2vw, 4.4rem);
+            line-height: 1.05;
+            max-width: 14ch;
+            margin: 0 0 1rem;
+            opacity: 0;
+            animation: rise 0.85s ease 0.22s forwards;
+        }
+        .hero__lead {
+            max-width: 36rem;
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            color: rgba(247, 244, 236, 0.86);
+            margin: 0 0 1.75rem;
+            opacity: 0;
+            animation: rise 0.85s ease 0.34s forwards;
+        }
+        .hero__cta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            opacity: 0;
+            animation: rise 0.85s ease 0.46s forwards;
+        }
+        .btn {
+            appearance: none;
+            border: 0;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            padding: 0.9rem 1.25rem;
+            border-radius: 999px;
+            font: inherit;
+            font-weight: 700;
+            transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+        }
+        .btn:hover { transform: translateY(-1px); }
+        .btn-primary { background: var(--lime); color: var(--ink); }
+        .btn-primary:hover { background: #d7ff63; }
+        .btn-ghost {
+            background: transparent;
+            color: #f7f4ec;
+            border: 1px solid rgba(247, 244, 236, 0.35);
+        }
+        .btn-ghost:hover { background: rgba(247, 244, 236, 0.08); }
+
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(18px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* —— Sections —— */
+        section { padding: clamp(3rem, 7vw, 5.5rem) 0; }
+        .section-kicker {
+            font-family: Unbounded, sans-serif;
+            font-size: 0.78rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #5d6d68;
+            margin: 0 0 0.75rem;
+        }
+        .section-title {
+            font-family: Unbounded, sans-serif;
+            font-size: clamp(1.55rem, 3.5vw, 2.35rem);
+            line-height: 1.15;
+            margin: 0 0 0.85rem;
+            max-width: 18ch;
+        }
+        .section-lead {
+            margin: 0 0 2rem;
+            max-width: 40rem;
+            color: #3d4c48;
+            font-size: 1.05rem;
+        }
+
+        .topics {
+            background:
+                radial-gradient(circle at 12% 20%, rgba(200, 245, 66, 0.18), transparent 28%),
+                linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+        }
+        .topic-list {
+            display: grid;
+            gap: 0;
+            border-top: 1px solid var(--line);
+        }
+        .topic-list a,
+        .topic-list .topic {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 1rem;
+            align-items: baseline;
+            padding: 1.15rem 0;
+            border-bottom: 1px solid var(--line);
+            text-decoration: none;
+        }
+        .topic-list .n {
+            font-family: Unbounded, sans-serif;
+            font-size: 0.85rem;
+            color: #6b7b76;
+            min-width: 2ch;
+        }
+        .topic-list .t {
+            font-weight: 700;
+            font-size: 1.08rem;
+        }
+        .topic-list .d {
+            color: #51605c;
+            font-size: 0.95rem;
+        }
+        .topic-list a:hover .t { color: #45620a; }
+
+        .faq { background: #fffdf8; }
+        .faq-list { display: grid; gap: 0.65rem; max-width: 48rem; }
+        details.faq-item {
+            border: 1px solid var(--line);
+            border-radius: 1rem;
+            background: #fff;
+            padding: 0.15rem 1rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        details.faq-item[open] {
+            border-color: rgba(159, 196, 26, 0.55);
+            box-shadow: 0 10px 30px rgba(15, 28, 26, 0.05);
+        }
+        details.faq-item summary {
+            cursor: pointer;
+            list-style: none;
+            font-weight: 700;
+            padding: 1rem 1.5rem 1rem 0;
+            position: relative;
+        }
+        details.faq-item summary::-webkit-details-marker { display: none; }
+        details.faq-item summary::after {
+            content: "+";
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            font-family: Unbounded, sans-serif;
+            color: #6b7b76;
+        }
+        details.faq-item[open] summary::after { content: "–"; }
+        .faq-body {
+            padding: 0 0 1.1rem;
+            color: #33423e;
+            border-top: 1px solid transparent;
+        }
+        .faq-body p { margin: 0.65rem 0 0; }
+        .faq-body ul { margin: 0.55rem 0 0; padding-left: 1.15rem; }
+        .faq-body li { margin: 0.25rem 0; }
+
+        .ask {
+            background: var(--ink);
+            color: #f3efe6;
+        }
+        .ask .section-kicker { color: rgba(200, 245, 66, 0.8); }
+        .ask .section-lead { color: rgba(243, 239, 230, 0.72); }
+        .chat {
+            display: grid;
+            grid-template-rows: minmax(280px, 42vh) auto;
+            border: 1px solid rgba(243, 239, 230, 0.14);
+            border-radius: 1.25rem;
+            overflow: hidden;
+            background: var(--chat-bg);
+            max-width: 48rem;
+        }
+        .chat-log {
+            overflow: auto;
+            padding: 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .bubble {
+            max-width: min(92%, 36rem);
+            padding: 0.85rem 1rem;
+            border-radius: 1rem;
+            white-space: pre-wrap;
+            font-size: 0.96rem;
+        }
+        .bubble--bot {
+            align-self: flex-start;
+            background: rgba(243, 239, 230, 0.08);
+            border: 1px solid rgba(243, 239, 230, 0.1);
+        }
+        .bubble--user {
+            align-self: flex-end;
+            background: var(--lime);
+            color: var(--ink);
+            font-weight: 600;
+        }
+        .bubble .meta {
+            display: block;
+            font-size: 0.72rem;
+            opacity: 0.65;
+            margin-bottom: 0.3rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .chat-form {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.55rem;
+            padding: 0.85rem;
+            border-top: 1px solid rgba(243, 239, 230, 0.12);
+            background: rgba(0, 0, 0, 0.22);
+        }
+        .chat-form textarea {
+            resize: none;
+            min-height: 3.1rem;
+            max-height: 8rem;
+            border: 1px solid rgba(243, 239, 230, 0.16);
+            border-radius: 0.9rem;
+            padding: 0.75rem 0.9rem;
+            background: rgba(243, 239, 230, 0.06);
+            color: #f3efe6;
+            font: inherit;
+        }
+        .chat-form textarea:focus {
+            outline: 2px solid rgba(200, 245, 66, 0.45);
+            outline-offset: 1px;
+        }
+        .chat-form button {
+            align-self: end;
+            min-width: 7.5rem;
+        }
+        .hit {
+            margin-top: 0.65rem;
+            padding-top: 0.65rem;
+            border-top: 1px solid rgba(243, 239, 230, 0.12);
+            font-size: 0.88rem;
+            opacity: 0.92;
+        }
+        .hit strong { display: block; margin-bottom: 0.2rem; }
+        .chat-note {
+            margin: 0.85rem 0 0;
+            font-size: 0.88rem;
+            color: rgba(243, 239, 230, 0.55);
+            max-width: 40rem;
+        }
+
+        footer {
+            padding: 1.5rem 0 2.25rem;
+            color: #5d6d68;
+            font-size: 0.9rem;
+            border-top: 1px solid var(--line);
+            background: var(--paper);
+        }
+        footer a { color: #2f4a18; font-weight: 600; }
+
+        @media (max-width: 720px) {
+            .topic-list a,
+            .topic-list .topic {
+                grid-template-columns: auto 1fr;
+            }
+            .topic-list .d {
+                grid-column: 2;
+            }
+            .chat-form {
+                grid-template-columns: 1fr;
+            }
+            .chat-form button { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <header class="hero">
+        <div class="hero__media" aria-hidden="true"></div>
+        <div class="hero__noise" aria-hidden="true"></div>
+        <div class="hero__inner wrap">
+            <div class="brand"><mark>ГЛ</mark> Залоговая служба</div>
+            <h1>Горячая линия, которая сначала отвечает инструкциями</h1>
+            <p class="hero__lead">
+                Разбираем типовые вопросы по залоговой экспертизе. Многое уже описано здесь —
+                посмотрите инструкции до обращения, а если останется вопрос — спросите в чате.
+            </p>
+            <div class="hero__cta">
+                <a class="btn btn-primary" href="#faq">Частые вопросы</a>
+                <a class="btn btn-ghost" href="#ask">Задать вопрос</a>
+            </div>
+        </div>
+    </header>
+
+    <section class="topics" id="topics">
+        <div class="wrap">
+            <p class="section-kicker">С чем работает ГЛ</p>
+            <h2 class="section-title">Темы обращений</h2>
+            <p class="section-lead">
+                Горячая линия помогает по процессу ЗС: приоритет, стоимость, осмотр, ВТИ, автооценка и размещение материалов.
+                Ниже — ориентир, какие вопросы закрываются инструкциями на этой странице.
+            </p>
+            <div class="topic-list">
+                <a href="#faq-priority">
+                    <span class="n">01</span>
+                    <span class="t">Приоритет по заявке</span>
+                    <span class="d">Когда можно ускорить и кто согласует</span>
+                </a>
+                <a href="#faq-cost">
+                    <span class="n">02</span>
+                    <span class="t">Стоимость и арбитраж</span>
+                    <span class="d">Как оспорить оценку аргументированно</span>
+                </a>
+                <a href="#faq-auto">
+                    <span class="n">03</span>
+                    <span class="t">Автооценка</span>
+                    <span class="d">Что не арбитражируется и как идти дальше</span>
+                </a>
+                <a href="#faq-inspect">
+                    <span class="n">04</span>
+                    <span class="t">Осмотр и Аспект</span>
+                    <span class="d">Фото, доступ, смена контакта, статусы СО</span>
+                </a>
+                <a href="#faq-vti">
+                    <span class="n">05</span>
+                    <span class="t">ВТИ и техизменения</span>
+                    <span class="d">Актуализация СЗЗ, снятие рисков</span>
+                </a>
+                <a href="#faq-docs">
+                    <span class="n">06</span>
+                    <span class="t">Сроки, ЭКД, отчёты</span>
+                    <span class="d">Действие заключения, размещение, оценщик</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="faq" id="faq">
+        <div class="wrap">
+            <p class="section-kicker">Инструкции</p>
+            <h2 class="section-title">Частые вопросы</h2>
+            <p class="section-lead">
+                Краткие ответы по типовым ситуациям. Если формулировка вашего кейса сложнее — перейдите в чат ниже:
+                он ищет по внутренней базе вопросов ГЛ.
+            </p>
+            <div class="faq-list">
+                <details class="faq-item" id="faq-priority">
+                    <summary>Как установить приоритет по заявке?</summary>
+                    <div class="faq-body">
+                        <p>Сформулируйте причину приоритета (сроки сделки, программа субсидирования, повторная доработка и т.п.) и направьте обращение на ГЛ.</p>
+                        <ul>
+                            <li>От территориальных менеджеров приоритет принимается только по согласованию директора МЦК и директора центра ЦООП.</li>
+                            <li>Если приоритет нужен из‑за ошибки в заключении — укажите, что именно исправить и к какому сроку решения по сделке.</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item" id="faq-cost">
+                    <summary>Не согласен со стоимостью — что делать?</summary>
+                    <div class="faq-body">
+                        <p>Стоимость рассчитана по рыночным данным. Для пересмотра направьте аргументированное мнение:</p>
+                        <ul>
+                            <li>почему считаете оценку заниженной/завышенной;</li>
+                            <li>аналоги, сопоставимые с объектом;</li>
+                            <li>подтверждающие материалы (ДКП, предложения рынка и т.д.).</li>
+                        </ul>
+                        <p>По предварительному мнению (ПМ) пересмотр стоимости не производится — нужна полноценная экспертиза с полным пакетом документов.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item" id="faq-auto">
+                    <summary>Заключение вышло через Автооценку. Можно ли арбитраж?</summary>
+                    <div class="faq-body">
+                        <p>После Автооценки арбитраж не проводится. Если результат не устраивает:</p>
+                        <ul>
+                            <li>отправьте заявку на ЗС как новый залог / последующий залог (не ВТИ);</li>
+                            <li>экспертиза пройдёт в полном объёме.</li>
+                        </ul>
+                        <p>Автооценка — сервисный контур ММБ, не полноценная экспертиза сотрудника ЗС. На скорость выпуска ЕГРН через АС Залоги ГЛ не влияет.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item" id="faq-inspect">
+                    <summary>Проблемы с осмотром / приложением Аспект</summary>
+                    <div class="faq-body">
+                        <p>Типовые сценарии, которые закрываются без эскалации «в никуда»:</p>
+                        <ul>
+                            <li>смена контакта клиента для самоосмотра;</li>
+                            <li>срок действия пароля СО;</li>
+                            <li>клиент сделал фото, но они не пришли;</li>
+                            <li>объекты не видны в заявке / вход в Аспект;</li>
+                            <li>смена типа осмотра (ММБ), отмена осмотра.</li>
+                        </ul>
+                        <p>Если заявка уже закрыта или СО невозможен по зоне риска — это отдельный статус, опишите его в обращении.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item" id="faq-vti">
+                    <summary>Нужны технические изменения (ВТИ) или снятие риска</summary>
+                    <div class="faq-body">
+                        <p>Для актуализации СЗЗ / снятия риска выставьте заявку на ВТИ и в комментарии явно перечислите изменения.</p>
+                        <ul>
+                            <li>Если материалы уже были приняты ранее, а риск в заключении остался — укажите это и приложите ссылку на предыдущий ответ.</li>
+                            <li>По арбитражу ВТИ выпускается отдельным контуром: формулировку для СЗЗ подскажут при постановке задачи.</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item" id="faq-docs">
+                    <summary>Срок действия СЗЗ, ЭКД, отчёты об оценке</summary>
+                    <div class="faq-body">
+                        <ul>
+                            <li><strong>Последзалог:</strong> заключение обычно действует, если с выпуска прошло не более 12 месяцев, материалы осмотра не старше 12 месяцев и в мониторинге нет негатива.</li>
+                            <li><strong>К7М:</strong> для последующего залога в «7М» заключение может признаваться действующим вне зависимости от давности — по методике 2171.</li>
+                            <li><strong>ЭКД:</strong> по ММБ материалы кладут в папку клиента / досье сделок / ID CRM / Заключения / Заключения по залогу; по КСБ — по принятому маршруту размещения.</li>
+                            <li><strong>Отчёт оценщика:</strong> порядок — в приложении 8 Регламента 2222; принимается при соблюдении условий регламента.</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>Единый комплекс ЗУ + здания/сооружения</summary>
+                    <div class="faq-body">
+                        <p>Если объекты рассчитаны как единый объект недвижимости (ЗУ + ЗиС), ориентируйтесь на общую оценочную стоимость.</p>
+                        <p>Перераспределение между ЗУ и ЗиС не требуется, если общая рыночная стоимость сопоставима с ДКП в допуске около ±20% и в залог принимается общая стоимость комплекса.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>Когда всё же писать / звонить на ГЛ?</summary>
+                    <div class="faq-body">
+                        <p>Имеет смысл обращаться, если:</p>
+                        <ul>
+                            <li>инструкция на сайте не покрывает ваш кейс;</li>
+                            <li>нужен приоритет или разбор ошибки в уже выпущенном заключении;</li>
+                            <li>завис процесс (осмотр, ЕГРН, загрузка в СБОФ) и есть конкретный ID заявки/запроса.</li>
+                        </ul>
+                        <p>Сначала сформулируйте вопрос в чате ниже — часто ответ уже есть в базе типовых обращений.</p>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <section class="ask" id="ask">
+        <div class="wrap">
+            <p class="section-kicker">Диалог</p>
+            <h2 class="section-title">Спросить по базе ГЛ</h2>
+            <p class="section-lead">
+                Поиск по внутренней базе вопросов и ответов горячей линии. Номера обращений в ответах скрыты.
+            </p>
+            <div class="chat" aria-label="Чат по базе вопросов ГЛ">
+                <div class="chat-log" id="chatLog"></div>
+                <form class="chat-form" id="chatForm">
+                    <label class="visually-hidden" for="chatInput" style="position:absolute;left:-9999px">Ваш вопрос</label>
+                    <textarea id="chatInput" rows="2" placeholder="Например: как оспорить стоимость после автооценки?" required></textarea>
+                    <button class="btn btn-primary" type="submit" id="chatSend">Спросить</button>
+                </form>
+            </div>
+            <p class="chat-note" id="chatMeta">Подключаем индекс…</p>
+        </div>
+    </section>
+
+    <footer>
+        <div class="wrap">
+            Лендинг ГЛ ЗС ·
+            <a href="/">к помощнику</a>
+            ·
+            <a href="/gl-dashboard">dashboard ГЛ</a>
+        </div>
+    </footer>
+
+    <script>
+        const API = "";
+        const logEl = document.getElementById("chatLog");
+        const formEl = document.getElementById("chatForm");
+        const inputEl = document.getElementById("chatInput");
+        const sendEl = document.getElementById("chatSend");
+        const metaEl = document.getElementById("chatMeta");
+
+        function addBubble(kind, html) {
+            const div = document.createElement("div");
+            div.className = `bubble bubble--${kind}`;
+            div.innerHTML = html;
+            logEl.appendChild(div);
+            logEl.scrollTop = logEl.scrollHeight;
+            return div;
+        }
+
+        function esc(s) {
+            return String(s ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function renderHits(hits) {
+            if (!hits.length) {
+                return '<span class="meta">ГЛ</span>В базе ничего близкого не нашлось. Переформулируйте вопрос или обратитесь на горячую линию с ID заявки.';
+            }
+            const blocks = hits.map((h, i) => {
+                const q = esc(h.question || "").replace(/\n/g, "<br>");
+                const a = esc(h.answer || "").replace(/\n/g, "<br>");
+                const sheet = esc(h.sheet || "");
+                return `<div class="hit"><strong>#${i + 1} · ${sheet}</strong>${q}<br><br>${a}</div>`;
+            }).join("");
+            return `<span class="meta">ГЛ · найдено ${hits.length}</span>${blocks}`;
+        }
+
+        addBubble(
+            "bot",
+            '<span class="meta">ГЛ</span>Напишите вопрос своими словами — например про приоритет, автооценку, осмотр или срок СЗЗ.'
+        );
+
+        fetch(`${API}/api/conclusion-qa/info`, { cache: "no-store" })
+            .then((r) => r.json())
+            .then((info) => {
+                if (!info.ready) {
+                    metaEl.textContent = "Индекс Q&A не собран. На сервере: npm run conclusion-qa:build";
+                } else {
+                    metaEl.textContent = `Индекс готов · ${info.total} пар вопросов/ответов`;
+                }
+            })
+            .catch(() => {
+                metaEl.textContent = "Нет связи с прокси (localhost:8787).";
+            });
+
+        formEl.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const question = inputEl.value.trim();
+            if (!question || sendEl.disabled) return;
+
+            addBubble("user", `<span class="meta">Вы</span>${esc(question)}`);
+            inputEl.value = "";
+            sendEl.disabled = true;
+            const pending = addBubble("bot", '<span class="meta">ГЛ</span>Ищем…');
+
+            try {
+                const res = await fetch(`${API}/api/conclusion-qa`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ question, limit: 4 })
+                });
+                const data = await res.json();
+                if (!res.ok || !data.ok) throw new Error(data.error || "Ошибка поиска");
+                pending.innerHTML = renderHits(data.hits || []);
+            } catch (err) {
+                pending.innerHTML = `<span class="meta">ГЛ</span>${esc(err.message || String(err))}`;
+            } finally {
+                sendEl.disabled = false;
+                inputEl.focus();
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+        });
+
+        inputEl.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                formEl.requestSubmit();
+            }
+        });
+    </script>
+</body>
+</html>
