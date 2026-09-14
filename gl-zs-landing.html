@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ГЛ ЗС — горячая линия Залоговой службы</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/fonts/gl-zs-fonts.css">
     <style>
         :root {
             --ink: #0f1c1a;
@@ -18,12 +16,14 @@
             --mist: rgba(243, 239, 230, 0.72);
             --line: rgba(15, 28, 26, 0.12);
             --chat-bg: #102420;
+            --font-display: Onest, Manrope, "Segoe UI", sans-serif;
+            --font-body: Manrope, Onest, "Segoe UI", sans-serif;
         }
         * { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
         body {
             margin: 0;
-            font-family: Manrope, sans-serif;
+            font-family: var(--font-body);
             color: var(--ink);
             background: var(--paper);
             line-height: 1.5;

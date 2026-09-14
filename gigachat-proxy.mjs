@@ -341,7 +341,9 @@ const MIME = {
     ".png": "image/png",
     ".gif": "image/gif",
     ".webp": "image/webp",
-    ".svg": "image/svg+xml"
+    ".svg": "image/svg+xml",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2"
 };
 
 function serveStatic(req, res, filePath) {
