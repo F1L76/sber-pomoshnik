@@ -745,6 +745,11 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === "GET" && (url.pathname === "/sbl-rating" || url.pathname === "/sbl-rating/")) {
+        serveStatic(req, res, path.join(__dirname, "sbl-rating.html"));
+        return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/vin/health") {
         const health = await checkVinHealth();
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });

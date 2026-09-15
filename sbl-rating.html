@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рейтинг экспертов СБЛ — Фабрика</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="/vendor/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg: #f3f5f8;
+            --card: #fff;
+            --ink: #1e2a3a;
+            --muted: #617188;
+            --line: #e2eaf2;
+            --accent: #21a038;
+            --bad: #c62828;
+            --warn: #b8860b;
+            --radius: 16px;
+        }
+        body {
+            margin: 0;
+            font-family: "SB Sans Interface", system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+        .hero {
+            background: linear-gradient(135deg, #1e2a3a, #243447);
+            color: #fff;
+            border-bottom: 3px solid var(--accent);
+            padding: 1.5rem 0 1.75rem;
+        }
+        .hero a { color: rgba(255,255,255,0.75); text-decoration: none; }
+        .hero a:hover { color: #fff; }
+        .panel {
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 20px rgba(30,42,58,0.05);
+        }
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.85rem;
+        }
+        @media (max-width: 900px) { .upload-grid { grid-template-columns: 1fr; } }
+        .upload-card {
+            border: 1.5px dashed #c5d0dc;
+            border-radius: 14px;
+            padding: 1rem;
+            background: #fafcfd;
+            min-height: 8.5rem;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .upload-card.is-ready {
+            border-style: solid;
+            border-color: #9fd6a8;
+            background: #f3faf4;
+        }
+        .upload-card h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin: 0 0 0.25rem;
+        }
+        .upload-card p {
+            margin: 0 0 0.75rem;
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+        .upload-card .fname {
+            font-size: 0.8rem;
+            color: var(--accent);
+            font-weight: 600;
+            word-break: break-all;
+        }
+        .metric-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+        .metric-tabs .btn {
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .metric-tabs .btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+        .rank-row {
+            display: grid;
+            grid-template-columns: 2.2rem minmax(9rem, 14rem) 1fr auto;
+            gap: 0.75rem;
+            align-items: center;
+            padding: 0.55rem 0;
+            border-bottom: 1px solid var(--line);
+        }
+        .rank-row:last-child { border-bottom: 0; }
+        .rank-n {
+            color: var(--muted);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .rank-fio { font-weight: 700; font-size: 0.98rem; }
+        .rank-bar {
+            height: 10px;
+            background: #e8edf2;
+            border-radius: 99px;
+            overflow: hidden;
+        }
+        .rank-bar > span {
+            display: block;
+            height: 100%;
+            background: var(--accent);
+            border-radius: 99px;
+        }
+        .rank-val {
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            min-width: 4.5rem;
+            text-align: right;
+        }
+        .risk-box {
+            margin-top: 1rem;
+            padding: 0.85rem 1rem;
+            border-radius: 12px;
+            background: #fff5f5;
+            border: 1px solid #f2c7c7;
+        }
+        .risk-box h4 {
+            margin: 0 0 0.55rem;
+            font-size: 0.9rem;
+            color: var(--bad);
+            font-weight: 700;
+        }
+        .tag {
+            display: inline-block;
+            margin: 0.15rem 0.25rem 0.15rem 0;
+            padding: 0.2rem 0.55rem;
+            border-radius: 999px;
+            background: #ffe8e8;
+            color: #8e1d1d;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+        .chip {
+            background: #f0f4f8;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 0.7rem 0.85rem;
+        }
+        .chip .lbl { font-size: 0.72rem; color: var(--muted); }
+        .chip .val { font-size: 1.15rem; font-weight: 800; color: var(--accent); }
+        .muted { color: var(--muted); }
+        .hint {
+            font-size: 0.82rem;
+            color: var(--muted);
+        }
+        code.map {
+            font-size: 0.78rem;
+            background: #f0f4f8;
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <header class="hero">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                <div>
+                    <div class="small opacity-75 mb-1"><a href="/">← к помощнику</a></div>
+                    <h1 class="h3 mb-1">Рейтинг экспертов СБЛ</h1>
+                    <p class="mb-0 opacity-75">Только процесс <strong>Фабрика</strong> · KPI из выгрузки Excel</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light btn-sm" id="exportBtn" disabled>
+                        <i class="fa-solid fa-file-excel me-1"></i>Выгрузка Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container py-4">
+        <section class="panel p-3 p-md-4 mb-3">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h2 class="h6 mb-0">Загрузка файлов</h2>
+                <span class="hint">Колонки заявок: F процесс · N дата · K ФИО · E заявка · BK баллы · BG срок · BM просрочки</span>
+            </div>
+            <div class="upload-grid">
+                <div class="upload-card" id="cardApps">
+                    <h3>1. Заявки (обязательно)</h3>
+                    <p>Основная выгрузка KPI / заявок. Фильтр: Фабрика (столбец F).</p>
+                    <input type="file" id="fileApps" class="form-control form-control-sm" accept=".xlsx,.xls,.xlsm">
+                    <div class="fname mt-2" id="nameApps">файл не выбран</div>
+                </div>
+                <div class="upload-card" id="cardDays">
+                    <h3>2. Табель (дни)</h3>
+                    <p>Отработанные дни: столбцы ФИО и дни (или «Пульс»).</p>
+                    <input type="file" id="fileDays" class="form-control form-control-sm" accept=".xlsx,.xls,.xlsm">
+                    <div class="fname mt-2" id="nameDays">опционально</div>
+                </div>
+                <div class="upload-card" id="cardArb">
+                    <h3>3. Арбитражи</h3>
+                    <p>Строки с меткой «Ошибка эксперта» + ФИО.</p>
+                    <input type="file" id="fileArb" class="form-control form-control-sm" accept=".xlsx,.xls,.xlsm">
+                    <div class="fname mt-2" id="nameArb">опционально</div>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-3 flex-wrap">
+                <button type="button" class="btn btn-success" id="buildBtn" disabled>
+                    <i class="fa-solid fa-chart-simple me-1"></i>Построить рейтинг
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="clearBtn">Сбросить</button>
+                <span class="align-self-center hint" id="status">Загрузите файл заявок</span>
+            </div>
+        </section>
+
+        <section class="row g-2 mb-3" id="statsRow" hidden>
+            <div class="col-6 col-md-3"><div class="chip"><div class="lbl">Экспертов</div><div class="val" id="statExperts">0</div></div></div>
+            <div class="col-6 col-md-3"><div class="chip"><div class="lbl">Заявок Фабрика</div><div class="val" id="statApps">0</div></div></div>
+            <div class="col-6 col-md-3"><div class="chip"><div class="lbl">Баллов</div><div class="val" id="statPoints">0</div></div></div>
+            <div class="col-6 col-md-3"><div class="chip"><div class="lbl">Период</div><div class="val" id="statPeriod" style="font-size:0.95rem">—</div></div></div>
+        </section>
+
+        <section class="panel p-3 p-md-4" id="dashPanel" hidden>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                <h2 class="h6 mb-0">Рейтинг · Фабрика</h2>
+                <div class="metric-tabs" id="metricTabs"></div>
+            </div>
+            <div id="rankList"></div>
+            <div class="risk-box" id="riskBox" hidden>
+                <h4><i class="fa-solid fa-triangle-exclamation me-1"></i>Риск невыполнения KPI</h4>
+                <div id="riskTags"></div>
+                <div class="hint mt-2" id="riskNorm"></div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+    (() => {
+        /** Column letters from ТЗ/Документ1 (0-based). BK = баллы. */
+        const COL = {
+            appId: "E",
+            process: "F",
+            fio: "K",
+            date: "N",
+            term: "BG",
+            points: "BK",
+            overdue: "BM"
+        };
+
+        const METRICS = [
+            { id: "days", title: "Дни", unit: "дн.", asc: false, risk: null },
+            { id: "points", title: "Баллы", unit: "", asc: false, risk: null },
+            { id: "apps", title: "Заявки", unit: "шт.", asc: false, risk: null },
+            { id: "prodPoints", title: "Произв. Баллы", unit: "/день", asc: false, risk: { op: "lt", value: 3.2, label: "≥ 3.2 баллов/день" } },
+            { id: "prodApps", title: "Произв. Заявки", unit: "/день", asc: false, risk: { op: "lt", value: 6, label: "≥ 6 заявок/день" } },
+            { id: "avgTerm", title: "Ср. срок", unit: "", asc: true, risk: { op: "gte", value: 2, label: "норма Фабрика < 2 (ед. из столбца BG)" } },
+            { id: "overdue", title: "Просрочки", unit: "шт.", asc: true, risk: { op: "gt", value: 0, label: "= 0" } },
+            { id: "arb", title: "Арбитражи", unit: "шт.", asc: true, risk: { op: "gt", value: 0, label: "= 0 (ошибка эксперта)" } }
+        ];
+
+        const fileApps = document.getElementById("fileApps");
+        const fileDays = document.getElementById("fileDays");
+        const fileArb = document.getElementById("fileArb");
+        const buildBtn = document.getElementById("buildBtn");
+        const clearBtn = document.getElementById("clearBtn");
+        const exportBtn = document.getElementById("exportBtn");
+        const statusEl = document.getElementById("status");
+
+        let state = { experts: [], period: null, active: "prodPoints" };
+
+        function colToIndex(letter) {
+            let n = 0;
+            const s = String(letter || "").toUpperCase().replace(/[^A-Z]/g, "");
+            for (let i = 0; i < s.length; i++) n = n * 26 + (s.charCodeAt(i) - 64);
+            return n - 1;
+        }
+
+        function esc(s) {
+            return String(s ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function cell(row, letter) {
+            const i = colToIndex(letter);
+            return i >= 0 ? row[i] : "";
+        }
+
+        function asText(v) {
+            if (v == null) return "";
+            if (v instanceof Date) return v.toISOString().slice(0, 10);
+            return String(v).trim();
+        }
+
+        function asNum(v) {
+            if (v == null || v === "") return 0;
+            if (typeof v === "number" && Number.isFinite(v)) return v;
+            const s = String(v).replace(/\s/g, "").replace(",", ".").replace(/[^\d.-]/g, "");
+            const n = Number(s);
+            return Number.isFinite(n) ? n : 0;
+        }
+
+        function parseDate(v) {
+            if (v instanceof Date && !isNaN(v)) return v;
+            if (typeof v === "number" && Number.isFinite(v)) {
+                // Excel serial
+                const d = XLSX.SSF.parse_date_code(v);
+                if (d) return new Date(d.y, d.m - 1, d.d);
+            }
+            const s = asText(v);
+            if (!s) return null;
+            const m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})/);
+            if (m) {
+                const y = m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]);
+                return new Date(y, Number(m[2]) - 1, Number(m[1]));
+            }
+            const d = new Date(s);
+            return isNaN(d) ? null : d;
+        }
+
+        function isFactory(process) {
+            const s = asText(process).toLowerCase().replace(/ё/g, "е");
+            return s.includes("фабрик");
+        }
+
+        function normFio(v) {
+            return asText(v).replace(/\s+/g, " ").trim();
+        }
+
+        function fioKey(v) {
+            return normFio(v).toLowerCase();
+        }
+
+        async function readSheetRows(file) {
+            const buf = await file.arrayBuffer();
+            const wb = XLSX.read(buf, { type: "array", cellDates: true });
+            const name = wb.SheetNames[0];
+            const sheet = wb.Sheets[name];
+            const rows = XLSX.utils.sheet_to_json(sheet, {
+                header: 1,
+                raw: true,
+                defval: "",
+                blankrows: false
+            });
+            return { fileName: file.name, sheet: name, rows };
+        }
+
+        function findHeaderRow(rows, needles) {
+            const max = Math.min(rows.length, 30);
+            for (let r = 0; r < max; r++) {
+                const line = (rows[r] || []).map((c) => asText(c).toLowerCase()).join(" | ");
+                if (needles.every((n) => line.includes(n))) return r;
+            }
+            return 0;
+        }
+
+        function findCol(headerRow, predicates) {
+            for (let i = 0; i < headerRow.length; i++) {
+                const h = asText(headerRow[i]).toLowerCase().replace(/ё/g, "е");
+                if (predicates.some((fn) => fn(h))) return i;
+            }
+            return -1;
+        }
+
+        function markReady(cardId, nameId, file) {
+            const card = document.getElementById(cardId);
+            const name = document.getElementById(nameId);
+            if (file) {
+                card.classList.add("is-ready");
+                name.textContent = file.name;
+            } else {
+                card.classList.remove("is-ready");
+                name.textContent = cardId === "cardApps" ? "файл не выбран" : "опционально";
+            }
+            buildBtn.disabled = !fileApps.files?.[0];
+            statusEl.textContent = fileApps.files?.[0]
+                ? "Можно строить рейтинг"
+                : "Загрузите файл заявок";
+        }
+
+        fileApps.addEventListener("change", () => markReady("cardApps", "nameApps", fileApps.files?.[0]));
+        fileDays.addEventListener("change", () => markReady("cardDays", "nameDays", fileDays.files?.[0]));
+        fileArb.addEventListener("change", () => markReady("cardArb", "nameArb", fileArb.files?.[0]));
+
+        function ensureExpert(map, fio) {
+            const key = fioKey(fio);
+            if (!key) return null;
+            if (!map.has(key)) {
+                map.set(key, {
+                    fio: normFio(fio),
+                    days: 0,
+                    points: 0,
+                    apps: 0,
+                    termSum: 0,
+                    overdue: 0,
+                    arb: 0
+                });
+            }
+            return map.get(key);
+        }
+
+        function parseApps(table) {
+            const rows = table.rows || [];
+            const headerIdx = findHeaderRow(rows, ["фио"]);
+            const data = rows.slice(headerIdx + 1);
+            const map = new Map();
+            let minD = null;
+            let maxD = null;
+            let used = 0;
+
+            for (const row of data) {
+                if (!Array.isArray(row)) continue;
+                if (!isFactory(cell(row, COL.process))) continue;
+                const fio = normFio(cell(row, COL.fio));
+                if (!fio) continue;
+                const ex = ensureExpert(map, fio);
+                if (!ex) continue;
+                ex.apps += 1;
+                ex.points += asNum(cell(row, COL.points));
+                ex.termSum += asNum(cell(row, COL.term));
+                const od = cell(row, COL.overdue);
+                // count overdue if numeric >0 or text truthy like "да"/date
+                if (typeof od === "number") {
+                    if (od > 0) ex.overdue += 1;
+                } else {
+                    const t = asText(od).toLowerCase();
+                    if (t && t !== "0" && t !== "нет" && t !== "-" && t !== "n/a") ex.overdue += 1;
+                }
+                const dt = parseDate(cell(row, COL.date));
+                if (dt) {
+                    if (!minD || dt < minD) minD = dt;
+                    if (!maxD || dt > maxD) maxD = dt;
+                }
+                used += 1;
+            }
+            return { map, used, period: minD && maxD ? { minD, maxD } : null };
+        }
+
+        function applyDays(map, table) {
+            if (!table) return;
+            const rows = table.rows || [];
+            const headerIdx = findHeaderRow(rows, ["фио"]);
+            const header = rows[headerIdx] || [];
+            const fioCol = findCol(header, [
+                (h) => h === "фио",
+                (h) => h.includes("фио"),
+                (h) => h.includes("сотрудник"),
+                (h) => h.includes("эксперт")
+            ]);
+            const daysCol = findCol(header, [
+                (h) => h.includes("отработан"),
+                (h) => h.includes("раб") && h.includes("дн"),
+                (h) => h === "дни" || h === "день",
+                (h) => h.includes("табель"),
+                (h) => h.includes("дней")
+            ]);
+            const fIdx = fioCol >= 0 ? fioCol : 0;
+            const dIdx = daysCol >= 0 ? daysCol : 1;
+            for (const row of rows.slice(headerIdx + 1)) {
+                const fio = normFio(row[fIdx]);
+                if (!fio) continue;
+                const key = fioKey(fio);
+                const ex = map.get(key) || ensureExpert(map, fio);
+                if (!ex) continue;
+                ex.days = Math.max(ex.days, asNum(row[dIdx]));
+            }
+        }
+
+        function applyArb(map, table) {
+            if (!table) return;
+            const rows = table.rows || [];
+            const headerIdx = Math.max(
+                findHeaderRow(rows, ["фио"]),
+                findHeaderRow(rows, ["эксперт"]),
+                0
+            );
+            const header = rows[headerIdx] || [];
+            const fioCol = findCol(header, [
+                (h) => h.includes("фио"),
+                (h) => h.includes("эксперт"),
+                (h) => h.includes("сотрудник")
+            ]);
+            const markCol = findCol(header, [
+                (h) => h.includes("ошибк"),
+                (h) => h.includes("метк"),
+                (h) => h.includes("тип"),
+                (h) => h.includes("причин"),
+                (h) => h.includes("арбитраж")
+            ]);
+            const fIdx = fioCol >= 0 ? fioCol : colToIndex("K");
+            for (const row of rows.slice(headerIdx + 1)) {
+                const mark = markCol >= 0 ? asText(row[markCol]) : asText(row.join(" "));
+                const low = mark.toLowerCase().replace(/ё/g, "е");
+                if (!low.includes("ошибк") || !low.includes("эксперт")) {
+                    // if no mark column, count every row with FIO as arbitration hit
+                    if (markCol >= 0) continue;
+                }
+                const fio = normFio(row[fIdx]);
+                if (!fio) continue;
+                const ex = map.get(fioKey(fio)) || ensureExpert(map, fio);
+                if (!ex) continue;
+                ex.arb += 1;
+            }
+        }
+
+        function finalize(map) {
+            const list = [...map.values()].map((ex) => {
+                const days = ex.days > 0 ? ex.days : 0;
+                const avgTerm = ex.apps > 0 ? ex.termSum / ex.apps : 0;
+                const prodPoints = days > 0 ? ex.points / days : 0;
+                const prodApps = days > 0 ? ex.apps / days : 0;
+                return {
+                    ...ex,
+                    avgTerm,
+                    prodPoints,
+                    prodApps
+                };
+            });
+            return list.filter((e) => e.apps > 0 || e.points > 0 || e.arb > 0 || e.days > 0);
+        }
+
+        function metricValue(ex, id) {
+            switch (id) {
+                case "days": return ex.days;
+                case "points": return ex.points;
+                case "apps": return ex.apps;
+                case "prodPoints": return ex.prodPoints;
+                case "prodApps": return ex.prodApps;
+                case "avgTerm": return ex.avgTerm;
+                case "overdue": return ex.overdue;
+                case "arb": return ex.arb;
+                default: return 0;
+            }
+        }
+
+        function fmt(v, id) {
+            if (!Number.isFinite(v)) return "—";
+            if (id === "prodPoints" || id === "prodApps" || id === "avgTerm") {
+                return v.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+            }
+            return Math.round(v).toLocaleString("ru-RU");
+        }
+
+        function inRisk(ex, metric) {
+            if (!metric.risk) return false;
+            // productivity risks need days
+            if ((metric.id === "prodPoints" || metric.id === "prodApps") && !(ex.days > 0)) return false;
+            const v = metricValue(ex, metric.id);
+            const { op, value } = metric.risk;
+            if (op === "lt") return v < value;
+            if (op === "gt") return v > value;
+            if (op === "gte") return v >= value;
+            return false;
+        }
+
+        function renderTabs() {
+            const tabs = document.getElementById("metricTabs");
+            tabs.innerHTML = METRICS.map((m) =>
+                `<button type="button" class="btn btn-outline-secondary btn-sm${m.id === state.active ? " active" : ""}" data-metric="${m.id}">${esc(m.title)}</button>`
+            ).join("");
+        }
+
+        function renderRank() {
+            const metric = METRICS.find((m) => m.id === state.active) || METRICS[0];
+            const sorted = [...state.experts].sort((a, b) => {
+                const va = metricValue(a, metric.id);
+                const vb = metricValue(b, metric.id);
+                return metric.asc ? va - vb : vb - va;
+            });
+            const max = Math.max(...sorted.map((e) => metricValue(e, metric.id)), 0.0001);
+            const list = document.getElementById("rankList");
+            if (!sorted.length) {
+                list.innerHTML = '<div class="muted">Нет данных по Фабрике</div>';
+            } else {
+                list.innerHTML = sorted.map((ex, i) => {
+                    const v = metricValue(ex, metric.id);
+                    const pct = Math.max(0, Math.min(100, (v / max) * 100));
+                    return `<div class="rank-row">
+                        <div class="rank-n">${i + 1}</div>
+                        <div class="rank-fio" title="${esc(ex.fio)}">${esc(ex.fio)}</div>
+                        <div class="rank-bar"><span style="width:${pct}%"></span></div>
+                        <div class="rank-val">${fmt(v, metric.id)}${metric.unit ? ` <span class="muted">${esc(metric.unit)}</span>` : ""}</div>
+                    </div>`;
+                }).join("");
+            }
+
+            const riskBox = document.getElementById("riskBox");
+            const riskTags = document.getElementById("riskTags");
+            const riskNorm = document.getElementById("riskNorm");
+            if (!metric.risk) {
+                riskBox.hidden = true;
+            } else {
+                const bad = sorted.filter((ex) => inRisk(ex, metric));
+                if (!bad.length) {
+                    riskBox.hidden = true;
+                } else {
+                    riskBox.hidden = false;
+                    riskTags.innerHTML = bad.map((ex) => `<span class="tag">${esc(ex.fio)}</span>`).join("");
+                    riskNorm.textContent = `Норматив: ${metric.risk.label}`;
+                }
+            }
+        }
+
+        function renderStats() {
+            document.getElementById("statsRow").hidden = false;
+            document.getElementById("dashPanel").hidden = false;
+            document.getElementById("statExperts").textContent = String(state.experts.length);
+            document.getElementById("statApps").textContent = String(state.experts.reduce((s, e) => s + e.apps, 0));
+            document.getElementById("statPoints").textContent = state.experts.reduce((s, e) => s + e.points, 0)
+                .toLocaleString("ru-RU", { maximumFractionDigits: 1 });
+            if (state.period) {
+                const a = state.period.minD.toLocaleDateString("ru-RU");
+                const b = state.period.maxD.toLocaleDateString("ru-RU");
+                document.getElementById("statPeriod").textContent = a === b ? a : `${a} – ${b}`;
+            } else {
+                document.getElementById("statPeriod").textContent = "—";
+            }
+            exportBtn.disabled = state.experts.length === 0;
+        }
+
+        document.getElementById("metricTabs").addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-metric]");
+            if (!btn) return;
+            state.active = btn.getAttribute("data-metric");
+            renderTabs();
+            renderRank();
+        });
+
+        buildBtn.addEventListener("click", async () => {
+            const appsFile = fileApps.files?.[0];
+            if (!appsFile) return;
+            buildBtn.disabled = true;
+            statusEl.textContent = "Читаем Excel…";
+            try {
+                if (typeof XLSX === "undefined") throw new Error("Библиотека XLSX не загрузилась");
+                const appsTable = await readSheetRows(appsFile);
+                const { map, used, period } = parseApps(appsTable);
+                if (fileDays.files?.[0]) applyDays(map, await readSheetRows(fileDays.files[0]));
+                if (fileArb.files?.[0]) applyArb(map, await readSheetRows(fileArb.files[0]));
+                state.experts = finalize(map);
+                state.period = period;
+                if (!used) {
+                    statusEl.textContent = "В файле нет строк с процессом «Фабрика» (столбец F)";
+                } else {
+                    statusEl.textContent = `Готово: ${used} заявок Фабрика · ${state.experts.length} экспертов`;
+                }
+                renderStats();
+                renderTabs();
+                renderRank();
+            } catch (err) {
+                statusEl.textContent = err.message || String(err);
+            } finally {
+                buildBtn.disabled = !fileApps.files?.[0];
+            }
+        });
+
+        clearBtn.addEventListener("click", () => {
+            fileApps.value = "";
+            fileDays.value = "";
+            fileArb.value = "";
+            markReady("cardApps", "nameApps", null);
+            markReady("cardDays", "nameDays", null);
+            markReady("cardArb", "nameArb", null);
+            state = { experts: [], period: null, active: "prodPoints" };
+            document.getElementById("statsRow").hidden = true;
+            document.getElementById("dashPanel").hidden = true;
+            exportBtn.disabled = true;
+            statusEl.textContent = "Загрузите файл заявок";
+        });
+
+        exportBtn.addEventListener("click", () => {
+            if (!state.experts.length) return;
+            const rows = [
+                ["ФИО Эксперта", "Рабочие дни", "Средний срок Фабрика", "Просрочки (визы)", "Баллы Фабрика", "Производительность, баллы в день", "Заявки Фабрика", "Производительность, заявок в день", "Арбитражи"]
+            ];
+            for (const ex of [...state.experts].sort((a, b) => a.fio.localeCompare(b.fio, "ru"))) {
+                rows.push([
+                    ex.fio,
+                    ex.days,
+                    Number(ex.avgTerm.toFixed(2)),
+                    ex.overdue,
+                    Number(ex.points.toFixed(2)),
+                    Number(ex.prodPoints.toFixed(2)),
+                    ex.apps,
+                    Number(ex.prodApps.toFixed(2)),
+                    ex.arb
+                ]);
+            }
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Рейтинг Фабрика");
+            XLSX.writeFile(wb, "KPI_rating_fabrika.xlsx");
+        });
+
+        // auto-build when apps file chosen
+        fileApps.addEventListener("change", () => {
+            if (fileApps.files?.[0]) setTimeout(() => buildBtn.click(), 0);
+        });
+    })();
+    </script>
+</body>
+</html>
