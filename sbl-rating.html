@@ -40,18 +40,11 @@
             border-radius: var(--radius);
             box-shadow: 0 4px 20px rgba(30,42,58,0.05);
         }
-        .upload-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.85rem;
-        }
-        @media (max-width: 900px) { .upload-grid { grid-template-columns: 1fr; } }
         .upload-card {
             border: 1.5px dashed #c5d0dc;
             border-radius: 14px;
             padding: 1rem;
             background: #fafcfd;
-            min-height: 8.5rem;
             transition: border-color 0.15s, background 0.15s;
         }
         .upload-card.is-ready {
@@ -188,35 +181,21 @@
     <main class="container py-4">
         <section class="panel p-3 p-md-4 mb-3">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                <h2 class="h6 mb-0">Загрузка файлов</h2>
-                <span class="hint">Колонки заявок: F процесс · N дата · K ФИО · E заявка · BK баллы · BG срок · BM просрочки</span>
+                <h2 class="h6 mb-0">Загрузка Excel</h2>
+                <span class="hint">F процесс · N дата · K ФИО · E заявка · BK баллы · BG срок · BM просрочки · дни/арбитражи — с других листов того же файла</span>
             </div>
-            <div class="upload-grid">
-                <div class="upload-card" id="cardApps">
-                    <h3>1. Заявки (обязательно)</h3>
-                    <p>Основная выгрузка KPI / заявок. Фильтр: Фабрика (столбец F).</p>
-                    <input type="file" id="fileApps" class="form-control form-control-sm" accept=".xlsx,.xls,.xlsm">
-                    <div class="fname mt-2" id="nameApps">файл не выбран</div>
-                </div>
-                <div class="upload-card" id="cardDays">
-                    <h3>2. Табель (дни)</h3>
-                    <p>Отработанные дни: столбцы ФИО и дни (или «Пульс»).</p>
-                    <input type="file" id="fileDays" class="form-control form-control-sm" accept=".xlsx,.xls,.xlsm">
-                    <div class="fname mt-2" id="nameDays">опционально</div>
-                </div>
-                <div class="upload-card" id="cardArb">
-                    <h3>3. Арбитражи</h3>
-                    <p>Строки с меткой «Ошибка эксперта» + ФИО.</p>
-                    <input type="file" id="fileArb" class="form-control form-control-sm" accept=".xlsx,.xls,.xlsm">
-                    <div class="fname mt-2" id="nameArb">опционально</div>
-                </div>
+            <div class="upload-card" id="cardFile">
+                <h3>Выгрузка KPI</h3>
+                <p>Один файл Excel. Берём только процесс <strong>Фабрика</strong>; табель и арбитражи — с листов той же книги, если есть.</p>
+                <input type="file" id="fileXlsx" class="form-control form-control-sm" accept=".xlsx,.xls,.xlsm">
+                <div class="fname mt-2" id="nameFile">файл не выбран</div>
             </div>
             <div class="d-flex gap-2 mt-3 flex-wrap">
                 <button type="button" class="btn btn-success" id="buildBtn" disabled>
                     <i class="fa-solid fa-chart-simple me-1"></i>Построить рейтинг
                 </button>
                 <button type="button" class="btn btn-outline-secondary" id="clearBtn">Сбросить</button>
-                <span class="align-self-center hint" id="status">Загрузите файл заявок</span>
+                <span class="align-self-center hint" id="status">Загрузите Excel</span>
             </div>
         </section>
 
@@ -265,9 +244,7 @@
             { id: "arb", title: "Арбитражи", unit: "шт.", asc: true, risk: { op: "gt", value: 0, label: "= 0 (ошибка эксперта)" } }
         ];
 
-        const fileApps = document.getElementById("fileApps");
-        const fileDays = document.getElementById("fileDays");
-        const fileArb = document.getElementById("fileArb");
+        const fileXlsx = document.getElementById("fileXlsx");
         const buildBtn = document.getElementById("buildBtn");
         const clearBtn = document.getElementById("clearBtn");
         const exportBtn = document.getElementById("exportBtn");
@@ -340,18 +317,63 @@
             return normFio(v).toLowerCase();
         }
 
-        async function readSheetRows(file) {
+        async function readWorkbook(file) {
             const buf = await file.arrayBuffer();
             const wb = XLSX.read(buf, { type: "array", cellDates: true });
-            const name = wb.SheetNames[0];
-            const sheet = wb.Sheets[name];
-            const rows = XLSX.utils.sheet_to_json(sheet, {
-                header: 1,
-                raw: true,
-                defval: "",
-                blankrows: false
+            const sheets = wb.SheetNames.map((name) => {
+                const sheet = wb.Sheets[name];
+                const rows = XLSX.utils.sheet_to_json(sheet, {
+                    header: 1,
+                    raw: true,
+                    defval: "",
+                    blankrows: false
+                });
+                return { name, rows };
             });
-            return { fileName: file.name, sheet: name, rows };
+            return { fileName: file.name, sheets };
+        }
+
+        function sheetLooksLikeApps(table) {
+            const rows = table.rows || [];
+            const sample = rows.slice(0, 40);
+            let factoryHits = 0;
+            for (const row of sample) {
+                if (!Array.isArray(row)) continue;
+                if (isFactory(cell(row, COL.process)) && normFio(cell(row, COL.fio))) factoryHits += 1;
+            }
+            if (factoryHits >= 1) return true;
+            const headerIdx = findHeaderRow(rows, ["фио"]);
+            const header = (rows[headerIdx] || []).map((c) => asText(c).toLowerCase()).join(" ");
+            return header.includes("фио") && (header.includes("процесс") || header.includes("балл") || header.includes("заявк"));
+        }
+
+        function sheetNameHint(name, kind) {
+            const n = String(name || "").toLowerCase().replace(/ё/g, "е");
+            if (kind === "days") return /табел|пульс|дни|день|отработ/.test(n);
+            if (kind === "arb") return /арбитраж|ошибк/.test(n);
+            if (kind === "apps") return /заявк|kpi|рейтинг|фабрик|выгруз/.test(n);
+            return false;
+        }
+
+        function sheetLooksLikeDays(table) {
+            const rows = table.rows || [];
+            const headerIdx = findHeaderRow(rows, ["фио"]);
+            const header = rows[headerIdx] || [];
+            const daysCol = findCol(header, [
+                (h) => h.includes("отработан"),
+                (h) => h.includes("раб") && h.includes("дн"),
+                (h) => h === "дни" || h === "день",
+                (h) => h.includes("табель"),
+                (h) => h.includes("дней"),
+                (h) => h.includes("пульс")
+            ]);
+            return daysCol >= 0;
+        }
+
+        function sheetLooksLikeArb(table) {
+            const rows = table.rows || [];
+            const blob = rows.slice(0, 40).map((r) => (r || []).map(asText).join(" ")).join(" ").toLowerCase().replace(/ё/g, "е");
+            return blob.includes("ошибк") && blob.includes("эксперт");
         }
 
         function findHeaderRow(rows, needles) {
@@ -371,25 +393,26 @@
             return -1;
         }
 
-        function markReady(cardId, nameId, file) {
-            const card = document.getElementById(cardId);
-            const name = document.getElementById(nameId);
+        function markReady(file) {
+            const card = document.getElementById("cardFile");
+            const name = document.getElementById("nameFile");
             if (file) {
                 card.classList.add("is-ready");
                 name.textContent = file.name;
+                buildBtn.disabled = false;
+                statusEl.textContent = "Можно строить рейтинг";
             } else {
                 card.classList.remove("is-ready");
-                name.textContent = cardId === "cardApps" ? "файл не выбран" : "опционально";
+                name.textContent = "файл не выбран";
+                buildBtn.disabled = true;
+                statusEl.textContent = "Загрузите Excel";
             }
-            buildBtn.disabled = !fileApps.files?.[0];
-            statusEl.textContent = fileApps.files?.[0]
-                ? "Можно строить рейтинг"
-                : "Загрузите файл заявок";
         }
 
-        fileApps.addEventListener("change", () => markReady("cardApps", "nameApps", fileApps.files?.[0]));
-        fileDays.addEventListener("change", () => markReady("cardDays", "nameDays", fileDays.files?.[0]));
-        fileArb.addEventListener("change", () => markReady("cardArb", "nameArb", fileArb.files?.[0]));
+        fileXlsx.addEventListener("change", () => {
+            markReady(fileXlsx.files?.[0] || null);
+            if (fileXlsx.files?.[0]) setTimeout(() => buildBtn.click(), 0);
+        });
 
         function ensureExpert(map, fio) {
             const key = fioKey(fio);
@@ -636,22 +659,33 @@
         });
 
         buildBtn.addEventListener("click", async () => {
-            const appsFile = fileApps.files?.[0];
-            if (!appsFile) return;
+            const file = fileXlsx.files?.[0];
+            if (!file) return;
             buildBtn.disabled = true;
             statusEl.textContent = "Читаем Excel…";
             try {
                 if (typeof XLSX === "undefined") throw new Error("Библиотека XLSX не загрузилась");
-                const appsTable = await readSheetRows(appsFile);
-                const { map, used, period } = parseApps(appsTable);
-                if (fileDays.files?.[0]) applyDays(map, await readSheetRows(fileDays.files[0]));
-                if (fileArb.files?.[0]) applyArb(map, await readSheetRows(fileArb.files[0]));
+                const wb = await readWorkbook(file);
+                const appsSheet =
+                    wb.sheets.find((s) => sheetLooksLikeApps(s)) ||
+                    wb.sheets.find((s) => sheetNameHint(s.name, "apps")) ||
+                    wb.sheets[0];
+                if (!appsSheet) throw new Error("В файле нет листов");
+
+                const { map, used, period } = parseApps(appsSheet);
+                for (const sheet of wb.sheets) {
+                    if (sheet === appsSheet) continue;
+                    if (sheetNameHint(sheet.name, "days") || sheetLooksLikeDays(sheet)) applyDays(map, sheet);
+                    if (sheetNameHint(sheet.name, "arb") || sheetLooksLikeArb(sheet)) applyArb(map, sheet);
+                }
+
                 state.experts = finalize(map);
                 state.period = period;
+                const sheetNote = wb.sheets.length > 1 ? ` · листов: ${wb.sheets.length}` : "";
                 if (!used) {
                     statusEl.textContent = "В файле нет строк с процессом «Фабрика» (столбец F)";
                 } else {
-                    statusEl.textContent = `Готово: ${used} заявок Фабрика · ${state.experts.length} экспертов`;
+                    statusEl.textContent = `Готово: ${used} заявок Фабрика · ${state.experts.length} экспертов${sheetNote}`;
                 }
                 renderStats();
                 renderTabs();
@@ -659,22 +693,17 @@
             } catch (err) {
                 statusEl.textContent = err.message || String(err);
             } finally {
-                buildBtn.disabled = !fileApps.files?.[0];
+                buildBtn.disabled = !fileXlsx.files?.[0];
             }
         });
 
         clearBtn.addEventListener("click", () => {
-            fileApps.value = "";
-            fileDays.value = "";
-            fileArb.value = "";
-            markReady("cardApps", "nameApps", null);
-            markReady("cardDays", "nameDays", null);
-            markReady("cardArb", "nameArb", null);
+            fileXlsx.value = "";
+            markReady(null);
             state = { experts: [], period: null, active: "prodPoints" };
             document.getElementById("statsRow").hidden = true;
             document.getElementById("dashPanel").hidden = true;
             exportBtn.disabled = true;
-            statusEl.textContent = "Загрузите файл заявок";
         });
 
         exportBtn.addEventListener("click", () => {
@@ -699,11 +728,6 @@
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Рейтинг Фабрика");
             XLSX.writeFile(wb, "KPI_rating_fabrika.xlsx");
-        });
-
-        // auto-build when apps file chosen
-        fileApps.addEventListener("change", () => {
-            if (fileApps.files?.[0]) setTimeout(() => buildBtn.click(), 0);
         });
     })();
     </script>
