@@ -182,7 +182,7 @@
         <section class="panel p-3 p-md-4 mb-3">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                 <h2 class="h6 mb-0">Загрузка Excel</h2>
-                <span class="hint">F процесс · N дата · K ФИО · E заявка · BK баллы · BG срок · BM просрочки · дни/арбитражи — с других листов того же файла</span>
+                <span class="hint">F: new-factory03 / ow-factory03 · N дата · K ФИО · E заявка · BK баллы · BG срок · BM просрочки</span>
             </div>
             <div class="upload-card" id="cardFile">
                 <h3>Выгрузка KPI</h3>
@@ -304,9 +304,11 @@
             return isNaN(d) ? null : d;
         }
 
+        // ponytail: Фабрика в выгрузке кодируется кодами процесса, не словом «Фабрика»
+        const FACTORY_PROCESS = new Set(["new-factory03", "ow-factory03"]);
+
         function isFactory(process) {
-            const s = asText(process).toLowerCase().replace(/ё/g, "е");
-            return s.includes("фабрик");
+            return FACTORY_PROCESS.has(asText(process).toLowerCase());
         }
 
         function normFio(v) {
@@ -683,7 +685,7 @@
                 state.period = period;
                 const sheetNote = wb.sheets.length > 1 ? ` · листов: ${wb.sheets.length}` : "";
                 if (!used) {
-                    statusEl.textContent = "В файле нет строк с процессом «Фабрика» (столбец F)";
+                    statusEl.textContent = "В файле нет строк Фабрика (F: new-factory03 / ow-factory03)";
                 } else {
                     statusEl.textContent = `Готово: ${used} заявок Фабрика · ${state.experts.length} экспертов${sheetNote}`;
                 }
