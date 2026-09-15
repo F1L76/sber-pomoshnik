@@ -182,11 +182,11 @@
         <section class="panel p-3 p-md-4 mb-3">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
                 <h2 class="h6 mb-0">Загрузка Excel</h2>
-                <span class="hint">F: new-factory03 / ow-factory03 · N дата · K ФИО · E заявка · BK баллы · BG срок · BM просрочки</span>
+                <span class="hint">F: new-factory03 / ow-factory03 · дни = 50 · арбитражи = 0 · N дата · K ФИО · BK баллы · BG срок · BM просрочки</span>
             </div>
             <div class="upload-card" id="cardFile">
                 <h3>Выгрузка KPI</h3>
-                <p>Один файл Excel. Берём только процесс <strong>Фабрика</strong>; табель и арбитражи — с листов той же книги, если есть.</p>
+                <p>Один файл Excel. Фабрика = <code>new-factory03</code> и <code>ow-factory03</code> в столбце F; табель и арбитражи — с других листов, если есть.</p>
                 <input type="file" id="fileXlsx" class="form-control form-control-sm" accept=".xlsx,.xls,.xlsm">
                 <div class="fname mt-2" id="nameFile">файл не выбран</div>
             </div>
@@ -303,6 +303,10 @@
             const d = new Date(s);
             return isNaN(d) ? null : d;
         }
+
+        // ponytail: пока нет табеля/арбитражей в выгрузке — фиксируем константы
+        const DEFAULT_DAYS = 50;
+        const DEFAULT_ARB = 0;
 
         // ponytail: Фабрика в выгрузке кодируется кодами процесса, не словом «Фабрика»
         const FACTORY_PROCESS = new Set(["new-factory03", "ow-factory03"]);
@@ -422,12 +426,12 @@
             if (!map.has(key)) {
                 map.set(key, {
                     fio: normFio(fio),
-                    days: 0,
+                    days: DEFAULT_DAYS,
                     points: 0,
                     apps: 0,
                     termSum: 0,
                     overdue: 0,
-                    arb: 0
+                    arb: DEFAULT_ARB
                 });
             }
             return map.get(key);
@@ -675,10 +679,10 @@
                 if (!appsSheet) throw new Error("В файле нет листов");
 
                 const { map, used, period } = parseApps(appsSheet);
-                for (const sheet of wb.sheets) {
-                    if (sheet === appsSheet) continue;
-                    if (sheetNameHint(sheet.name, "days") || sheetLooksLikeDays(sheet)) applyDays(map, sheet);
-                    if (sheetNameHint(sheet.name, "arb") || sheetLooksLikeArb(sheet)) applyArb(map, sheet);
+                // дни и арбитражи пока константы (табель/арбитражи не подключаем)
+                for (const ex of map.values()) {
+                    ex.days = DEFAULT_DAYS;
+                    ex.arb = DEFAULT_ARB;
                 }
 
                 state.experts = finalize(map);
