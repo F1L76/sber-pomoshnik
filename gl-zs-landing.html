@@ -683,9 +683,9 @@
                 return `<span class="meta">ГЛ</span>${esc(OFF_TOPIC)}`;
             }
             const h = hits[0];
-            const q = esc(h.question || "").replace(/\n/g, "<br>");
+            const title = esc(h.question || "").replace(/\n/g, " ");
             const a = esc(h.answer || "").replace(/\n/g, "<br>");
-            return `<span class="meta">ГЛ</span><div class="hit"><strong>${esc(h.sheet || "ответ")}</strong>${q}<br><br>${a}</div>`;
+            return `<span class="meta">ГЛ</span><div class="hit"><strong>${title}</strong><br><br>${a}</div>`;
         }
 
         async function askBase(question) {
