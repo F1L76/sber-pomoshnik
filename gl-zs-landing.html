@@ -674,15 +674,18 @@
             return div;
         }
 
-        function renderHits(hits) {
-            if (!hits.length) {
-                return '<span class="meta">ГЛ</span>В базе ничего близкого нет. Уточните вопрос или обратитесь на ГЛ с ID заявки.';
+        const OFF_TOPIC =
+            "Я отвечаю только по работе горячей линии Залоговой службы — приоритеты, осмотры, СЗЗ, арбитраж и похожие кейсы. "
+            + "По другим темам здесь тишина: переформулируйте вопрос в рамках ГЛ ЗС или выберите статью выше.";
+
+        function renderHits(hits, offTopic) {
+            if (offTopic || !hits.length) {
+                return `<span class="meta">ГЛ</span>${esc(OFF_TOPIC)}`;
             }
-            return `<span class="meta">ГЛ · ${hits.length}</span>` + hits.map((h, i) => {
-                const q = esc(h.question || "").replace(/\n/g, "<br>");
-                const a = esc(h.answer || "").replace(/\n/g, "<br>");
-                return `<div class="hit"><strong>#${i + 1} · ${esc(h.sheet || "")}</strong>${q}<br><br>${a}</div>`;
-            }).join("");
+            const h = hits[0];
+            const q = esc(h.question || "").replace(/\n/g, "<br>");
+            const a = esc(h.answer || "").replace(/\n/g, "<br>");
+            return `<span class="meta">ГЛ</span><div class="hit"><strong>${esc(h.sheet || "ответ")}</strong>${q}<br><br>${a}</div>`;
         }
 
         async function askBase(question) {
@@ -695,11 +698,11 @@
                 const res = await fetch("/api/conclusion-qa", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ question, limit: 4 })
+                    body: JSON.stringify({ question, limit: 1 })
                 });
                 const data = await res.json();
                 if (!res.ok || !data.ok) throw new Error(data.error || "Ошибка поиска");
-                pending.innerHTML = renderHits(data.hits || []);
+                pending.innerHTML = renderHits(data.hits || [], data.offTopic);
             } catch (err) {
                 pending.innerHTML = `<span class="meta">ГЛ</span>${esc(err.message || String(err))}`;
             } finally {
@@ -709,7 +712,7 @@
             }
         }
 
-        addBubble("bot", '<span class="meta">ГЛ</span>Напишите вопрос — например про приоритет, автооценку или срок СЗЗ.');
+        addBubble("bot", '<span class="meta">ГЛ</span>Спросите про работу ГЛ ЗС — например приоритет, автооценку или срок СЗЗ. Один вопрос — один ответ из базы.');
 
         fetch("/api/conclusion-qa/info", { cache: "no-store" })
             .then((r) => r.json())
