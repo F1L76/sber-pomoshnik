@@ -30,6 +30,8 @@ data/vin-parse/
 !data/risk_minimization_rag.xlsx
 !data/conclusion_qa_rag.xlsx
 !data/conclusion_qa.sqlite
+!data/gl_rag/Данные.xlsx
+!data/gl_rag/chunks.jsonl
 Краткая*.pdf
 ПЕРЕСКАЗ*
 ПЛАН*

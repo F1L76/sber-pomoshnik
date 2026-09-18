@@ -568,7 +568,7 @@
             <div class="wrap">
                 <div class="ask__box">
                     <h2 class="ask__title">Не нашли ответ?</h2>
-                    <p class="ask__lead">Спросите внутреннюю базу типовых обращений ГЛ. Номера ASZ/SD в ответах скрыты.</p>
+                    <p class="ask__lead">Спросите базу ГЛ (шаблоны + разборы обращений). Номера ASZ/SD в ответах скрыты.</p>
                     <div class="chat" aria-label="Чат по базе вопросов ГЛ">
                         <div class="chat-log" id="chatLog"></div>
                         <form class="chat-form" id="chatForm">
@@ -715,8 +715,8 @@
             .then((r) => r.json())
             .then((info) => {
                 chatMeta.textContent = info.ready
-                    ? `Индекс готов · ${info.total} пар`
-                    : "Индекс не собран — npm run conclusion-qa:build";
+                    ? `База RAG готова · ${info.total} фрагментов`
+                    : "База не собрана — npm run conclusion-qa:build";
             })
             .catch(() => { chatMeta.textContent = "Нет связи с прокси (localhost:8787)."; });
 
