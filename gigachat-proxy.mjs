@@ -896,6 +896,21 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Единый ответ «база + GigaChat» для лендинга и «Вопросы по заключению»
+    // ponytail: кэш по нормализованному вопросу — повтор = тот же текст; temperature 0 снижает шум модели
+    if (!globalThis.__conclusionQaAskCache) {
+        globalThis.__conclusionQaAskCache = new Map();
+    }
+    const askCache = globalThis.__conclusionQaAskCache;
+
+    function normalizeQaQuestion(q) {
+        return String(q || "")
+            .toLowerCase()
+            .replace(/ё/g, "е")
+            .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
     if (req.method === "POST" && url.pathname === "/api/conclusion-qa/ask") {
         try {
             const raw = await readBody(req);
@@ -904,6 +919,14 @@ const server = http.createServer(async (req, res) => {
             if (!question) {
                 res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
                 res.end(JSON.stringify({ ok: false, error: "question обязателен" }));
+                return;
+            }
+
+            const cacheKey = normalizeQaQuestion(question);
+            if (cacheKey && askCache.has(cacheKey) && body.nocache !== true) {
+                const cached = askCache.get(cacheKey);
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ ...cached, cached: true }));
                 return;
             }
 
@@ -920,18 +943,19 @@ const server = http.createServer(async (req, res) => {
             const emptyMsg =
                 "В базе ГЛ ЗС нет подходящего ответа на этот вопрос. Переформулируйте запрос в рамках работы горячей линии.";
             if (!hits.length) {
-                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-                res.end(JSON.stringify({
+                const payload = {
                     ok: true,
                     answer: emptyMsg,
                     hits: [],
                     synthesized: false,
                     count: 0
-                }));
+                };
+                if (cacheKey) askCache.set(cacheKey, payload);
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify(payload));
                 return;
             }
 
-            // ponytail: те же system/user/temperature, что в помощнике — один код на оба UI
             const QA_SYSTEM =
                 "Ты AI-ассистент «СберБизнес Помощник» — платформы сопровождения залогов и экспертизы в банке. Отвечай профессионально, структурированно, на русском языке. Не выдумывай номера документов и суммы, если их нет во входных данных.";
             const ctx = hits
@@ -944,15 +968,17 @@ const server = http.createServer(async (req, res) => {
                 + "Вопрос пользователя:\n" + question + "\n\nКонтекст из базы:\n" + ctx;
 
             if (!isGigaChatEnabledOnServer()) {
-                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-                res.end(JSON.stringify({
+                const payload = {
                     ok: true,
                     answer: hits[0].answer,
                     hits,
                     synthesized: false,
                     count: hits.length,
                     gigaError: "GigaChat отключён на сервере"
-                }));
+                };
+                if (cacheKey) askCache.set(cacheKey, payload);
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify(payload));
                 return;
             }
 
@@ -962,16 +988,25 @@ const server = http.createServer(async (req, res) => {
                         { role: "system", content: QA_SYSTEM },
                         { role: "user", content: userPrompt }
                     ],
-                    { temperature: 0.2, max_tokens: 2048 }
+                    { temperature: 0, max_tokens: 2048 }
                 );
-                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-                res.end(JSON.stringify({
+                const payload = {
                     ok: true,
                     answer: content,
                     hits,
                     synthesized: true,
                     count: hits.length
-                }));
+                };
+                if (cacheKey) {
+                    // ponytail: потолок 500 ключей; при переполнении выкидываем самый старый
+                    if (askCache.size >= 500) {
+                        const first = askCache.keys().next().value;
+                        askCache.delete(first);
+                    }
+                    askCache.set(cacheKey, payload);
+                }
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify(payload));
             } catch (e) {
                 res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
                 res.end(JSON.stringify({
