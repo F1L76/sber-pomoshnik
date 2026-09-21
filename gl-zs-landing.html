@@ -679,14 +679,6 @@
         const NO_ANSWER =
             "В базе ГЛ ЗС нет подходящего ответа на этот вопрос. Переформулируйте запрос в рамках работы горячей линии.";
 
-        // байт-в-байт как GIGACHAT_SYSTEM в «Вопросы по заключению»
-        const GIGA_SYSTEM =
-            "Ты AI-ассистент «СберБизнес Помощник» — платформы сопровождения залогов и экспертизы в банке. Отвечай профессионально, структурированно, на русском языке. Не выдумывай номера документов и суммы, если их нет во входных данных.";
-
-        function renderNoAnswer() {
-            return `<span class="meta">ГЛ</span>${esc(NO_ANSWER)}`;
-        }
-
         function renderHitsFallback(hits) {
             return (hits || []).map((h, i) => {
                 const title = esc(h.question || "").replace(/\n/g, " ");
@@ -695,32 +687,19 @@
             }).join("");
         }
 
-        function renderGigaAnswer(text, hits) {
-            const body = esc(text || "").replace(/\n/g, "<br>");
+        function renderAnswer(data) {
+            const answer = esc(data.answer || NO_ANSWER).replace(/\n/g, "<br>");
+            const hits = data.hits || [];
+            const meta = data.synthesized ? "ГЛ · GigaChat" : "ГЛ";
+            const warn = data.gigaError
+                ? `<div class="hint" style="margin-bottom:0.6rem">GigaChat недоступен (${esc(data.gigaError)}). Показываю ответ из базы.</div>`
+                : "";
             const list = renderHitsFallback(hits);
-            return `<span class="meta">ГЛ · GigaChat</span><div class="hit">${body}`
+            return `<span class="meta">${meta}</span>${warn}<div class="hit">${answer}`
                 + (list
                     ? `<details class="hit-src"><summary>Фрагменты базы (${hits.length})</summary>${list}</details>`
                     : "")
                 + `</div>`;
-        }
-
-        async function askGigaChat(userPrompt) {
-            const res = await fetch("/api/gigachat/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    systemPrompt: GIGA_SYSTEM,
-                    userPrompt,
-                    temperature: 0,
-                    max_tokens: 2048
-                })
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || "GigaChat недоступен");
-            const content = String(data.content || "").trim();
-            if (!content) throw new Error("Пустой ответ GigaChat");
-            return content;
         }
 
         async function askBase(question) {
@@ -728,38 +707,16 @@
             addBubble("user", `<span class="meta">Вы</span>${esc(question)}`);
             inputEl.value = "";
             sendEl.disabled = true;
-            const pending = addBubble("bot", '<span class="meta">ГЛ</span>Ищем…');
+            const pending = addBubble("bot", '<span class="meta">ГЛ</span>База + GigaChat…');
             try {
-                const res = await fetch("/api/conclusion-qa", {
+                const res = await fetch("/api/conclusion-qa/ask", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ question, limit: 5 })
+                    body: JSON.stringify({ question })
                 });
                 const data = await res.json();
                 if (!res.ok || !data.ok) throw new Error(data.error || "Ошибка поиска");
-
-                const hits = data.hits || [];
-                if (!hits.length) {
-                    pending.innerHTML = renderNoAnswer();
-                    return;
-                }
-
-                pending.innerHTML = '<span class="meta">ГЛ</span>База + GigaChat…';
-                try {
-                    const ctx = hits.map((h, i) =>
-                        `[${i + 1}] Лист: ${h.sheet}\nВопрос: ${h.question}\nОтвет: ${h.answer}`
-                    ).join("\n\n").slice(0, 14000);
-                    const answer = await askGigaChat(
-                        "Ниже фрагменты из внутренней базы типовых вопросов по заключениям. "
-                        + "Ответь на вопрос пользователя, опираясь на них. Если базы недостаточно — скажи об этом.\n\n"
-                        + "Вопрос пользователя:\n" + question + "\n\nКонтекст из базы:\n" + ctx
-                    );
-                    pending.innerHTML = renderGigaAnswer(answer, hits);
-                } catch (e) {
-                    pending.innerHTML =
-                        `<span class="meta">ГЛ</span><div class="hint" style="margin-bottom:0.6rem">GigaChat недоступен (${esc(e.message)}). Показываю ответы из базы.</div>`
-                        + renderHitsFallback(hits);
-                }
+                pending.innerHTML = renderAnswer(data);
             } catch (err) {
                 pending.innerHTML = `<span class="meta">ГЛ</span>${esc(err.message || String(err))}`;
             } finally {
@@ -769,7 +726,7 @@
             }
         }
 
-        addBubble("bot", '<span class="meta">ГЛ</span>Задайте вопрос — отвечу по базе, как в блоке «Вопросы по заключению».');
+        addBubble("bot", '<span class="meta">ГЛ</span>Задайте вопрос — отвечу тем же движком, что «Вопросы по заключению».');
 
         fetch("/api/conclusion-qa/info", { cache: "no-store" })
             .then((r) => r.json())

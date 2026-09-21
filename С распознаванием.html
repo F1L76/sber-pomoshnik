@@ -2531,6 +2531,17 @@
             return data;
         }
 
+        async function askConclusionQaApi(question) {
+            const res = await fetch(`${GIGACHAT_API_BASE}/api/conclusion-qa/ask`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) throw new Error(data.error || "Ошибка поиска");
+            return data;
+        }
+
         function renderQaHits(hits) {
             if (!hits.length) {
                 return '<div class="text-warning">Ничего не найдено в базе. Переформулируйте вопрос.</div>';

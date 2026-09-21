@@ -895,6 +895,101 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    // Единый ответ «база + GigaChat» для лендинга и «Вопросы по заключению»
+    if (req.method === "POST" && url.pathname === "/api/conclusion-qa/ask") {
+        try {
+            const raw = await readBody(req);
+            const body = JSON.parse(raw || "{}");
+            const question = String(body.question || body.q || body.prompt || "").trim();
+            if (!question) {
+                res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ ok: false, error: "question обязателен" }));
+                return;
+            }
+
+            const search = searchConclusionQa(question, { limit: 5 });
+            if (!search.ok) {
+                res.writeHead(search.error?.includes("обязателен") ? 400 : 503, {
+                    "Content-Type": "application/json; charset=utf-8"
+                });
+                res.end(JSON.stringify(search));
+                return;
+            }
+
+            const hits = search.hits || [];
+            const emptyMsg =
+                "В базе ГЛ ЗС нет подходящего ответа на этот вопрос. Переформулируйте запрос в рамках работы горячей линии.";
+            if (!hits.length) {
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({
+                    ok: true,
+                    answer: emptyMsg,
+                    hits: [],
+                    synthesized: false,
+                    count: 0
+                }));
+                return;
+            }
+
+            // ponytail: те же system/user/temperature, что в помощнике — один код на оба UI
+            const QA_SYSTEM =
+                "Ты AI-ассистент «СберБизнес Помощник» — платформы сопровождения залогов и экспертизы в банке. Отвечай профессионально, структурированно, на русском языке. Не выдумывай номера документов и суммы, если их нет во входных данных.";
+            const ctx = hits
+                .map((h, i) => `[${i + 1}] Лист: ${h.sheet}\nВопрос: ${h.question}\nОтвет: ${h.answer}`)
+                .join("\n\n")
+                .slice(0, 14000);
+            const userPrompt =
+                "Ниже фрагменты из внутренней базы типовых вопросов по заключениям. "
+                + "Ответь на вопрос пользователя, опираясь на них. Если базы недостаточно — скажи об этом.\n\n"
+                + "Вопрос пользователя:\n" + question + "\n\nКонтекст из базы:\n" + ctx;
+
+            if (!isGigaChatEnabledOnServer()) {
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({
+                    ok: true,
+                    answer: hits[0].answer,
+                    hits,
+                    synthesized: false,
+                    count: hits.length,
+                    gigaError: "GigaChat отключён на сервере"
+                }));
+                return;
+            }
+
+            try {
+                const content = await chatCompletion(
+                    [
+                        { role: "system", content: QA_SYSTEM },
+                        { role: "user", content: userPrompt }
+                    ],
+                    { temperature: 0.2, max_tokens: 2048 }
+                );
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({
+                    ok: true,
+                    answer: content,
+                    hits,
+                    synthesized: true,
+                    count: hits.length
+                }));
+            } catch (e) {
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({
+                    ok: true,
+                    answer: hits[0].answer,
+                    hits,
+                    synthesized: false,
+                    count: hits.length,
+                    gigaError: e.message || String(e)
+                }));
+            }
+        } catch (e) {
+            res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, error: e.message || String(e) }));
+        }
+        return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/gigachat/chat") {
         try {
             if (!isGigaChatEnabledOnServer()) {
