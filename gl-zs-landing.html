@@ -679,32 +679,28 @@
         const NO_ANSWER =
             "В базе ГЛ ЗС нет подходящего ответа на этот вопрос. Переформулируйте запрос в рамках работы горячей линии.";
 
+        // как в «Вопросы по заключению» у помощника
         const GIGA_SYSTEM =
-            "Ты консультант горячей линии Залоговой службы (ГЛ ЗС). "
-            + "Отвечай кратко и по делу на русском. "
-            + "Используй только фрагменты из внутренней базы ниже. Не выдумывай факты, процедуры и номера. "
-            + "Приоритет у фрагмента [1], остальные — уточнение, если помогают. "
-            + "Номера ASZ/SD не восстанавливай — оставляй ASZ.... / SD..... "
-            + "Если во фрагментах нет ответа — скажи одной короткой фразой, что в базе нет подходящего ответа. "
-            + "Не рассуждай про оффтоп, сторонние темы и возможности ассистента.";
+            "Ты AI-ассистент «СберБизнес Помощник» — платформы сопровождения залогов и экспертизы в банке. "
+            + "Отвечай профессионально, структурированно, на русском языке. "
+            + "Не выдумывай номера документов и суммы, если их нет во входных данных. "
+            + "Опирайся на фрагменты базы. Если базы недостаточно — скажи об этом коротко, без рассуждений про оффтоп.";
 
         function renderNoAnswer() {
             return `<span class="meta">ГЛ</span>${esc(NO_ANSWER)}`;
         }
 
-        function renderHitsFallback(hit) {
-            const title = esc(hit.question || "").replace(/\n/g, " ");
-            const a = esc(hit.answer || "").replace(/\n/g, "<br>");
-            return `<span class="meta">ГЛ</span><div class="hit"><strong>${title}</strong><br><br>${a}</div>`;
+        function renderHitsFallback(hits) {
+            return (hits || []).map((h, i) => {
+                const title = esc(h.question || "").replace(/\n/g, " ");
+                const a = esc(h.answer || "").replace(/\n/g, "<br>");
+                return `<div class="hit"><strong>[${i + 1}] ${title}</strong><br><br>${a}</div>`;
+            }).join("");
         }
 
         function renderGigaAnswer(text, hits) {
             const body = esc(text || "").replace(/\n/g, "<br>");
-            const list = (hits || []).map((h, i) => {
-                const title = esc(h.question || "").replace(/\n/g, " ");
-                const a = esc(h.answer || "").replace(/\n/g, "<br>");
-                return `<div class="hit"><strong>[${i + 1}] ${title}</strong><br>${a}</div>`;
-            }).join("");
+            const list = renderHitsFallback(hits);
             return `<span class="meta">ГЛ · GigaChat</span><div class="hit">${body}`
                 + (list
                     ? `<details class="hit-src"><summary>Фрагменты базы (${hits.length})</summary>${list}</details>`
@@ -720,7 +716,7 @@
                     systemPrompt: GIGA_SYSTEM,
                     userPrompt,
                     temperature: 0.2,
-                    max_tokens: 1600
+                    max_tokens: 2048
                 })
             });
             const data = await res.json().catch(() => ({}));
@@ -735,18 +731,18 @@
             addBubble("user", `<span class="meta">Вы</span>${esc(question)}`);
             inputEl.value = "";
             sendEl.disabled = true;
-            const pending = addBubble("bot", '<span class="meta">ГЛ</span>Ищем в базе…');
+            const pending = addBubble("bot", '<span class="meta">ГЛ</span>Ищем…');
             try {
                 const res = await fetch("/api/conclusion-qa", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ question, limit: 3 })
+                    body: JSON.stringify({ question, limit: 5 })
                 });
                 const data = await res.json();
                 if (!res.ok || !data.ok) throw new Error(data.error || "Ошибка поиска");
 
                 const hits = data.hits || [];
-                if (data.offTopic || !hits.length) {
+                if (!hits.length) {
                     pending.innerHTML = renderNoAnswer();
                     return;
                 }
@@ -754,19 +750,18 @@
                 pending.innerHTML = '<span class="meta">ГЛ</span>База + GigaChat…';
                 try {
                     const ctx = hits.map((h, i) =>
-                        `[${i + 1}] Лист: ${h.sheet || ""}\nТема: ${h.question || ""}\nОтвет: ${h.answer || ""}`
-                    ).join("\n\n").slice(0, 12000);
+                        `[${i + 1}] Лист: ${h.sheet}\nВопрос: ${h.question}\nОтвет: ${h.answer}`
+                    ).join("\n\n").slice(0, 14000);
                     const answer = await askGigaChat(
-                        "Ниже фрагменты из базы RAG горячей линии ЗС.\n"
-                        + "Сформулируй один понятный ответ пользователю только по этим фрагментам. "
-                        + "Не упоминай оффтоп и не уходи за пределы базы.\n\n"
-                        + "Вопрос пользователя:\n" + question + "\n\nФрагменты базы:\n" + ctx
+                        "Ниже фрагменты из внутренней базы типовых вопросов по заключениям. "
+                        + "Ответь на вопрос пользователя, опираясь на них. Если базы недостаточно — скажи об этом.\n\n"
+                        + "Вопрос пользователя:\n" + question + "\n\nКонтекст из базы:\n" + ctx
                     );
                     pending.innerHTML = renderGigaAnswer(answer, hits);
                 } catch (e) {
                     pending.innerHTML =
-                        `<span class="meta">ГЛ</span><div class="hint" style="margin-bottom:0.6rem">GigaChat недоступен (${esc(e.message)}). Показываю ответ из базы.</div>`
-                        + renderHitsFallback(hits[0]);
+                        `<span class="meta">ГЛ</span><div class="hint" style="margin-bottom:0.6rem">GigaChat недоступен (${esc(e.message)}). Показываю ответы из базы.</div>`
+                        + renderHitsFallback(hits);
                 }
             } catch (err) {
                 pending.innerHTML = `<span class="meta">ГЛ</span>${esc(err.message || String(err))}`;
@@ -777,7 +772,7 @@
             }
         }
 
-        addBubble("bot", '<span class="meta">ГЛ</span>Задайте вопрос по работе ГЛ ЗС — ответ соберу по базе RAG.');
+        addBubble("bot", '<span class="meta">ГЛ</span>Задайте вопрос — отвечу по базе, как в блоке «Вопросы по заключению».');
 
         fetch("/api/conclusion-qa/info", { cache: "no-store" })
             .then((r) => r.json())
