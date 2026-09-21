@@ -570,7 +570,7 @@
             <div class="wrap">
                 <div class="ask__box">
                     <h2 class="ask__title">Не нашли ответ?</h2>
-                    <p class="ask__lead">Ответы из базы RAG ГЛ + формулировка GigaChat. Только тема горячей линии ЗС. Номера ASZ/SD скрыты.</p>
+                    <p class="ask__lead">Ответ только из базы RAG ГЛ, формулирует GigaChat. Номера ASZ/SD скрыты.</p>
                     <div class="chat" aria-label="Чат по базе RAG ГЛ">
                         <div class="chat-log" id="chatLog"></div>
                         <form class="chat-form" id="chatForm">
@@ -676,32 +676,39 @@
             return div;
         }
 
-        const OFF_TOPIC =
-            "Я отвечаю только по работе горячей линии Залоговой службы — приоритеты, осмотры, СЗЗ, арбитраж и похожие кейсы. "
-            + "По другим темам здесь тишина: переформулируйте вопрос в рамках ГЛ ЗС или выберите статью выше.";
+        const NO_ANSWER =
+            "В базе ГЛ ЗС нет подходящего ответа на этот вопрос. Переформулируйте запрос в рамках работы горячей линии.";
 
         const GIGA_SYSTEM =
             "Ты консультант горячей линии Залоговой службы (ГЛ ЗС). "
-            + "Отвечай только по работе ГЛ ЗС, кратко и по делу, на русском. "
-            + "Опирайся строго на фрагмент из внутренней базы. Не выдумывай факты. "
-            + "Номера ASZ/SD не восстанавливай и не уточняй — оставляй в виде ASZ.... / SD..... "
-            + "Если фрагмента недостаточно — скажи, что в базе нет точного ответа, и предложи переформулировать вопрос.";
+            + "Отвечай кратко и по делу на русском. "
+            + "Используй только фрагменты из внутренней базы ниже. Не выдумывай факты, процедуры и номера. "
+            + "Приоритет у фрагмента [1], остальные — уточнение, если помогают. "
+            + "Номера ASZ/SD не восстанавливай — оставляй ASZ.... / SD..... "
+            + "Если во фрагментах нет ответа — скажи одной короткой фразой, что в базе нет подходящего ответа. "
+            + "Не рассуждай про оффтоп, сторонние темы и возможности ассистента.";
 
-        function renderHits(hits, offTopic) {
-            if (offTopic || !hits.length) {
-                return `<span class="meta">ГЛ</span>${esc(OFF_TOPIC)}`;
-            }
-            const h = hits[0];
-            const title = esc(h.question || "").replace(/\n/g, " ");
-            const a = esc(h.answer || "").replace(/\n/g, "<br>");
+        function renderNoAnswer() {
+            return `<span class="meta">ГЛ</span>${esc(NO_ANSWER)}`;
+        }
+
+        function renderHitsFallback(hit) {
+            const title = esc(hit.question || "").replace(/\n/g, " ");
+            const a = esc(hit.answer || "").replace(/\n/g, "<br>");
             return `<span class="meta">ГЛ</span><div class="hit"><strong>${title}</strong><br><br>${a}</div>`;
         }
 
-        function renderGigaAnswer(text, hit) {
+        function renderGigaAnswer(text, hits) {
             const body = esc(text || "").replace(/\n/g, "<br>");
-            const title = esc(hit?.question || "").replace(/\n/g, " ");
+            const list = (hits || []).map((h, i) => {
+                const title = esc(h.question || "").replace(/\n/g, " ");
+                const a = esc(h.answer || "").replace(/\n/g, "<br>");
+                return `<div class="hit"><strong>[${i + 1}] ${title}</strong><br>${a}</div>`;
+            }).join("");
             return `<span class="meta">ГЛ · GigaChat</span><div class="hit">${body}`
-                + (hit ? `<details class="hit-src"><summary>Фрагмент базы</summary><strong>${title}</strong><br>${esc(hit.answer || "").replace(/\n/g, "<br>")}</details>` : "")
+                + (list
+                    ? `<details class="hit-src"><summary>Фрагменты базы (${hits.length})</summary>${list}</details>`
+                    : "")
                 + `</div>`;
         }
 
@@ -713,7 +720,7 @@
                     systemPrompt: GIGA_SYSTEM,
                     userPrompt,
                     temperature: 0.2,
-                    max_tokens: 1200
+                    max_tokens: 1600
                 })
             });
             const data = await res.json().catch(() => ({}));
@@ -733,30 +740,33 @@
                 const res = await fetch("/api/conclusion-qa", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ question, limit: 1 })
+                    body: JSON.stringify({ question, limit: 3 })
                 });
                 const data = await res.json();
                 if (!res.ok || !data.ok) throw new Error(data.error || "Ошибка поиска");
 
-                if (data.offTopic || !(data.hits || []).length) {
-                    pending.innerHTML = renderHits([], true);
+                const hits = data.hits || [];
+                if (data.offTopic || !hits.length) {
+                    pending.innerHTML = renderNoAnswer();
                     return;
                 }
 
-                const hit = data.hits[0];
                 pending.innerHTML = '<span class="meta">ГЛ</span>База + GigaChat…';
                 try {
-                    const ctx = `Тема: ${hit.question || ""}\nОтвет из базы:\n${hit.answer || ""}`.slice(0, 8000);
+                    const ctx = hits.map((h, i) =>
+                        `[${i + 1}] Лист: ${h.sheet || ""}\nТема: ${h.question || ""}\nОтвет: ${h.answer || ""}`
+                    ).join("\n\n").slice(0, 12000);
                     const answer = await askGigaChat(
-                        "Ниже один фрагмент из базы RAG горячей линии ЗС.\n"
-                        + "Сформулируй понятный ответ пользователю только по этому фрагменту.\n\n"
-                        + "Вопрос пользователя:\n" + question + "\n\nФрагмент базы:\n" + ctx
+                        "Ниже фрагменты из базы RAG горячей линии ЗС.\n"
+                        + "Сформулируй один понятный ответ пользователю только по этим фрагментам. "
+                        + "Не упоминай оффтоп и не уходи за пределы базы.\n\n"
+                        + "Вопрос пользователя:\n" + question + "\n\nФрагменты базы:\n" + ctx
                     );
-                    pending.innerHTML = renderGigaAnswer(answer, hit);
+                    pending.innerHTML = renderGigaAnswer(answer, hits);
                 } catch (e) {
                     pending.innerHTML =
                         `<span class="meta">ГЛ</span><div class="hint" style="margin-bottom:0.6rem">GigaChat недоступен (${esc(e.message)}). Показываю ответ из базы.</div>`
-                        + renderHits([hit], false).replace('<span class="meta">ГЛ</span>', "");
+                        + renderHitsFallback(hits[0]);
                 }
             } catch (err) {
                 pending.innerHTML = `<span class="meta">ГЛ</span>${esc(err.message || String(err))}`;
@@ -767,7 +777,7 @@
             }
         }
 
-        addBubble("bot", '<span class="meta">ГЛ</span>Спросите про работу ГЛ ЗС — например приоритет, автооценку или срок СЗЗ. Ответ соберёт GigaChat по базе RAG.');
+        addBubble("bot", '<span class="meta">ГЛ</span>Задайте вопрос по работе ГЛ ЗС — ответ соберу по базе RAG.');
 
         fetch("/api/conclusion-qa/info", { cache: "no-store" })
             .then((r) => r.json())
