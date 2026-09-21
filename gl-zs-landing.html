@@ -328,6 +328,23 @@
         .hit strong { display: block; margin-bottom: 0.15rem; }
         .hit-src { margin-top: 0.7rem; font-size: 0.8rem; color: var(--muted); }
         .hit-src summary { cursor: pointer; user-select: none; }
+        .fb {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-top: 0.55rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        .fb button {
+            border: 1px solid #d1d5db;
+            background: #fff;
+            border-radius: 999px;
+            padding: 0.1rem 0.5rem;
+            cursor: pointer;
+        }
+        .fb button:disabled { opacity: 0.55; cursor: default; }
+        .fb-st { margin-left: 0.2rem; }
         .chat-form {
             display: grid;
             grid-template-columns: 1fr auto;
@@ -699,7 +716,44 @@
                 + (list
                     ? `<details class="hit-src"><summary>Фрагменты базы (${hits.length})</summary>${list}</details>`
                     : "")
-                + `</div>`;
+                + `</div>`
+                + `<div class="fb" data-fb>
+                    <span>Ответ полезен?</span>
+                    <button type="button" data-vote="up">👍</button>
+                    <button type="button" data-vote="down">👎</button>
+                    <span class="fb-st" hidden></span>
+                   </div>`;
+        }
+
+        async function sendFeedback(el, vote, question, answer, hits) {
+            const status = el.querySelector(".fb-st");
+            let comment;
+            if (vote === "down") {
+                comment = window.prompt("Что не так? (можно пропустить)") || undefined;
+            }
+            el.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+            try {
+                const res = await fetch("/api/conclusion-qa/feedback", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        vote,
+                        question,
+                        answer,
+                        comment,
+                        hitIds: (hits || []).map((h) => h.refId || h.id).filter(Boolean),
+                        source: "landing"
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok || !data.ok) throw new Error(data.error || "ошибка");
+                status.hidden = false;
+                status.textContent = "спасибо";
+            } catch (err) {
+                el.querySelectorAll("button").forEach((b) => { b.disabled = false; });
+                status.hidden = false;
+                status.textContent = err.message || "не отправилось";
+            }
         }
 
         async function askBase(question) {
@@ -717,6 +771,12 @@
                 const data = await res.json();
                 if (!res.ok || !data.ok) throw new Error(data.error || "Ошибка поиска");
                 pending.innerHTML = renderAnswer(data);
+                const fb = pending.querySelector("[data-fb]");
+                fb?.addEventListener("click", (e) => {
+                    const btn = e.target.closest("button[data-vote]");
+                    if (!btn || btn.disabled) return;
+                    sendFeedback(fb, btn.getAttribute("data-vote"), question, data.answer || "", data.hits || []);
+                });
             } catch (err) {
                 pending.innerHTML = `<span class="meta">ГЛ</span>${esc(err.message || String(err))}`;
             } finally {

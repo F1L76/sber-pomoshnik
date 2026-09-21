@@ -32,6 +32,11 @@ data/vin-parse/
 !data/conclusion_qa.sqlite
 !data/gl_rag/Данные.xlsx
 !data/gl_rag/chunks.jsonl
+!data/gl_rag/glossary.json
+!data/gl_rag/eval-gold.json
+data/gl_rag/feedback.jsonl
+data/gl_rag/eval-last.json
+data/gl_rag/glossary.xlsx
 Краткая*.pdf
 ПЕРЕСКАЗ*
 ПЛАН*

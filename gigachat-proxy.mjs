@@ -26,6 +26,7 @@ import { getZalogConverterHealth, probeZalogPythonDeps, probeZalogPythonDepsCach
 import { createZalogConvertJob, getZalogConvertJob } from "./lib/zalog-jobs.mjs";
 import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigachat-config.mjs";
 import { getConclusionQaInfo, searchConclusionQa, maskConclusionRefs, buildGlossaryPromptBlock } from "./lib/conclusion-qa.mjs";
+import { appendConclusionQaFeedback } from "./lib/conclusion-qa-feedback.mjs";
 import { getNspdBases } from "./lib/nspd-config.mjs";
 import { loadGeocodeMapPayload, loadGeocodeProgress, readStatus } from "./lib/nspd-geocode-store.mjs";
 import { loadVinParseProgress } from "./lib/vin-parse-store.mjs";
@@ -875,6 +876,20 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/conclusion-qa/info") {
         res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
         res.end(JSON.stringify(getConclusionQaInfo()));
+        return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/conclusion-qa/feedback") {
+        try {
+            const raw = await readBody(req);
+            const body = JSON.parse(raw || "{}");
+            const result = appendConclusionQaFeedback(body);
+            res.writeHead(result.ok ? 200 : 400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(result));
+        } catch (e) {
+            res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, error: e.message || String(e) }));
+        }
         return;
     }
 

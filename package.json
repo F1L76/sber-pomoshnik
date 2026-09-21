@@ -25,6 +25,8 @@
     "deals:import": "node scripts/import-deals-sqlite.mjs",
     "conclusion-qa:build": "PYTHONPATH=python-deps python3 scripts/build_gl_rag.py",
     "conclusion-qa:check": "node lib/conclusion-qa.mjs",
+    "conclusion-qa:eval": "node scripts/eval-conclusion-qa.mjs",
+    "conclusion-qa:eval:ask": "node scripts/eval-conclusion-qa.mjs --ask",
     "conclusion-qa:build:legacy": "PYTHONPATH=python-deps python3 scripts/build_conclusion_qa.py",
     "gl-load:check": "node scripts/gl-load-selfcheck.mjs",
     "zalog:install": "python3 -m pip install -r requirements-zalog.txt -t python-deps",

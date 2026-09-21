@@ -465,6 +465,39 @@
             padding: 0.35rem 0.85rem 0.55rem;
             border-top: 1px solid transparent;
         }
+        .conclusion-qa-feedback {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-top: 0.45rem;
+            font-size: 0.8rem;
+        }
+        .conclusion-qa-feedback button {
+            border: 1px solid #dee2e6;
+            background: #fff;
+            border-radius: 999px;
+            padding: 0.15rem 0.55rem;
+            line-height: 1.3;
+            cursor: pointer;
+        }
+        .conclusion-qa-feedback button:disabled {
+            opacity: 0.55;
+            cursor: default;
+        }
+        .conclusion-qa-feedback button.is-on {
+            border-color: #198754;
+            color: #198754;
+            background: #e8f5ee;
+        }
+        .conclusion-qa-feedback button.is-on-down {
+            border-color: #dc3545;
+            color: #dc3545;
+            background: #fdecee;
+        }
+        .conclusion-qa-feedback .fb-status {
+            color: #6c757d;
+            margin-left: 0.25rem;
+        }
         .table-responsive-custom {
             overflow-x: auto;
             border-radius: 12px;
@@ -2542,6 +2575,52 @@
             return data;
         }
 
+        function attachFeedback(bubbleEl, question, answer, hits) {
+            if (!bubbleEl || bubbleEl.querySelector(".conclusion-qa-feedback")) return;
+            const bar = document.createElement("div");
+            bar.className = "conclusion-qa-feedback";
+            bar.innerHTML =
+                '<span class="text-muted">Ответ полезен?</span>'
+                + '<button type="button" data-vote="up" title="Да">👍</button>'
+                + '<button type="button" data-vote="down" title="Нет">👎</button>'
+                + '<span class="fb-status" hidden></span>';
+            bubbleEl.appendChild(bar);
+            const status = bar.querySelector(".fb-status");
+            bar.addEventListener("click", async (e) => {
+                const btn = e.target.closest("button[data-vote]");
+                if (!btn || btn.disabled) return;
+                const vote = btn.getAttribute("data-vote");
+                let comment;
+                if (vote === "down") {
+                    comment = window.prompt("Что не так? (можно пропустить)") || undefined;
+                }
+                bar.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+                try {
+                    const res = await fetch(`${GIGACHAT_API_BASE}/api/conclusion-qa/feedback`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            vote,
+                            question,
+                            answer,
+                            comment,
+                            hitIds: (hits || []).map((h) => h.refId || h.id).filter(Boolean),
+                            source: "helper"
+                        })
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.ok) throw new Error(data.error || "ошибка");
+                    btn.classList.add(vote === "up" ? "is-on" : "is-on-down");
+                    status.hidden = false;
+                    status.textContent = "спасибо";
+                } catch (err) {
+                    bar.querySelectorAll("button").forEach((b) => { b.disabled = false; });
+                    status.hidden = false;
+                    status.textContent = err.message || "не отправилось";
+                }
+            });
+        }
+
         function renderQaHits(hits) {
             if (!hits.length) {
                 return '<div class="text-warning">Ничего не найдено в базе. Переформулируйте вопрос.</div>';
@@ -2594,11 +2673,18 @@
                         + (data.gigaError
                             ? `<div class="text-warning small mt-2">GigaChat: ${escapeHtml(data.gigaError)}</div>`
                             : "");
+                    attachFeedback(agentBody, question, data.answer || "", data.hits || []);
                     return;
                 }
 
                 const data = await searchConclusionQaApi(question);
                 agentBody.innerHTML = renderQaHits(data.hits || []);
+                attachFeedback(
+                    agentBody,
+                    question,
+                    (data.hits || []).map((h) => h.answer).join("\n"),
+                    data.hits || []
+                );
             } catch (e) {
                 agentBody.innerHTML = `<span class="text-warning">${escapeHtml(e.message)}</span>`;
             } finally {
