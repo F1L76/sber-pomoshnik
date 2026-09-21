@@ -2585,38 +2585,20 @@
             sendBtn.disabled = true;
 
             try {
-                const data = await searchConclusionQaApi(question);
-                const hits = data.hits || [];
-
                 if (isGigaChatActive()) {
                     agentBody.innerHTML =
                         '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1"></i>База + GigaChat…</span>';
-                    try {
-                        const ctx = hits.map((h, i) =>
-                            `[${i + 1}] Лист: ${h.sheet}\nВопрос: ${h.question}\nОтвет: ${h.answer}`
-                        ).join("\n\n").slice(0, 14000);
-                        const answer = await askGigaChat(
-                            "Ниже фрагменты из внутренней базы типовых вопросов по заключениям. "
-                            + "Ответь на вопрос пользователя, опираясь на них. Если базы недостаточно — скажи об этом.\n\n"
-                            + "Вопрос пользователя:\n" + question + "\n\nКонтекст из базы:\n" + (ctx || "(пусто)"),
-                            GIGACHAT_SYSTEM,
-                            { temperature: 0.2, max_tokens: 2048 }
-                        );
-                        agentBody.innerHTML =
-                            escapeHtml(answer).replace(/\n/g, "<br>")
-                            + (hits.length
-                                ? `<details class="small mt-2"><summary class="text-muted">Фрагменты базы (${hits.length})</summary>${renderQaHits(hits)}</details>`
-                                : "");
-                        return;
-                    } catch (e) {
-                        agentBody.innerHTML =
-                            `<div class="text-warning small mb-2">GigaChat недоступен: ${escapeHtml(e.message)}. Показываю ответы из базы.</div>`
-                            + renderQaHits(hits);
-                        return;
-                    }
+                    const data = await askConclusionQaApi(question);
+                    agentBody.innerHTML =
+                        escapeHtml(data.answer || "").replace(/\n/g, "<br>")
+                        + (data.gigaError
+                            ? `<div class="text-warning small mt-2">GigaChat: ${escapeHtml(data.gigaError)}</div>`
+                            : "");
+                    return;
                 }
 
-                agentBody.innerHTML = renderQaHits(hits);
+                const data = await searchConclusionQaApi(question);
+                agentBody.innerHTML = renderQaHits(data.hits || []);
             } catch (e) {
                 agentBody.innerHTML = `<span class="text-warning">${escapeHtml(e.message)}</span>`;
             } finally {
