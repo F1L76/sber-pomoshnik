@@ -55,8 +55,8 @@ function scoreMust(blob, must = [], mustAny = []) {
 /** Поиск попал в тему вопроса (даже если эталонные маркеры ответа ещё не в чанке). */
 function topicalHit(question, hitBlob) {
     const qToks = norm(question).match(/[а-яa-z0-9]{4,}/g) || [];
-    const stop = new Set(["какой", "какая", "какие", "после", "можно", "нужно", "делать", "почему", "когда", "где"]);
-    const meaningful = [...new Set(qToks.filter((t) => !stop.has(t)))];
+    const stop = new Set(["какой", "какая", "какие", "после", "можно", "нужно", "делать", "почему", "когда", "где", "такое"]);
+    const meaningful = [...new Set(qToks.filter((t) => !stop.has(t)))].map((t) => t.slice(0, 6));
     if (!meaningful.length) return true;
     const b = norm(hitBlob);
     const hits = meaningful.filter((t) => b.includes(t));
