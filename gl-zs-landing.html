@@ -326,6 +326,8 @@
             font-size: 0.86rem;
         }
         .hit strong { display: block; margin-bottom: 0.15rem; }
+        .hit-src { margin-top: 0.7rem; font-size: 0.8rem; color: var(--muted); }
+        .hit-src summary { cursor: pointer; user-select: none; }
         .chat-form {
             display: grid;
             grid-template-columns: 1fr auto;
@@ -568,7 +570,7 @@
             <div class="wrap">
                 <div class="ask__box">
                     <h2 class="ask__title">Не нашли ответ?</h2>
-                    <p class="ask__lead">Ответы из базы RAG ГЛ («База Rag»: шаблоны + обращения). Номера ASZ/SD скрыты. Один вопрос — один ответ.</p>
+                    <p class="ask__lead">Ответы из базы RAG ГЛ + формулировка GigaChat. Только тема горячей линии ЗС. Номера ASZ/SD скрыты.</p>
                     <div class="chat" aria-label="Чат по базе RAG ГЛ">
                         <div class="chat-log" id="chatLog"></div>
                         <form class="chat-form" id="chatForm">
@@ -678,6 +680,13 @@
             "Я отвечаю только по работе горячей линии Залоговой службы — приоритеты, осмотры, СЗЗ, арбитраж и похожие кейсы. "
             + "По другим темам здесь тишина: переформулируйте вопрос в рамках ГЛ ЗС или выберите статью выше.";
 
+        const GIGA_SYSTEM =
+            "Ты консультант горячей линии Залоговой службы (ГЛ ЗС). "
+            + "Отвечай только по работе ГЛ ЗС, кратко и по делу, на русском. "
+            + "Опирайся строго на фрагмент из внутренней базы. Не выдумывай факты. "
+            + "Номера ASZ/SD не восстанавливай и не уточняй — оставляй в виде ASZ.... / SD..... "
+            + "Если фрагмента недостаточно — скажи, что в базе нет точного ответа, и предложи переформулировать вопрос.";
+
         function renderHits(hits, offTopic) {
             if (offTopic || !hits.length) {
                 return `<span class="meta">ГЛ</span>${esc(OFF_TOPIC)}`;
@@ -688,12 +697,38 @@
             return `<span class="meta">ГЛ</span><div class="hit"><strong>${title}</strong><br><br>${a}</div>`;
         }
 
+        function renderGigaAnswer(text, hit) {
+            const body = esc(text || "").replace(/\n/g, "<br>");
+            const title = esc(hit?.question || "").replace(/\n/g, " ");
+            return `<span class="meta">ГЛ · GigaChat</span><div class="hit">${body}`
+                + (hit ? `<details class="hit-src"><summary>Фрагмент базы</summary><strong>${title}</strong><br>${esc(hit.answer || "").replace(/\n/g, "<br>")}</details>` : "")
+                + `</div>`;
+        }
+
+        async function askGigaChat(userPrompt) {
+            const res = await fetch("/api/gigachat/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    systemPrompt: GIGA_SYSTEM,
+                    userPrompt,
+                    temperature: 0.2,
+                    max_tokens: 1200
+                })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || "GigaChat недоступен");
+            const content = String(data.content || "").trim();
+            if (!content) throw new Error("Пустой ответ GigaChat");
+            return content;
+        }
+
         async function askBase(question) {
             if (!question || sendEl.disabled) return;
             addBubble("user", `<span class="meta">Вы</span>${esc(question)}`);
             inputEl.value = "";
             sendEl.disabled = true;
-            const pending = addBubble("bot", '<span class="meta">ГЛ</span>Ищем…');
+            const pending = addBubble("bot", '<span class="meta">ГЛ</span>Ищем в базе…');
             try {
                 const res = await fetch("/api/conclusion-qa", {
                     method: "POST",
@@ -702,7 +737,27 @@
                 });
                 const data = await res.json();
                 if (!res.ok || !data.ok) throw new Error(data.error || "Ошибка поиска");
-                pending.innerHTML = renderHits(data.hits || [], data.offTopic);
+
+                if (data.offTopic || !(data.hits || []).length) {
+                    pending.innerHTML = renderHits([], true);
+                    return;
+                }
+
+                const hit = data.hits[0];
+                pending.innerHTML = '<span class="meta">ГЛ</span>База + GigaChat…';
+                try {
+                    const ctx = `Тема: ${hit.question || ""}\nОтвет из базы:\n${hit.answer || ""}`.slice(0, 8000);
+                    const answer = await askGigaChat(
+                        "Ниже один фрагмент из базы RAG горячей линии ЗС.\n"
+                        + "Сформулируй понятный ответ пользователю только по этому фрагменту.\n\n"
+                        + "Вопрос пользователя:\n" + question + "\n\nФрагмент базы:\n" + ctx
+                    );
+                    pending.innerHTML = renderGigaAnswer(answer, hit);
+                } catch (e) {
+                    pending.innerHTML =
+                        `<span class="meta">ГЛ</span><div class="hint" style="margin-bottom:0.6rem">GigaChat недоступен (${esc(e.message)}). Показываю ответ из базы.</div>`
+                        + renderHits([hit], false).replace('<span class="meta">ГЛ</span>', "");
+                }
             } catch (err) {
                 pending.innerHTML = `<span class="meta">ГЛ</span>${esc(err.message || String(err))}`;
             } finally {
@@ -712,13 +767,13 @@
             }
         }
 
-        addBubble("bot", '<span class="meta">ГЛ</span>Спросите про работу ГЛ ЗС — например приоритет, автооценку или срок СЗЗ. Один вопрос — один ответ из базы.');
+        addBubble("bot", '<span class="meta">ГЛ</span>Спросите про работу ГЛ ЗС — например приоритет, автооценку или срок СЗЗ. Ответ соберёт GigaChat по базе RAG.');
 
         fetch("/api/conclusion-qa/info", { cache: "no-store" })
             .then((r) => r.json())
             .then((info) => {
                 chatMeta.textContent = info.ready
-                    ? `База RAG · ${info.source || "gl_rag"} · ${Number(info.total || 0).toLocaleString("ru-RU")} фрагментов`
+                    ? `База RAG · ${info.source || "gl_rag"} · ${Number(info.total || 0).toLocaleString("ru-RU")} · + GigaChat`
                     : "База не собрана — npm run conclusion-qa:build";
             })
             .catch(() => { chatMeta.textContent = "Нет связи с прокси (localhost:8787)."; });
