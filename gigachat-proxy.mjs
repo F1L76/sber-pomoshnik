@@ -25,7 +25,7 @@ import { createDealsJob, getDealsJob } from "./lib/deals-jobs.mjs";
 import { getZalogConverterHealth, probeZalogPythonDeps, probeZalogPythonDepsCached, ensureZalogPythonDeps, readZalogUpload } from "./lib/zalog-convert.mjs";
 import { createZalogConvertJob, getZalogConvertJob } from "./lib/zalog-jobs.mjs";
 import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigachat-config.mjs";
-import { getConclusionQaInfo, searchConclusionQa, maskConclusionRefs } from "./lib/conclusion-qa.mjs";
+import { getConclusionQaInfo, searchConclusionQa, maskConclusionRefs, buildGlossaryPromptBlock } from "./lib/conclusion-qa.mjs";
 import { getNspdBases } from "./lib/nspd-config.mjs";
 import { loadGeocodeMapPayload, loadGeocodeProgress, readStatus } from "./lib/nspd-geocode-store.mjs";
 import { loadVinParseProgress } from "./lib/vin-parse-store.mjs";
@@ -922,7 +922,7 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            const cacheKey = "v2:" + normalizeQaQuestion(question);
+            const cacheKey = "v3:" + normalizeQaQuestion(question);
             if (cacheKey && askCache.has(cacheKey) && body.nocache !== true) {
                 const cached = askCache.get(cacheKey);
                 res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -959,7 +959,9 @@ const server = http.createServer(async (req, res) => {
             const QA_SYSTEM =
                 "Ты AI-ассистент «СберБизнес Помощник» — платформы сопровождения залогов и экспертизы в банке. Отвечай профессионально, структурированно, на русском языке. "
                 + "Не выдумывай номера документов и суммы, если их нет во входных данных. "
-                + "Не указывай реальные даты, номера заявок/заключений ASZ/SD, коды сделок и телефоны — заменяй на нейтральные формулировки без конкретных значений (например «в указанную дату», «по заявке»).";
+                + "Не указывай реальные даты, номера заявок/заключений ASZ/SD, коды сделок и телефоны — заменяй на нейтральные формулировки без конкретных значений (например «в указанную дату», «по заявке»). "
+                + "Термины из глоссария используй в принятом виде: не расшифровывай то, что помечено «не расшифровывать»; не называй аббревиатурой то, что помечено как название/разговорное.\n\n"
+                + buildGlossaryPromptBlock();
             const ctx = hits
                 .map((h, i) => `[${i + 1}] Лист: ${h.sheet}\nВопрос: ${h.question}\nОтвет: ${h.answer}`)
                 .join("\n\n")
