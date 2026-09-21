@@ -568,8 +568,8 @@
             <div class="wrap">
                 <div class="ask__box">
                     <h2 class="ask__title">Не нашли ответ?</h2>
-                    <p class="ask__lead">Спросите базу ГЛ (шаблоны + разборы обращений). Номера ASZ/SD в ответах скрыты.</p>
-                    <div class="chat" aria-label="Чат по базе вопросов ГЛ">
+                    <p class="ask__lead">Ответы из базы RAG ГЛ («База Rag»: шаблоны + обращения). Номера ASZ/SD скрыты. Один вопрос — один ответ.</p>
+                    <div class="chat" aria-label="Чат по базе RAG ГЛ">
                         <div class="chat-log" id="chatLog"></div>
                         <form class="chat-form" id="chatForm">
                             <label for="chatInput" style="position:absolute;left:-9999px">Вопрос</label>
@@ -577,7 +577,7 @@
                             <button class="btn" type="submit" id="chatSend">Спросить</button>
                         </form>
                     </div>
-                    <p class="chat-meta" id="chatMeta">Подключаем индекс…</p>
+                    <p class="chat-meta" id="chatMeta">Подключаем базу RAG…</p>
                 </div>
             </div>
         </section>
@@ -718,7 +718,7 @@
             .then((r) => r.json())
             .then((info) => {
                 chatMeta.textContent = info.ready
-                    ? `База RAG готова · ${info.total} фрагментов`
+                    ? `База RAG · ${info.source || "gl_rag"} · ${Number(info.total || 0).toLocaleString("ru-RU")} фрагментов`
                     : "База не собрана — npm run conclusion-qa:build";
             })
             .catch(() => { chatMeta.textContent = "Нет связи с прокси (localhost:8787)."; });
