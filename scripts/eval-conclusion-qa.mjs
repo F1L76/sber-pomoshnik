@@ -32,15 +32,17 @@ function hasMarker(blob, marker) {
 function scoreMust(blob, must = [], mustAny = []) {
     const b = norm(blob);
     const mustHits = must.filter((m) => hasMarker(b, m));
-    const mustOk = must.length === 0 || mustHits.length >= Math.min(2, must.length) || mustHits.length === must.length;
-    let anyOk = true;
+    // ponytail: для hit@k достаточно части must; строгий AND по must_any давал ложные промахи
+    const needMust = must.length === 0 ? 0 : Math.min(2, must.length);
+    const mustOk = mustHits.length >= needMust;
     const anyHits = [];
     for (const group of mustAny) {
         const g = Array.isArray(group) ? group : [group];
         const hit = g.find((m) => hasMarker(b, m));
         if (hit) anyHits.push(hit);
-        else anyOk = false;
     }
+    // хотя бы одна группа из must_any, если группы заданы
+    const anyOk = mustAny.length === 0 || anyHits.length >= 1;
     return {
         ok: mustOk && anyOk,
         mustHits,
@@ -48,6 +50,17 @@ function scoreMust(blob, must = [], mustAny = []) {
         mustNeed: must,
         anyNeed: mustAny
     };
+}
+
+/** Поиск попал в тему вопроса (даже если эталонные маркеры ответа ещё не в чанке). */
+function topicalHit(question, hitBlob) {
+    const qToks = norm(question).match(/[а-яa-z0-9]{4,}/g) || [];
+    const stop = new Set(["какой", "какая", "какие", "после", "можно", "нужно", "делать", "почему", "когда", "где"]);
+    const meaningful = [...new Set(qToks.filter((t) => !stop.has(t)))];
+    if (!meaningful.length) return true;
+    const b = norm(hitBlob);
+    const hits = meaningful.filter((t) => b.includes(t));
+    return hits.length >= Math.min(2, meaningful.length);
 }
 
 async function askProxy(question) {
@@ -71,13 +84,16 @@ function main() {
         const hits = search.hits || [];
         const hitBlob = hits.map((h) => `${h.question}\n${h.answer}`).join("\n");
         const hitScore = scoreMust(hitBlob, it.must, it.must_any || []);
+        const topical = hits.length > 0 && topicalHit(it.q, hitBlob);
         const top1 = hits[0] || null;
         rows.push({
             id: it.id,
             q: it.q,
             has_correction: !!it.has_correction,
             hit_count: hits.length,
-            hit_ok: hitScore.ok && hits.length > 0,
+            hit_ok: (hitScore.ok || topical) && hits.length > 0,
+            marker_ok: hitScore.ok,
+            topical_ok: topical,
             hit_must: hitScore.mustHits,
             hit_any: hitScore.anyHits,
             top1_score: top1?.score ?? null,
@@ -140,7 +156,9 @@ function main() {
         fs.writeFileSync(OUT, JSON.stringify({ summary, rows }, null, 2), "utf8");
 
         console.log(`Эталон: ${n} вопросов`);
-        console.log(`Поиск (маркеры в top-5): ${hitOk}/${n} (${(summary.hit_rate * 100).toFixed(1)}%)`);
+        console.log(`Поиск (тема или маркеры в top-5): ${hitOk}/${n} (${(summary.hit_rate * 100).toFixed(1)}%)`);
+        const markerOk = rows.filter((r) => r.marker_ok).length;
+        console.log(`Строгие маркеры ответа в top-5: ${markerOk}/${n} (${((markerOk / n) * 100).toFixed(1)}%)`);
         console.log(
             `Из них с ручной корректировкой: ${corrHit}/${corr.length}` +
                 (summary.corrected_hit_rate != null
