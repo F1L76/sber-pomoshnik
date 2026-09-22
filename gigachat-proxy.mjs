@@ -31,7 +31,8 @@ import {
     maskConclusionRefs,
     buildGlossaryPromptBlock,
     chooseAskMode,
-    formatVerbatimAnswer
+    formatVerbatimAnswer,
+    isRoutingNoise
 } from "./lib/conclusion-qa.mjs";
 import { appendConclusionQaFeedback } from "./lib/conclusion-qa-feedback.mjs";
 import { getNspdBases } from "./lib/nspd-config.mjs";
@@ -944,7 +945,7 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            const cacheKey = "v7:" + normalizeQaQuestion(question);
+            const cacheKey = "v8:" + normalizeQaQuestion(question);
             if (cacheKey && askCache.has(cacheKey) && body.nocache !== true) {
                 const cached = askCache.get(cacheKey);
                 res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -1006,7 +1007,9 @@ const server = http.createServer(async (req, res) => {
                 + "Не указывай реальные даты, ASZ/SD, коды сделок и телефоны — нейтральные формулировки. "
                 + "Термины из глоссария: не расшифровывай помеченные «не расшифровывать».\n\n"
                 + buildGlossaryPromptBlock();
-            const ctx = hits
+            const ctxHits = hits.filter((h) => !isRoutingNoise(h.answer));
+            const ctxSrc = ctxHits.length ? ctxHits : hits;
+            const ctx = ctxSrc
                 .map((h, i) => `[${i + 1}] Лист: ${h.sheet}\nВопрос: ${h.question}\nОтвет: ${h.answer}`)
                 .join("\n\n")
                 .slice(0, 12000);
@@ -1015,14 +1018,20 @@ const server = http.createServer(async (req, res) => {
                 + "Сформулируй ясный рабочий ответ на вопрос пользователя, опираясь на них. "
                 + "Если есть фрагмент с листом FAQ — опирайся на него в первую очередь. "
                 + "Не подменяй инструкцию «как сделать» статусом «уже сделано» из чужих тикетов. "
+                + "Игнорируй маршрутные отписки вроде «обратитесь к исполнителю / только для ЦООП», если рядом есть содержательный ответ. "
                 + "Если базы недостаточно — скажи об этом. "
                 + "Не воспроизводи даты, коды сделок и номера ASZ/SD/телефоны.\n\n"
                 + "Вопрос пользователя:\n" + question + "\n\nКонтекст из базы:\n" + ctx;
 
+            const fallbackAnswer = () => {
+                const pick = hits.find((h) => !isRoutingNoise(h.answer)) || hits[0];
+                return formatVerbatimAnswer(pick.answer);
+            };
+
             if (!isGigaChatEnabledOnServer()) {
                 const payload = {
                     ok: true,
-                    answer: formatVerbatimAnswer(hits[0].answer),
+                    answer: fallbackAnswer(),
                     hits,
                     synthesized: false,
                     mode: "verbatim-fallback",
@@ -1064,7 +1073,7 @@ const server = http.createServer(async (req, res) => {
                 res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
                 res.end(JSON.stringify({
                     ok: true,
-                    answer: formatVerbatimAnswer(hits[0].answer),
+                    answer: fallbackAnswer(),
                     hits,
                     synthesized: false,
                     mode: "verbatim-fallback",
