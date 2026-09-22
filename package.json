@@ -24,6 +24,7 @@
     "deals:index": "node scripts/build-deals-quarter-index.mjs",
     "deals:import": "node scripts/import-deals-sqlite.mjs",
     "conclusion-qa:build": "PYTHONPATH=python-deps python3 scripts/build_gl_rag.py",
+    "conclusion-qa:dedupe": "PYTHONPATH=python-deps python3 scripts/build_gl_rag.py --dedupe-only",
     "conclusion-qa:check": "node lib/conclusion-qa.mjs",
     "conclusion-qa:eval": "node scripts/eval-conclusion-qa.mjs",
     "conclusion-qa:eval:ask": "node scripts/eval-conclusion-qa.mjs --ask",

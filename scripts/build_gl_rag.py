@@ -150,20 +150,134 @@ def chunks_from(play, gl):
     return out
 
 
+def norm_key(s: str) -> str:
+    t = str(s or "").lower().replace("ё", "е")
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
+STOCK_ANSWER_PREFIXES = (
+    "приоритет по заявке выставлен",
+    "приоритет по заявку выставлен",
+    "приоритет по осмотру выставлен",
+    "приоритет по заявке установлен",
+    "приоритет обозначен",
+)
+
+
+def question_key(topic: str) -> str:
+    t = norm_key(topic)
+    for pref in STOCK_ANSWER_PREFIXES:
+        if t == pref or t.startswith(pref):
+            return pref
+    return t
+
+
+def answer_key(answer: str) -> str:
+    """Ключ ответа: первая фраза / шаблон ГЛ в начале ответа."""
+    t = norm_key(answer)
+    t = re.sub(r"^добрый день[!.]?\s*", "", t)
+    for pref in STOCK_ANSWER_PREFIXES:
+        idx = t.find(pref)
+        if idx >= 0 and idx <= 100:
+            return pref
+    first_line = t.split("\n", 1)[0].strip()
+    first = re.split(r"[.!?]+", first_line, maxsplit=1)[0].strip()
+    if len(first) < 24:
+        first = first_line[:220] if first_line else t[:220]
+    return first[:220]
+
+
+def split_topic_answer(doc: dict) -> tuple[str, str]:
+    topic = str(doc.get("topic") or "").strip()
+    text = str(doc.get("text") or "")
+    nl = text.find("\n")
+    answer = text[nl + 1 :].strip() if nl >= 0 else text.strip()
+    if not topic and nl >= 0:
+        topic = text[:nl].strip()
+    return topic, answer
+
+
+def dedupe_chunks(docs: list[dict]) -> list[dict]:
+    """
+    Один чанк на уникальный вопрос И на уникальный ответ (по мягкому ключу).
+    Шаблоны и более длинные ответы имеют приоритет.
+    """
+    def rank(d: dict):
+        topic, ans = split_topic_answer(d)
+        is_tpl = 0 if d.get("collection") == "template" else 1
+        return (is_tpl, -len(ans), -len(topic))
+
+    seen_q: set[str] = set()
+    seen_a: set[str] = set()
+    kept: list[dict] = []
+    for d in sorted(docs, key=rank):
+        topic, ans = split_topic_answer(d)
+        qk, ak = question_key(topic), answer_key(ans)
+        if len(qk) < 8 or len(ak) < 16:
+            continue
+        if qk in seen_q or ak in seen_a:
+            continue
+        seen_q.add(qk)
+        seen_a.add(ak)
+        kept.append(d)
+
+    # стабильные id после схлопывания
+    out: list[dict] = []
+    ti = ci = 0
+    for d in kept:
+        nd = dict(d)
+        if nd.get("collection") == "template":
+            ti += 1
+            nd["id"] = f"tpl-{ti:04d}"
+        else:
+            ci += 1
+            nd["id"] = f"case-{ci:05d}"
+            nd["collection"] = nd.get("collection") or "case"
+        out.append(nd)
+    return out
+
+
+def write_chunks(docs: list[dict], dest: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    with dest.open("w", encoding="utf-8") as f:
+        for d in docs:
+            f.write(json.dumps(d, ensure_ascii=False) + "\n")
+
+
+def dedupe_chunks_file(src: Path, dest: Path | None = None) -> tuple[int, int]:
+    dest = dest or src
+    raw = [json.loads(l) for l in src.read_text(encoding="utf-8").splitlines() if l.strip()]
+    out = dedupe_chunks(raw)
+    write_chunks(out, dest)
+    return len(raw), len(out)
+
+
 def main() -> int:
+    # ponytail: `python3 scripts/build_gl_rag.py --dedupe-only` — схлопнуть уже собранный chunks.jsonl
+    if len(sys.argv) > 1 and sys.argv[1] in ("--dedupe-only", "-d"):
+        target = Path(sys.argv[2]) if len(sys.argv) > 2 else CHUNKS
+        if not target.is_file():
+            print(f"Нет файла: {target}", file=sys.stderr)
+            return 1
+        before, after = dedupe_chunks_file(target)
+        print(f"dedupe {target}: {before} → {after} (removed {before - after})")
+        assert after >= 200
+        print("check ok")
+        return 0
+
     src = Path(sys.argv[1]) if len(sys.argv) > 1 else SRC
     if not src.is_file():
         print(f"Нет Excel: {src}", file=sys.stderr)
         print("Положите Данные.xlsx в data/gl_rag/ или передайте путь аргументом.", file=sys.stderr)
+        print("Или: python3 scripts/build_gl_rag.py --dedupe-only", file=sys.stderr)
         return 1
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     play, gl = load_src(src)
-    docs = chunks_from(play, gl)
-    with CHUNKS.open("w", encoding="utf-8") as f:
-        for d in docs:
-            f.write(json.dumps(d, ensure_ascii=False) + "\n")
+    docs = dedupe_chunks(chunks_from(play, gl))
+    write_chunks(docs, CHUNKS)
     print(f"playbooks {len(play)}  gl {len(gl)}  chunks {len(docs)} → {CHUNKS}")
-    assert len(play) >= 40 and len(docs) > 1000
+    assert len(play) >= 40 and len(docs) > 200
     print("check ok")
     return 0
 
