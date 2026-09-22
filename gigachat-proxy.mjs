@@ -944,7 +944,7 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            const cacheKey = "v5:" + normalizeQaQuestion(question);
+            const cacheKey = "v6:" + normalizeQaQuestion(question);
             if (cacheKey && askCache.has(cacheKey) && body.nocache !== true) {
                 const cached = askCache.get(cacheKey);
                 res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -964,7 +964,7 @@ const server = http.createServer(async (req, res) => {
             const emptyMsg =
                 "В базе ГЛ ЗС нет подходящего ответа на этот вопрос. Переформулируйте запрос в рамках работы горячей линии.";
             const decided = chooseAskMode(search.hits || []);
-            const hits = decided.hits || [];
+            const hits = decided.hits || search.hits || [];
             if (!hits.length || decided.mode === "empty") {
                 const payload = {
                     ok: true,
@@ -980,44 +980,24 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            // Фаза 3: уверенный шаблон/хит — почти дословно, без GigaChat
-            if (decided.mode === "verbatim") {
-                const payload = {
-                    ok: true,
-                    answer: formatVerbatimAnswer(decided.hit.answer),
-                    hits,
-                    synthesized: false,
-                    mode: "verbatim",
-                    modeReason: decided.reason,
-                    count: hits.length
-                };
-                if (cacheKey) {
-                    if (askCache.size >= 500) {
-                        const first = askCache.keys().next().value;
-                        askCache.delete(first);
-                    }
-                    askCache.set(cacheKey, payload);
-                }
-                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
-                res.end(JSON.stringify(payload));
-                return;
-            }
-
+            // ponytail: всегда синтез через GigaChat — сырые тикеты (verbatim) звучат хуже помощника
             const QA_SYSTEM =
-                "Ты оператор горячей линии залоговой службы (ГЛ ЗС) в «СберБизнес Помощник». "
-                + "Отвечай коротко, по делу, на русском, в стиле ответов ГЛ — без эссе и без воды. "
-                + "Структура ответа: 1) прямой вывод; 2) что сделать / куда обратиться (если нужно); 3) если данных в базе мало — так и скажи. "
-                + "Не выдумывай номера документов, суммы и процедуры, которых нет во фрагментах. "
+                "Ты AI-ассистент «СберБизнес Помощник» — платформы сопровождения залогов и экспертизы в банке. "
+                + "Отвечай профессионально, структурированно, по делу, на русском языке — в стиле хорошего ответа горячей линии. "
+                + "Структура: прямой вывод, затем что сделать / куда обратиться при необходимости. "
+                + "Не копируй сырые переписки и служебный шум («Добрый день» по кругу, внутренние статусы без пользы). "
+                + "Не выдумывай номера документов и суммы, если их нет во входных данных. "
                 + "Не указывай реальные даты, ASZ/SD, коды сделок и телефоны — нейтральные формулировки. "
-                + "Термины из глоссария: не расшифровывай помеченные «не расшифровывать»; не называй аббревиатурой название/разговорное.\n\n"
+                + "Термины из глоссария: не расшифровывай помеченные «не расшифровывать».\n\n"
                 + buildGlossaryPromptBlock();
             const ctx = hits
                 .map((h, i) => `[${i + 1}] Лист: ${h.sheet}\nВопрос: ${h.question}\nОтвет: ${h.answer}`)
                 .join("\n\n")
                 .slice(0, 12000);
             const userPrompt =
-                "Опираясь только на фрагменты базы, ответь на вопрос. "
-                + "Не копируй длинные переписки целиком — сожми до рабочего ответа ГЛ. "
+                "Ниже фрагменты из внутренней базы типовых вопросов по заключениям. "
+                + "Сформулируй ясный рабочий ответ на вопрос пользователя, опираясь на них. "
+                + "Если базы недостаточно — скажи об этом. "
                 + "Не воспроизводи даты, коды сделок и номера ASZ/SD/телефоны.\n\n"
                 + "Вопрос пользователя:\n" + question + "\n\nКонтекст из базы:\n" + ctx;
 
@@ -1043,7 +1023,7 @@ const server = http.createServer(async (req, res) => {
                         { role: "system", content: QA_SYSTEM },
                         { role: "user", content: userPrompt }
                     ],
-                    { temperature: 0, max_tokens: 900 }
+                    { temperature: 0, max_tokens: 2048 }
                 );
                 const payload = {
                     ok: true,
@@ -1051,11 +1031,9 @@ const server = http.createServer(async (req, res) => {
                     hits,
                     synthesized: true,
                     mode: "synthesize",
-                    modeReason: decided.reason,
                     count: hits.length
                 };
                 if (cacheKey) {
-                    // ponytail: потолок 500 ключей; при переполнении выкидываем самый старый
                     if (askCache.size >= 500) {
                         const first = askCache.keys().next().value;
                         askCache.delete(first);
