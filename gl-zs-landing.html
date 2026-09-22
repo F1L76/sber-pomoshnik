@@ -1,12 +1,20 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Справка ГЛ ЗС — горячая линия Залоговой службы</title>
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem("gl-zs:theme");
+                if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+            } catch (e) { /* ignore */ }
+        })();
+    </script>
     <link rel="stylesheet" href="/vendor/fonts/gl-zs-fonts.css">
     <style>
-        :root {
+        :root, [data-theme="dark"] {
             --bg: #0b0d12;
             --bg-elev: #12151c;
             --surface: #171b24;
@@ -19,10 +27,43 @@
             --accent-hot: #60a5fa;
             --accent-ink: #dbeafe;
             --accent-soft: rgba(59, 130, 246, 0.14);
+            --body-glow-1: rgba(59, 130, 246, 0.18);
+            --body-glow-2: rgba(14, 165, 233, 0.1);
+            --top-bg: rgba(11, 13, 18, 0.82);
+            --hover-wash: rgba(255, 255, 255, 0.02);
+            --ghost-hover: rgba(255, 255, 255, 0.03);
+            --placeholder: #6b7385;
+            --body-text: #c5cbd8;
+            --bot-text: #e8ecf4;
+            --warn: #fbbf24;
             --font: Onest, Manrope, "Segoe UI", sans-serif;
             --radius: 16px;
             --radius-sm: 12px;
             --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+        }
+        [data-theme="light"] {
+            --bg: #f4f6fa;
+            --bg-elev: #eef1f6;
+            --surface: #ffffff;
+            --surface-2: #f8fafc;
+            --ink: #111827;
+            --muted: #5b6472;
+            --line: #e5e7eb;
+            --line-strong: #d1d5db;
+            --accent: #2563eb;
+            --accent-hot: #1d4ed8;
+            --accent-ink: #1e3a8a;
+            --accent-soft: rgba(37, 99, 235, 0.1);
+            --body-glow-1: rgba(37, 99, 235, 0.1);
+            --body-glow-2: rgba(14, 165, 233, 0.08);
+            --top-bg: rgba(255, 255, 255, 0.88);
+            --hover-wash: rgba(15, 23, 42, 0.03);
+            --ghost-hover: rgba(37, 99, 235, 0.06);
+            --placeholder: #94a3b8;
+            --body-text: #374151;
+            --bot-text: #1f2937;
+            --warn: #b45309;
+            --shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 8px 24px rgba(17, 24, 39, 0.06);
         }
         * { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
@@ -31,11 +72,12 @@
             font-family: var(--font);
             color: var(--ink);
             background:
-                radial-gradient(900px 420px at 12% -10%, rgba(59, 130, 246, 0.18), transparent 55%),
-                radial-gradient(700px 380px at 88% 8%, rgba(14, 165, 233, 0.1), transparent 50%),
+                radial-gradient(900px 420px at 12% -10%, var(--body-glow-1), transparent 55%),
+                radial-gradient(700px 380px at 88% 8%, var(--body-glow-2), transparent 50%),
                 var(--bg);
             line-height: 1.55;
             min-height: 100vh;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
         a { color: var(--accent-hot); text-decoration: none; }
         a:hover { text-decoration: underline; }
@@ -47,9 +89,35 @@
             top: 0;
             z-index: 30;
             backdrop-filter: blur(14px);
-            background: rgba(11, 13, 18, 0.82);
+            background: var(--top-bg);
             border-bottom: 1px solid var(--line);
         }
+        .top__right {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+        .theme-btn {
+            appearance: none;
+            border: 1px solid var(--line-strong);
+            background: var(--surface);
+            color: var(--muted);
+            border-radius: 999px;
+            min-height: 2.4rem;
+            padding: 0 0.85rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .theme-btn:hover {
+            color: var(--ink);
+            border-color: rgba(96, 165, 250, 0.55);
+            background: var(--ghost-hover);
+        }
+        .theme-btn__icon { font-size: 0.95rem; line-height: 1; }
         .top__inner {
             display: flex;
             align-items: center;
@@ -114,7 +182,7 @@
             border: 1px solid var(--line-strong);
             color: var(--ink);
         }
-        .btn--ghost:hover { border-color: rgba(96, 165, 250, 0.55); background: rgba(255,255,255,0.03); }
+        .btn--ghost:hover { border-color: rgba(96, 165, 250, 0.55); background: var(--ghost-hover); }
         .btn--sm { min-height: 2.4rem; padding: 0.45rem 0.95rem; font-size: 0.9rem; }
 
         .hero {
@@ -159,7 +227,7 @@
             outline: none;
             box-shadow: var(--shadow);
         }
-        .search input::placeholder { color: #6b7385; }
+        .search input::placeholder { color: var(--placeholder); }
         .search input:focus {
             border-color: rgba(96, 165, 250, 0.7);
             box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18);
@@ -272,7 +340,7 @@
             font-size: 1rem;
         }
         .article summary::-webkit-details-marker { display: none; }
-        .article summary:hover { background: rgba(255, 255, 255, 0.02); }
+        .article summary:hover { background: var(--hover-wash); }
         .article__q { display: flex; flex-direction: column; gap: 0.25rem; }
         .article__tag {
             color: var(--muted);
@@ -299,7 +367,7 @@
         }
         .article__body {
             padding: 0 1.15rem 1.15rem;
-            color: #c5cbd8;
+            color: var(--body-text);
             font-size: 0.95rem;
             border-top: 1px solid transparent;
         }
@@ -369,7 +437,7 @@
             align-self: flex-start;
             background: var(--surface-2);
             border: 1px solid var(--line);
-            color: #e8ecf4;
+            color: var(--bot-text);
         }
         .bubble--user {
             align-self: flex-end;
@@ -389,7 +457,7 @@
         .hit { margin-top: 0.15rem; }
         .hit-src { margin-top: 0.7rem; font-size: 0.8rem; color: var(--muted); }
         .hit-src summary { cursor: pointer; user-select: none; }
-        .hint { color: #fbbf24; font-size: 0.85rem; }
+        .hint { color: var(--warn); font-size: 0.85rem; }
         .fb {
             display: flex;
             align-items: center;
@@ -463,7 +531,13 @@
                 <a href="#ask">Поддержка</a>
                 <a href="/">К помощнику</a>
             </nav>
-            <a class="btn btn--sm" href="#ask">Спросить базу</a>
+            <div class="top__right">
+                <button type="button" class="theme-btn" id="themeToggle" aria-label="Переключить тему">
+                    <span class="theme-btn__icon" data-theme-icon aria-hidden="true">☀</span>
+                    <span data-theme-label>Светлая</span>
+                </button>
+                <a class="btn btn--sm" href="#ask">Спросить базу</a>
+            </div>
         </div>
     </header>
 
@@ -766,6 +840,26 @@
     </footer>
 
     <script>
+        (function initThemeToggle() {
+            const root = document.documentElement;
+            const btn = document.getElementById("themeToggle");
+            const icon = btn?.querySelector("[data-theme-icon]");
+            const label = btn?.querySelector("[data-theme-label]");
+            function sync() {
+                const theme = root.getAttribute("data-theme") === "light" ? "light" : "dark";
+                if (icon) icon.textContent = theme === "light" ? "☾" : "☀";
+                if (label) label.textContent = theme === "light" ? "Тёмная" : "Светлая";
+                btn?.setAttribute("aria-label", theme === "light" ? "Включить тёмную тему" : "Включить светлую тему");
+            }
+            sync();
+            btn?.addEventListener("click", () => {
+                const next = root.getAttribute("data-theme") === "light" ? "dark" : "light";
+                root.setAttribute("data-theme", next);
+                try { localStorage.setItem("gl-zs:theme", next); } catch (e) { /* ignore */ }
+                sync();
+            });
+        })();
+
         const qEl = document.getElementById("q");
         const articlesEl = document.getElementById("articles");
         const emptyEl = document.getElementById("articlesEmpty");
