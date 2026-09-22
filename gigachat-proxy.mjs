@@ -25,7 +25,14 @@ import { createDealsJob, getDealsJob } from "./lib/deals-jobs.mjs";
 import { getZalogConverterHealth, probeZalogPythonDeps, probeZalogPythonDepsCached, ensureZalogPythonDeps, readZalogUpload } from "./lib/zalog-convert.mjs";
 import { createZalogConvertJob, getZalogConvertJob } from "./lib/zalog-jobs.mjs";
 import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigachat-config.mjs";
-import { getConclusionQaInfo, searchConclusionQa, maskConclusionRefs, buildGlossaryPromptBlock } from "./lib/conclusion-qa.mjs";
+import {
+    getConclusionQaInfo,
+    searchConclusionQa,
+    maskConclusionRefs,
+    buildGlossaryPromptBlock,
+    chooseAskMode,
+    formatVerbatimAnswer
+} from "./lib/conclusion-qa.mjs";
 import { appendConclusionQaFeedback } from "./lib/conclusion-qa-feedback.mjs";
 import { getNspdBases } from "./lib/nspd-config.mjs";
 import { loadGeocodeMapPayload, loadGeocodeProgress, readStatus } from "./lib/nspd-geocode-store.mjs";
@@ -937,7 +944,7 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            const cacheKey = "v4:" + normalizeQaQuestion(question);
+            const cacheKey = "v5:" + normalizeQaQuestion(question);
             if (cacheKey && askCache.has(cacheKey) && body.nocache !== true) {
                 const cached = askCache.get(cacheKey);
                 res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -954,15 +961,17 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            const hits = search.hits || [];
             const emptyMsg =
                 "В базе ГЛ ЗС нет подходящего ответа на этот вопрос. Переформулируйте запрос в рамках работы горячей линии.";
-            if (!hits.length) {
+            const decided = chooseAskMode(search.hits || []);
+            const hits = decided.hits || [];
+            if (!hits.length || decided.mode === "empty") {
                 const payload = {
                     ok: true,
                     answer: emptyMsg,
                     hits: [],
                     synthesized: false,
+                    mode: "empty",
                     count: 0
                 };
                 if (cacheKey) askCache.set(cacheKey, payload);
@@ -971,28 +980,54 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
+            // Фаза 3: уверенный шаблон/хит — почти дословно, без GigaChat
+            if (decided.mode === "verbatim") {
+                const payload = {
+                    ok: true,
+                    answer: formatVerbatimAnswer(decided.hit.answer),
+                    hits,
+                    synthesized: false,
+                    mode: "verbatim",
+                    modeReason: decided.reason,
+                    count: hits.length
+                };
+                if (cacheKey) {
+                    if (askCache.size >= 500) {
+                        const first = askCache.keys().next().value;
+                        askCache.delete(first);
+                    }
+                    askCache.set(cacheKey, payload);
+                }
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify(payload));
+                return;
+            }
+
             const QA_SYSTEM =
-                "Ты AI-ассистент «СберБизнес Помощник» — платформы сопровождения залогов и экспертизы в банке. Отвечай профессионально, структурированно, на русском языке. "
-                + "Не выдумывай номера документов и суммы, если их нет во входных данных. "
-                + "Не указывай реальные даты, номера заявок/заключений ASZ/SD, коды сделок и телефоны — заменяй на нейтральные формулировки без конкретных значений (например «в указанную дату», «по заявке»). "
-                + "Термины из глоссария используй в принятом виде: не расшифровывай то, что помечено «не расшифровывать»; не называй аббревиатурой то, что помечено как название/разговорное.\n\n"
+                "Ты оператор горячей линии залоговой службы (ГЛ ЗС) в «СберБизнес Помощник». "
+                + "Отвечай коротко, по делу, на русском, в стиле ответов ГЛ — без эссе и без воды. "
+                + "Структура ответа: 1) прямой вывод; 2) что сделать / куда обратиться (если нужно); 3) если данных в базе мало — так и скажи. "
+                + "Не выдумывай номера документов, суммы и процедуры, которых нет во фрагментах. "
+                + "Не указывай реальные даты, ASZ/SD, коды сделок и телефоны — нейтральные формулировки. "
+                + "Термины из глоссария: не расшифровывай помеченные «не расшифровывать»; не называй аббревиатурой название/разговорное.\n\n"
                 + buildGlossaryPromptBlock();
             const ctx = hits
                 .map((h, i) => `[${i + 1}] Лист: ${h.sheet}\nВопрос: ${h.question}\nОтвет: ${h.answer}`)
                 .join("\n\n")
-                .slice(0, 14000);
+                .slice(0, 12000);
             const userPrompt =
-                "Ниже фрагменты из внутренней базы типовых вопросов по заключениям. "
-                + "Ответь на вопрос пользователя, опираясь на них. Если базы недостаточно — скажи об этом. "
-                + "В ответе не воспроизводи даты, коды сделок и номера ASZ/SD/телефоны из фрагментов.\n\n"
+                "Опираясь только на фрагменты базы, ответь на вопрос. "
+                + "Не копируй длинные переписки целиком — сожми до рабочего ответа ГЛ. "
+                + "Не воспроизводи даты, коды сделок и номера ASZ/SD/телефоны.\n\n"
                 + "Вопрос пользователя:\n" + question + "\n\nКонтекст из базы:\n" + ctx;
 
             if (!isGigaChatEnabledOnServer()) {
                 const payload = {
                     ok: true,
-                    answer: maskConclusionRefs(hits[0].answer),
+                    answer: formatVerbatimAnswer(hits[0].answer),
                     hits,
                     synthesized: false,
+                    mode: "verbatim-fallback",
                     count: hits.length,
                     gigaError: "GigaChat отключён на сервере"
                 };
@@ -1008,13 +1043,15 @@ const server = http.createServer(async (req, res) => {
                         { role: "system", content: QA_SYSTEM },
                         { role: "user", content: userPrompt }
                     ],
-                    { temperature: 0, max_tokens: 2048 }
+                    { temperature: 0, max_tokens: 900 }
                 );
                 const payload = {
                     ok: true,
                     answer: maskConclusionRefs(content),
                     hits,
                     synthesized: true,
+                    mode: "synthesize",
+                    modeReason: decided.reason,
                     count: hits.length
                 };
                 if (cacheKey) {
@@ -1031,9 +1068,10 @@ const server = http.createServer(async (req, res) => {
                 res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
                 res.end(JSON.stringify({
                     ok: true,
-                    answer: maskConclusionRefs(hits[0].answer),
+                    answer: formatVerbatimAnswer(hits[0].answer),
                     hits,
                     synthesized: false,
+                    mode: "verbatim-fallback",
                     count: hits.length,
                     gigaError: e.message || String(e)
                 }));
