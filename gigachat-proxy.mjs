@@ -944,7 +944,7 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            const cacheKey = "v6:" + normalizeQaQuestion(question);
+            const cacheKey = "v7:" + normalizeQaQuestion(question);
             if (cacheKey && askCache.has(cacheKey) && body.nocache !== true) {
                 const cached = askCache.get(cacheKey);
                 res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -980,7 +980,23 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            // ponytail: всегда синтез через GigaChat — сырые тикеты (verbatim) звучат хуже помощника
+            // FAQ/шаблоны — дословно; сырые тикеты — через GigaChat
+            if (decided.mode === "verbatim") {
+                const payload = {
+                    ok: true,
+                    answer: formatVerbatimAnswer(hits[0].answer),
+                    hits,
+                    synthesized: false,
+                    mode: "verbatim",
+                    reason: decided.reason || null,
+                    count: hits.length
+                };
+                if (cacheKey) askCache.set(cacheKey, payload);
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify(payload));
+                return;
+            }
+
             const QA_SYSTEM =
                 "Ты AI-ассистент «СберБизнес Помощник» — платформы сопровождения залогов и экспертизы в банке. "
                 + "Отвечай профессионально, структурированно, по делу, на русском языке — в стиле хорошего ответа горячей линии. "
@@ -997,6 +1013,8 @@ const server = http.createServer(async (req, res) => {
             const userPrompt =
                 "Ниже фрагменты из внутренней базы типовых вопросов по заключениям. "
                 + "Сформулируй ясный рабочий ответ на вопрос пользователя, опираясь на них. "
+                + "Если есть фрагмент с листом FAQ — опирайся на него в первую очередь. "
+                + "Не подменяй инструкцию «как сделать» статусом «уже сделано» из чужих тикетов. "
                 + "Если базы недостаточно — скажи об этом. "
                 + "Не воспроизводи даты, коды сделок и номера ASZ/SD/телефоны.\n\n"
                 + "Вопрос пользователя:\n" + question + "\n\nКонтекст из базы:\n" + ctx;
