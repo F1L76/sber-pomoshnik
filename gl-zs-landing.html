@@ -401,15 +401,10 @@
             padding: 1.25rem;
         }
         .ask__title {
-            margin: 0 0 0.3rem;
+            margin: 0 0 1rem;
             font-size: 1.35rem;
             font-weight: 800;
             letter-spacing: -0.02em;
-        }
-        .ask__lead {
-            margin: 0 0 1rem;
-            color: var(--muted);
-            font-size: 0.95rem;
         }
         .chat {
             display: grid;
@@ -497,11 +492,6 @@
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
         }
         .chat-form .btn { border-radius: 12px; }
-        .chat-meta {
-            margin: 0.7rem 0 0;
-            font-size: 0.82rem;
-            color: var(--muted);
-        }
 
         footer {
             border-top: 1px solid var(--line);
@@ -815,8 +805,7 @@
             <div class="wrap">
                 <div class="ask__box">
                     <h2 class="ask__title">Не нашли свой вопрос?</h2>
-                    <p class="ask__lead">Поддержка по базе RAG ГЛ: ответ из внутренней базы, формулирует GigaChat. Номера ASZ/SD скрыты.</p>
-                    <div class="chat" aria-label="Чат по базе RAG ГЛ">
+                    <div class="chat" aria-label="Чат по базе ГЛ">
                         <div class="chat-log" id="chatLog"></div>
                         <form class="chat-form" id="chatForm">
                             <label for="chatInput" style="position:absolute;left:-9999px">Вопрос</label>
@@ -824,7 +813,6 @@
                             <button class="btn" type="submit" id="chatSend">Спросить</button>
                         </form>
                     </div>
-                    <p class="chat-meta" id="chatMeta">Подключаем базу RAG…</p>
                 </div>
             </div>
         </section>
@@ -922,7 +910,6 @@
         const formEl = document.getElementById("chatForm");
         const inputEl = document.getElementById("chatInput");
         const sendEl = document.getElementById("chatSend");
-        const chatMeta = document.getElementById("chatMeta");
 
         function esc(s) {
             return String(s ?? "")
@@ -1034,16 +1021,7 @@
             }
         }
 
-        addBubble("bot", '<span class="meta">ГЛ</span>Задайте вопрос — отвечу тем же движком, что «Вопросы по заключению».');
-
-        fetch("/api/conclusion-qa/info", { cache: "no-store" })
-            .then((r) => r.json())
-            .then((info) => {
-                chatMeta.textContent = info.ready
-                    ? `База RAG · ${info.source || "gl_rag"} · ${Number(info.total || 0).toLocaleString("ru-RU")} · + GigaChat`
-                    : "База не собрана — npm run conclusion-qa:build";
-            })
-            .catch(() => { chatMeta.textContent = "Нет связи с прокси (localhost:8787)."; });
+        addBubble("bot", '<span class="meta">ГЛ</span>Привет! Напишите вопрос своими словами — помогу по ответам горячей линии.');
 
         formEl.addEventListener("submit", (e) => {
             e.preventDefault();
