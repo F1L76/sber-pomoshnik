@@ -996,7 +996,7 @@
             addBubble("user", `<span class="meta">Вы</span>${esc(question)}`);
             inputEl.value = "";
             sendEl.disabled = true;
-            const pending = addBubble("bot", '<span class="meta">ГЛ</span>База + GigaChat…');
+            const pending = addBubble("bot", '<span class="meta">ГЛ</span>Секунду, ищу ответ…');
             try {
                 const res = await fetch("/api/conclusion-qa/ask", {
                     method: "POST",
