@@ -61,7 +61,6 @@ public class PageController {
             Model model
     ) {
         model.addAttribute("redirect", redirect == null ? "/ideas" : redirect);
-        model.addAttribute("accounts", auth.directory());
         model.addAttribute("active", "login");
         return "login";
     }

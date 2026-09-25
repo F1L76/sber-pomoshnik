@@ -38,13 +38,9 @@ upgrade:
   users:
     admin:
       login: admin
-      password: admin
+      password: Qwerty12345
       name: Админ
     user:
       login: user
       password: user
       name: Аноним
-    platform:
-      login: platform
-      password: platform
-      name: Админ платформы

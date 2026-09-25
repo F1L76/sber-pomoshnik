@@ -76,7 +76,6 @@ public class ActivityService {
         String[] actors = {
                 "user|Аноним|Юзер",
                 "admin|Админ|Админ",
-                "platform|Админ платформы|Администратор целевой платформы",
                 "guest|Гость|гость"
         };
         Instant now = Instant.now();
@@ -129,14 +128,14 @@ public class ActivityService {
                 }
             }
             if (idea.isBacklogTaken() || idea.isImplemented()) {
-                batch.add(event(created.plus(10, ChronoUnit.DAYS), "platform", "Админ платформы",
-                        "Администратор целевой платформы", ActivityAction.SEND_BACKLOG,
-                        "/ideas/" + idea.getId() + "/to-backlog", idea.getId(), idea.getTitle(), null));
+                batch.add(event(created.plus(10, ChronoUnit.DAYS), "admin", "Админ", "Админ",
+                        ActivityAction.SEND_BACKLOG, "/ideas/" + idea.getId() + "/to-backlog",
+                        idea.getId(), idea.getTitle(), null));
             }
             if (idea.isImplemented()) {
-                batch.add(event(created.plus(14, ChronoUnit.DAYS), "platform", "Админ платформы",
-                        "Администратор целевой платформы", ActivityAction.MARK_IMPLEMENTED,
-                        "/ideas/" + idea.getId() + "/implement", idea.getId(), idea.getTitle(), null));
+                batch.add(event(created.plus(14, ChronoUnit.DAYS), "admin", "Админ", "Админ",
+                        ActivityAction.MARK_IMPLEMENTED, "/ideas/" + idea.getId() + "/implement",
+                        idea.getId(), idea.getTitle(), null));
             }
             i++;
         }

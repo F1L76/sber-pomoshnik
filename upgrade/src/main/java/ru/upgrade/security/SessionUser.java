@@ -10,12 +10,8 @@ public record SessionUser(String login, String name, Role role) {
         return role == Role.ADMIN;
     }
 
-    public boolean isPlatformAdmin() {
-        return role == Role.PLATFORM_ADMIN;
-    }
-
-    /** Админ каталога или администратор целевой платформы. */
+    /** Админ каталога. */
     public boolean isStaff() {
-        return isAdmin() || isPlatformAdmin();
+        return isAdmin();
     }
 }

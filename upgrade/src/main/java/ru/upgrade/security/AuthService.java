@@ -7,7 +7,6 @@ import ru.upgrade.domain.Idea;
 import ru.upgrade.domain.Role;
 import ru.upgrade.domain.Team;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -21,22 +20,14 @@ public class AuthService {
             @Value("${upgrade.users.admin.login:admin}") String adminLogin,
             @Value("${upgrade.users.admin.password:admin}") String adminPassword,
             @Value("${upgrade.users.admin.name:Админ}") String adminName,
-            @Value("${upgrade.users.platform.login:platform}") String platformLogin,
-            @Value("${upgrade.users.platform.password:platform}") String platformPassword,
-            @Value("${upgrade.users.platform.name:Админ платформы}") String platformName,
             @Value("${upgrade.users.user.login:user}") String userLogin,
             @Value("${upgrade.users.user.password:user}") String userPassword,
             @Value("${upgrade.users.user.name:Аноним}") String userName
     ) {
         users = List.of(
                 new ConfiguredUser(adminLogin, adminPassword, adminName, Role.ADMIN),
-                new ConfiguredUser(platformLogin, platformPassword, platformName, Role.PLATFORM_ADMIN),
                 new ConfiguredUser(userLogin, userPassword, userName, Role.USER)
         );
-    }
-
-    public List<ConfiguredUser> directory() {
-        return new ArrayList<>(users);
     }
 
     public Optional<SessionUser> login(String login, String password) {

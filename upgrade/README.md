@@ -22,13 +22,7 @@ JDBC URL: `jdbc:h2:file:./data/upgrade`
 На Render — отдельный сервис `sber-upgrade` (см. корневой `render.yaml`).  
 В помощнике плашка «Платформа UPGrade» ведёт на `/upgrade` → редирект на этот сервис.
 
-## Демо-аккаунты
-
-| Логин | Пароль | Роль |
-|--------|--------|------|
-| `admin` | `admin` | Админ каталога |
-| `platform` | `platform` | Администратор целевой платформы |
-| `user` | `user` | Сотрудник |
+Учётки задаются в `src/main/resources/application.yml` (`upgrade.users`).
 
 ## Что внутри
 
