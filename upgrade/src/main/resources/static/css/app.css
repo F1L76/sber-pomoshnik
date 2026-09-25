@@ -268,6 +268,32 @@ html[data-theme="light"] .theme-toggle__moon { display: block; }
   z-index: 1;
 }
 
+/* Центр экрана: форма входа */
+body.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+body.login-page .foot {
+  margin-top: auto;
+}
+.main--login {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: none;
+  padding: 24px 20px;
+}
+.login-box {
+  width: 100%;
+  max-width: 420px;
+}
+.login-box h1 {
+  margin-top: 0;
+  text-align: center;
+}
+
 .foot {
   max-width: 1200px;
   margin: 0 auto;

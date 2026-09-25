@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head('Вход')}"></head>
-<body>
+<body class="login-page">
 <div class="atmosphere" aria-hidden="true"></div>
 <header th:replace="~{layout :: top('login')}"></header>
-<main class="main">
-  <h1>Вход</h1>
-  <div th:if="${error}" class="flash flash--error" th:text="${error}"></div>
-  <div th:if="${ok}" class="flash" th:text="${ok}"></div>
-
-  <form class="panel form" method="post" th:action="@{/login}" style="max-width:420px">
-    <input type="hidden" name="redirect" th:value="${redirect}">
-    <label class="field"><span>Логин</span><input name="login" required autocomplete="username"></label>
-    <label class="field"><span>Пароль</span><input type="password" name="password" required autocomplete="current-password"></label>
-    <button class="btn btn--primary" type="submit">Войти</button>
-  </form>
+<main class="main main--login">
+  <div class="login-box">
+    <h1>Вход</h1>
+    <div th:if="${error}" class="flash flash--error" th:text="${error}"></div>
+    <div th:if="${ok}" class="flash" th:text="${ok}"></div>
+    <form class="panel form" method="post" th:action="@{/login}">
+      <input type="hidden" name="redirect" th:value="${redirect}">
+      <label class="field"><span>Логин</span><input name="login" required autocomplete="username"></label>
+      <label class="field"><span>Пароль</span><input type="password" name="password" required autocomplete="current-password"></label>
+      <button class="btn btn--primary" type="submit">Войти</button>
+    </form>
+  </div>
 </main>
 <footer th:replace="~{layout :: foot}"></footer>
 </body>
