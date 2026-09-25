@@ -1,0 +1,1175 @@
+{
+  "source": "Обращения на ГЛ1.xlsx",
+  "version": 2,
+  "method": "official Excel taxonomy + FAQ/template coverage",
+  "groups": [
+    {
+      "id": "mdo",
+      "name": "Залоговая экспертиза MDO"
+    },
+    {
+      "id": "asz",
+      "name": "1-я линия поддержки АС Залоги"
+    },
+    {
+      "id": "inspect",
+      "name": "Осмотры"
+    },
+    {
+      "id": "sbl",
+      "name": "СБЛ"
+    }
+  ],
+  "total_faq": 34,
+  "total_templates": 52,
+  "priority_order": [
+    "pmz",
+    "risks",
+    "tech",
+    "insp_contact",
+    "insp_survey",
+    "insp_date",
+    "asz_list",
+    "asz_err",
+    "asz_diff",
+    "asz_err_2",
+    "asz_bind",
+    "asz_list_2",
+    "sbl_prio",
+    "sbl_arb",
+    "docs",
+    "sign",
+    "cost_2",
+    "reject",
+    "insp_date_2",
+    "asz_err_2",
+    "auto"
+  ],
+  "themes": [
+    {
+      "id": "prio",
+      "name": "Приоритет",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "установка приоритета по заявке",
+      "share_in_group": 0.31,
+      "examples_official": [],
+      "faq": 4,
+      "templates": 1,
+      "gold_total": 2,
+      "gold_corrected": 2,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Как установить приоритет по заявке?",
+        "Приоритет не выставляется — что ответить?",
+        "Как поставить приоритет",
+        "Приоритет не выставляется, что ответить?"
+      ],
+      "template_topics": [
+        "Приоритет по заявке"
+      ],
+      "keywords": "приоритет"
+    },
+    {
+      "id": "ekd",
+      "name": "Отсутствие документов в ЭКД",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "отсутствие результатов экспертизы в ЭКД: ЕГРН, материалы осмотра, ЗЗ",
+      "share_in_group": 0.18,
+      "examples_official": [],
+      "faq": 6,
+      "templates": 2,
+      "gold_total": 6,
+      "gold_corrected": 6,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Материалы осмотра где лежат в ЭКД?",
+        "Где размещаются выписки ЕГРН?",
+        "Выписка ЕГРН отсутствует в ЭКД",
+        "ММБ где размещать заключение?",
+        "Как проверить материалы осмотра?",
+        "Что делать если в ЭКД нет ЕГРН"
+      ],
+      "template_topics": [
+        "размещение в ЭКД",
+        "Файл Verification выложен в ЭКД по сделке, в нем вы можете ознакоми"
+      ],
+      "keywords": "экд|егрн|размещ|материал(?:ы|ов)? осмотр"
+    },
+    {
+      "id": "arb",
+      "name": "Арбитраж",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "пересмотр стоимости/ликвидности/сроа экспозиции по обращению КМ/ТМ",
+      "share_in_group": 0.06,
+      "examples_official": [],
+      "faq": 9,
+      "templates": 4,
+      "gold_total": 5,
+      "gold_corrected": 5,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Не согласен со стоимостью — что делать?",
+        "После автооценки можно ли арбитраж?",
+        "Клиент не согласен с оценкой",
+        "Не согласен с оценкой — что делать?",
+        "Прошу пересмотреть стоимость",
+        "Можно ли арбитраж после автооценки?"
+      ],
+      "template_topics": [
+        "После автооценки мы арбитраж не проводим. Заявку нужно отправлять на ЗС, как нов",
+        "В случае пересмотра стоимости прошу указать стоимости до и после пересмотра",
+        "Пересмотр стоимости по ДКП — выставить ВТИ",
+        "Арбитраж! Принято решение о пересмотре стоимости после обращения на ГЛ"
+      ],
+      "keywords": "арбитраж|пересмотр.{0,25}стоим|не согласен"
+    },
+    {
+      "id": "kk",
+      "name": "Категория качества",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "уточнение, по какой причине категория \"бланковое\" и её сменить на \"основное\"",
+      "share_in_group": 0.06,
+      "examples_official": [],
+      "faq": 4,
+      "templates": 2,
+      "gold_total": 7,
+      "gold_corrected": 2,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Почему КК «Комфорт»?",
+        "Почему КК бланковое, а не комфорт?",
+        "Почему КК Комфорт?",
+        "Почему КК бланковое а не комфорт?"
+      ],
+      "template_topics": [
+        "бланк при ограничениях",
+        "Бланк оп прочей нет привязки между ЗУ и ЗиС"
+      ],
+      "keywords": "кк|категор|комфорт|бланк|основн"
+    },
+    {
+      "id": "pmz",
+      "name": "Обращения ПМЗ",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "запрос РМ, задания на мониторинг, уточнение наличия справки о севообороте",
+      "share_in_group": 0.06,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 2,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "задание на мониторинг",
+        "Актуализация КН — задание на мониторинг не нужно"
+      ],
+      "keywords": "\\bпмз\\b|севооборот|задани[ея] на мониторинг|\\bрм\\b"
+    },
+    {
+      "id": "risks",
+      "name": "Риски",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "расшифровка риска, уточнение мер минимизации",
+      "share_in_group": 0.056,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 2,
+      "gold_total": 2,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "СО не возможен (риск на актив-здания, черная/красная зона)",
+        "Акт МЧС/заключение об оценке пожарного риска требуются в соответствии с приложен"
+      ],
+      "keywords": "риск|минимизац"
+    },
+    {
+      "id": "reject",
+      "name": "Причина возврата",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "ошибки со стороны системы при Автооценке и автосборке, опечатки",
+      "share_in_group": 0.016,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "medium",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "возврат|отклон|автосборк|опечатк"
+    },
+    {
+      "id": "docs",
+      "name": "Пакет документов",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "уточнение даты завершения экспертизы",
+      "share_in_group": 0.04,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "medium",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "пакет документ|какие документ"
+    },
+    {
+      "id": "status",
+      "name": "Статус заявки",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "уточнение, какие именно перепланировки выявлены в ходе осмотра",
+      "share_in_group": 0.035,
+      "examples_official": [],
+      "faq": 2,
+      "templates": 0,
+      "gold_total": 2,
+      "gold_corrected": 2,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Где посмотреть статус заявки?",
+        "Срок выпуска заключения сколько?"
+      ],
+      "template_topics": [],
+      "keywords": "статус заяв|когда.{0,20}заключен|срок выпуска|взята в работу"
+    },
+    {
+      "id": "cost",
+      "name": "Уточнение по стоимости",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "уточнение вида стоимости и причн  присовения данного вида стоимости",
+      "share_in_group": 0.02,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 2,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "В заключении объекты по кадастровой стоимости тк не предоставлена т",
+        "Кадастровая стоимость хоть и рассчитывается от рыночной стоимости, но не учитыва"
+      ],
+      "keywords": "вид стоимости|по какой стоимости|кадастров.{0,20}стоим"
+    },
+    {
+      "id": "tech",
+      "name": "Технические вопросы",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "как правильнее выставить запрос: новый залог/ВТИ/переоценка?",
+      "share_in_group": 0.056,
+      "examples_official": [],
+      "faq": 1,
+      "templates": 0,
+      "gold_total": 2,
+      "gold_corrected": 1,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [
+        "Как выставить заявку на ВТИ?"
+      ],
+      "template_topics": [],
+      "keywords": "\\bвти\\b|тех.?изменен|переоценк|новый залог"
+    },
+    {
+      "id": "cost_2",
+      "name": "Уточнение по стоимости (какой вид стоимости, почему такой вид стоимости?)",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "уточнение причины отклонения заявки",
+      "share_in_group": 0.03,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 2,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "medium",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "В заключении объекты по кадастровой стоимости тк не предоставлена т",
+        "Кадастровая стоимость хоть и рассчитывается от рыночной стоимости, но не учитыва"
+      ],
+      "keywords": "вид стоимости|по какой стоимости|кадастров.{0,20}стоим"
+    },
+    {
+      "id": "disc",
+      "name": "Дисконт",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "просьба подсказать, как можно получить ЗЗ с рыночной стоимостью",
+      "share_in_group": 0.004,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 1,
+      "gold_total": 2,
+      "gold_corrected": 0,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "ликвидационная стоимость"
+      ],
+      "keywords": "дисконт|ликвидацион"
+    },
+    {
+      "id": "plan",
+      "name": "Перепланировки",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "уточнение, почему из ЗЗ исключен какой-то объект",
+      "share_in_group": 0.03,
+      "examples_official": [],
+      "faq": 1,
+      "templates": 2,
+      "gold_total": 1,
+      "gold_corrected": 1,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Что ответить по перепланировкам РнА?"
+      ],
+      "template_topics": [
+        "РнА перепланировки",
+        "1970 г. здание по 2883 (прил. 23) не может выступать по РнА"
+      ],
+      "keywords": "перепланир|\\bрна\\b"
+    },
+    {
+      "id": "cost_drop",
+      "name": "Снижение стоимости",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "консультация о возможности принятия в залог определенного актива",
+      "share_in_group": 0.003,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "снизил(?:ась|ись)? стоимост|снижение стоимост"
+    },
+    {
+      "id": "szz",
+      "name": "СЗЗ вместо КЗЗ",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "просьба выгрузить полную форму Заключения",
+      "share_in_group": 0.005,
+      "examples_official": [],
+      "faq": 2,
+      "templates": 3,
+      "gold_total": 3,
+      "gold_corrected": 2,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Что такое бессрочное СЗЗ?",
+        "Какой срок действия СЗЗ для последзалога?"
+      ],
+      "template_topics": [
+        "бессрочное сзз",
+        "срок действия СЗЗ последзалог",
+        "Залоговое заключение выпущено в связи с внесением технических изменений в части актуализации СЗЗ взамен залогового заклю"
+      ],
+      "keywords": "сзз|кзз|бессрочн|полная (?:форма|версия)|краткая форма"
+    },
+    {
+      "id": "sign",
+      "name": "Подписанное ЗЗ",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "просьба подписать Заключение",
+      "share_in_group": 0.036,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "medium",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "подписат|подписанн"
+    },
+    {
+      "id": "szz_2",
+      "name": "СЗЗ вместо КЗЗ/ Неинформативное неудобное КЗЗ",
+      "group": "mdo",
+      "group_name": "Залоговая экспертиза MDO",
+      "essence": "уточнение, по какой причине снизилась стоимость обеспечения",
+      "share_in_group": 0.008,
+      "examples_official": [],
+      "faq": 2,
+      "templates": 3,
+      "gold_total": 3,
+      "gold_corrected": 2,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Что такое бессрочное СЗЗ?",
+        "Какой срок действия СЗЗ для последзалога?"
+      ],
+      "template_topics": [
+        "бессрочное сзз",
+        "срок действия СЗЗ последзалог",
+        "Залоговое заключение выпущено в связи с внесением технических изменений в части актуализации СЗЗ взамен залогового заклю"
+      ],
+      "keywords": "сзз|кзз|бессрочн|полная (?:форма|версия)|краткая форма"
+    },
+    {
+      "id": "asz_err",
+      "name": "Ошибки при загрузке СЗЗ, критические ошибки",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": "уточнение способов устранения критических ошибок",
+      "share_in_group": 0.221,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "критическ|ошибк.{0,20}сзз|загрузк.{0,20}сзз"
+    },
+    {
+      "id": "asz_list",
+      "name": "Вопросы по перечню",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": "вопросы по формированию перечня залогов для подготовки КОД",
+      "share_in_group": 0.354,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "перечен|код\\b|подготовк[аи] код"
+    },
+    {
+      "id": "asz_diff",
+      "name": "Расхождение данных по объектам в АС Залоги",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": null,
+      "share_in_group": 0.1237,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "расхожден"
+    },
+    {
+      "id": "asz_err_2",
+      "name": "Ошибки при загрузке СЗЗ (переоценка)",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": null,
+      "share_in_group": 0.089,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "критическ|ошибк.{0,20}сзз|загрузк.{0,20}сзз"
+    },
+    {
+      "id": "asz_bind",
+      "name": "Проблема с привязкой объектов к ДЗ/ДИ",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": null,
+      "share_in_group": 0.06,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 1,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "Приобретаемое ДИ ММБ"
+      ],
+      "keywords": "привязк|\\bдз\\b|\\bди\\b"
+    },
+    {
+      "id": "asz_list_2",
+      "name": "Не загружается Перечень залогов в АС Залоги",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": null,
+      "share_in_group": 0.056,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "перечен|код\\b|подготовк[аи] код"
+    },
+    {
+      "id": "ekd_2",
+      "name": "Формирование выписок ЕГРН",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": "не отрабатываются запросы на формирование выписок ЕГРН",
+      "share_in_group": 0.0243,
+      "examples_official": [],
+      "faq": 6,
+      "templates": 2,
+      "gold_total": 6,
+      "gold_corrected": 6,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Материалы осмотра где лежат в ЭКД?",
+        "Где размещаются выписки ЕГРН?",
+        "Выписка ЕГРН отсутствует в ЭКД",
+        "ММБ где размещать заключение?",
+        "Как проверить материалы осмотра?",
+        "Что делать если в ЭКД нет ЕГРН"
+      ],
+      "template_topics": [
+        "размещение в ЭКД",
+        "Файл Verification выложен в ЭКД по сделке, в нем вы можете ознакоми"
+      ],
+      "keywords": "экд|егрн|размещ|материал(?:ы|ов)? осмотр"
+    },
+    {
+      "id": "ekd_2",
+      "name": "Не отрабатываются запросы на формирование выписок ЕГРН",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": "удаление ошибочно сформированных ЗЗ из системы",
+      "share_in_group": 0.0243,
+      "examples_official": [],
+      "faq": 6,
+      "templates": 2,
+      "gold_total": 6,
+      "gold_corrected": 6,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Материалы осмотра где лежат в ЭКД?",
+        "Где размещаются выписки ЕГРН?",
+        "Выписка ЕГРН отсутствует в ЭКД",
+        "ММБ где размещать заключение?",
+        "Как проверить материалы осмотра?",
+        "Что делать если в ЭКД нет ЕГРН"
+      ],
+      "template_topics": [
+        "размещение в ЭКД",
+        "Файл Verification выложен в ЭКД по сделке, в нем вы можете ознакоми"
+      ],
+      "keywords": "экд|егрн|размещ|материал(?:ы|ов)? осмотр"
+    },
+    {
+      "id": "asz_err_2",
+      "name": "Удаление ранее загруженных СЗЗ в АС Залоги",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": "не запускается процесс онлайн оценки",
+      "share_in_group": 0.0223,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "medium",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "критическ|ошибк.{0,20}сзз|загрузк.{0,20}сзз"
+    },
+    {
+      "id": "auto",
+      "name": "Залоговая экспертиза MDO",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": null,
+      "share_in_group": 0.01,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "medium",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "автооцен"
+    },
+    {
+      "id": "asz_cre",
+      "name": "Вопросы по работе в CRE",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": null,
+      "share_in_group": 0.008,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 1,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "На текущий момент отсутствует возможность проверки обременений на с"
+      ],
+      "keywords": "\\bcre\\b|обременен"
+    },
+    {
+      "id": "asz_cre_2",
+      "name": "Вопросы по работе в CRE. Прочие вопросы CRE",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": "не формируется запрос обременений",
+      "share_in_group": 0.002,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 1,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "На текущий момент отсутствует возможность проверки обременений на с"
+      ],
+      "keywords": "\\bcre\\b|обременен"
+    },
+    {
+      "id": "asz_cre_2",
+      "name": "Контроль обременений",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": "вопросы диспетчеризации заявок",
+      "share_in_group": 0.002,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 1,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "На текущий момент отсутствует возможность проверки обременений на с"
+      ],
+      "keywords": "\\bcre\\b|обременен"
+    },
+    {
+      "id": "asz_other",
+      "name": "Вопросы в ИТ ЦООП Ярославль",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": null,
+      "share_in_group": 0.002,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 1,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "Выпущено заключение в АС Залоги загружено успешно, объекты не отражаются в СБОФ, отражаются не те стоимости"
+      ],
+      "keywords": "ас залог|онлайн оценк"
+    },
+    {
+      "id": "asz_other_2",
+      "name": "Вопросы по работе АС Залоги",
+      "group": "asz",
+      "group_name": "1-я линия поддержки АС Залоги",
+      "essence": null,
+      "share_in_group": 0.001,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 1,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "Выпущено заключение в АС Залоги загружено успешно, объекты не отражаются в СБОФ, отражаются не те стоимости"
+      ],
+      "keywords": "ас залог|онлайн оценк"
+    },
+    {
+      "id": "insp_contact",
+      "name": "Смена контакта по осмотру",
+      "group": "inspect",
+      "group_name": "Осмотры",
+      "essence": "запрос ОФ, уточнение по отрисовке перепланировок",
+      "share_in_group": 0.56,
+      "examples_official": [],
+      "faq": 1,
+      "templates": 1,
+      "gold_total": 1,
+      "gold_corrected": 1,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [
+        "Смена контакта для самоосмотра"
+      ],
+      "template_topics": [
+        "Смена контакта"
+      ],
+      "keywords": "смена контакт|контакт.{0,20}осмотр"
+    },
+    {
+      "id": "insp_survey",
+      "name": "Замечания сюрвейеру",
+      "group": "inspect",
+      "group_name": "Осмотры",
+      "essence": "уточнение согласованной даты осмотра",
+      "share_in_group": 0.23,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "сюрвейер|замечан"
+    },
+    {
+      "id": "insp_date",
+      "name": "Дата осмотра",
+      "group": "inspect",
+      "group_name": "Осмотры",
+      "essence": null,
+      "share_in_group": 0.09,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "дата осмотр|срок.{0,15}осмотр"
+    },
+    {
+      "id": "insp_aspect",
+      "name": "Неработоспособность Аспект",
+      "group": "inspect",
+      "group_name": "Осмотры",
+      "essence": null,
+      "share_in_group": 0.03,
+      "examples_official": [],
+      "faq": 2,
+      "templates": 5,
+      "gold_total": 6,
+      "gold_corrected": 2,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Клиенту не пришло СМС для самоосмотра",
+        "Аспект недоступен в регионе, самоосмотр"
+      ],
+      "template_topics": [
+        "Требуется консультация клиента по телефону по работе МП Аспект",
+        "Установка приложения Аспект(если по ссылке из СМС не получается установить)",
+        "Статус осмотра самоосмотр / Аспект недоступен в регионе",
+        "Клиент не видит объекты в заявке/Вход в Аспект",
+        "Самоосмотр проведен. Фотоматериалы видим"
+      ],
+      "keywords": "аспект|смс|пароль|самоосмотр"
+    },
+    {
+      "id": "insp_aspect_2",
+      "name": "Клиент не получил смс",
+      "group": "inspect",
+      "group_name": "Осмотры",
+      "essence": null,
+      "share_in_group": 0.03,
+      "examples_official": [],
+      "faq": 2,
+      "templates": 5,
+      "gold_total": 6,
+      "gold_corrected": 2,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Клиенту не пришло СМС для самоосмотра",
+        "Аспект недоступен в регионе, самоосмотр"
+      ],
+      "template_topics": [
+        "Требуется консультация клиента по телефону по работе МП Аспект",
+        "Установка приложения Аспект(если по ссылке из СМС не получается установить)",
+        "Статус осмотра самоосмотр / Аспект недоступен в регионе",
+        "Клиент не видит объекты в заявке/Вход в Аспект",
+        "Самоосмотр проведен. Фотоматериалы видим"
+      ],
+      "keywords": "аспект|смс|пароль|самоосмотр"
+    },
+    {
+      "id": "insp_aspect_2",
+      "name": "Клиент не видит заявку в Аспект",
+      "group": "inspect",
+      "group_name": "Осмотры",
+      "essence": "консультация по использованию приложения Аспект",
+      "share_in_group": 0.02,
+      "examples_official": [],
+      "faq": 2,
+      "templates": 5,
+      "gold_total": 6,
+      "gold_corrected": 2,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Клиенту не пришло СМС для самоосмотра",
+        "Аспект недоступен в регионе, самоосмотр"
+      ],
+      "template_topics": [
+        "Требуется консультация клиента по телефону по работе МП Аспект",
+        "Установка приложения Аспект(если по ссылке из СМС не получается установить)",
+        "Статус осмотра самоосмотр / Аспект недоступен в регионе",
+        "Клиент не видит объекты в заявке/Вход в Аспект",
+        "Самоосмотр проведен. Фотоматериалы видим"
+      ],
+      "keywords": "аспект|смс|пароль|самоосмотр"
+    },
+    {
+      "id": "insp_other",
+      "name": "Консультация Клиента по вопросу осмотра",
+      "group": "inspect",
+      "group_name": "Осмотры",
+      "essence": "смена пароля",
+      "share_in_group": 0.014,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 3,
+      "gold_total": 4,
+      "gold_corrected": 0,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [
+        "Смена типа осмотра (ММБ)",
+        "путь где лежат мат-лы осмотра ММБ (для ответов на обращения)",
+        "Осмотр отменен (нет ТП)"
+      ],
+      "keywords": "осмотр"
+    },
+    {
+      "id": "insp_aspect_2",
+      "name": "Пароль для входа в Аспект",
+      "group": "inspect",
+      "group_name": "Осмотры",
+      "essence": "уточнение даты предоставления метриалов осмотра",
+      "share_in_group": 0.014,
+      "examples_official": [],
+      "faq": 2,
+      "templates": 5,
+      "gold_total": 6,
+      "gold_corrected": 2,
+      "gap": "low",
+      "examples": [],
+      "faq_topics": [
+        "Клиенту не пришло СМС для самоосмотра",
+        "Аспект недоступен в регионе, самоосмотр"
+      ],
+      "template_topics": [
+        "Требуется консультация клиента по телефону по работе МП Аспект",
+        "Установка приложения Аспект(если по ссылке из СМС не получается установить)",
+        "Статус осмотра самоосмотр / Аспект недоступен в регионе",
+        "Клиент не видит объекты в заявке/Вход в Аспект",
+        "Самоосмотр проведен. Фотоматериалы видим"
+      ],
+      "keywords": "аспект|смс|пароль|самоосмотр"
+    },
+    {
+      "id": "insp_date_2",
+      "name": "Срок проведения осмотра",
+      "group": "inspect",
+      "group_name": "Осмотры",
+      "essence": null,
+      "share_in_group": 0.012,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "medium",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "дата осмотр|срок.{0,15}осмотр"
+    },
+    {
+      "id": "sbl_arb",
+      "name": "СБЛ Арбитраж",
+      "group": "sbl",
+      "group_name": "СБЛ",
+      "essence": null,
+      "share_in_group": 0.11,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "сбл.{0,20}арбитраж|арбитраж.{0,20}сбл"
+    },
+    {
+      "id": "sbl_prio",
+      "name": "СБЛ Приоритет",
+      "group": "sbl",
+      "group_name": "СБЛ",
+      "essence": null,
+      "share_in_group": 0.89,
+      "examples_official": [],
+      "faq": 0,
+      "templates": 0,
+      "gold_total": 0,
+      "gold_corrected": 0,
+      "gap": "high",
+      "examples": [],
+      "faq_topics": [],
+      "template_topics": [],
+      "keywords": "сбл.{0,20}приоритет|приоритет.{0,20}сбл"
+    }
+  ],
+  "classifier_rules": [
+    {
+      "id": "prio",
+      "name": "Приоритет",
+      "group": "mdo",
+      "pattern": "приоритет"
+    },
+    {
+      "id": "ekd",
+      "name": "Отсутствие документов в ЭКД",
+      "group": "mdo",
+      "pattern": "экд|егрн|размещ|материал(?:ы|ов)? осмотр"
+    },
+    {
+      "id": "arb",
+      "name": "Арбитраж",
+      "group": "mdo",
+      "pattern": "арбитраж|пересмотр.{0,25}стоим|не согласен"
+    },
+    {
+      "id": "kk",
+      "name": "Категория качества",
+      "group": "mdo",
+      "pattern": "кк|категор|комфорт|бланк|основн"
+    },
+    {
+      "id": "pmz",
+      "name": "Обращения ПМЗ",
+      "group": "mdo",
+      "pattern": "\\bпмз\\b|севооборот|задани[ея] на мониторинг|\\bрм\\b"
+    },
+    {
+      "id": "risks",
+      "name": "Риски",
+      "group": "mdo",
+      "pattern": "риск|минимизац"
+    },
+    {
+      "id": "tech",
+      "name": "Технические вопросы (новый/ВТИ/переоценка)",
+      "group": "mdo",
+      "pattern": "\\bвти\\b|тех.?изменен|переоценк|новый залог"
+    },
+    {
+      "id": "docs",
+      "name": "Пакет документов",
+      "group": "mdo",
+      "pattern": "пакет документ|какие документ"
+    },
+    {
+      "id": "status",
+      "name": "Статус заявки",
+      "group": "mdo",
+      "pattern": "статус заяв|когда.{0,20}заключен|срок выпуска|взята в работу"
+    },
+    {
+      "id": "plan",
+      "name": "Перепланировки",
+      "group": "mdo",
+      "pattern": "перепланир|\\bрна\\b"
+    },
+    {
+      "id": "reject",
+      "name": "Причина возврата",
+      "group": "mdo",
+      "pattern": "возврат|отклон|автосборк|опечатк"
+    },
+    {
+      "id": "cost",
+      "name": "Уточнение по стоимости",
+      "group": "mdo",
+      "pattern": "вид стоимости|по какой стоимости|кадастров.{0,20}стоим"
+    },
+    {
+      "id": "disc",
+      "name": "Дисконт",
+      "group": "mdo",
+      "pattern": "дисконт|ликвидацион"
+    },
+    {
+      "id": "cost_drop",
+      "name": "Снижение стоимости",
+      "group": "mdo",
+      "pattern": "снизил(?:ась|ись)? стоимост|снижение стоимост"
+    },
+    {
+      "id": "szz",
+      "name": "СЗЗ / КЗЗ / форма заключения",
+      "group": "mdo",
+      "pattern": "сзз|кзз|бессрочн|полная (?:форма|версия)|краткая форма"
+    },
+    {
+      "id": "sign",
+      "name": "Подписанное ЗЗ",
+      "group": "mdo",
+      "pattern": "подписат|подписанн"
+    },
+    {
+      "id": "auto",
+      "name": "Автооценка",
+      "group": "mdo",
+      "pattern": "автооцен"
+    },
+    {
+      "id": "asz_list",
+      "name": "Вопросы по перечню / КОД",
+      "group": "asz",
+      "pattern": "перечен|код\\b|подготовк[аи] код"
+    },
+    {
+      "id": "asz_err",
+      "name": "Ошибки загрузки СЗЗ",
+      "group": "asz",
+      "pattern": "критическ|ошибк.{0,20}сзз|загрузк.{0,20}сзз"
+    },
+    {
+      "id": "asz_diff",
+      "name": "Расхождение данных в АС Залоги",
+      "group": "asz",
+      "pattern": "расхожден"
+    },
+    {
+      "id": "asz_bind",
+      "name": "Привязка объектов к ДЗ/ДИ",
+      "group": "asz",
+      "pattern": "привязк|\\bдз\\b|\\bди\\b"
+    },
+    {
+      "id": "asz_cre",
+      "name": "CRE / обременения",
+      "group": "asz",
+      "pattern": "\\bcre\\b|обременен"
+    },
+    {
+      "id": "asz_other",
+      "name": "Прочие АС Залоги",
+      "group": "asz",
+      "pattern": "ас залог|онлайн оценк"
+    },
+    {
+      "id": "insp_contact",
+      "name": "Смена контакта по осмотру",
+      "group": "inspect",
+      "pattern": "смена контакт|контакт.{0,20}осмотр"
+    },
+    {
+      "id": "insp_survey",
+      "name": "Замечания сюрвейеру",
+      "group": "inspect",
+      "pattern": "сюрвейер|замечан"
+    },
+    {
+      "id": "insp_date",
+      "name": "Дата / срок осмотра",
+      "group": "inspect",
+      "pattern": "дата осмотр|срок.{0,15}осмотр"
+    },
+    {
+      "id": "insp_aspect",
+      "name": "Аспект / СМС / пароль",
+      "group": "inspect",
+      "pattern": "аспект|смс|пароль|самоосмотр"
+    },
+    {
+      "id": "insp_other",
+      "name": "Прочие осмотры",
+      "group": "inspect",
+      "pattern": "осмотр"
+    },
+    {
+      "id": "sbl_prio",
+      "name": "СБЛ Приоритет",
+      "group": "sbl",
+      "pattern": "сбл.{0,20}приоритет|приоритет.{0,20}сбл"
+    },
+    {
+      "id": "sbl_arb",
+      "name": "СБЛ Арбитраж",
+      "group": "sbl",
+      "pattern": "сбл.{0,20}арбитраж|арбитраж.{0,20}сбл"
+    }
+  ]
+}

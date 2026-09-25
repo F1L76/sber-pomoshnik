@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Тренажёр RAG ГЛ ЗС</title>
+    <style>
+        :root {
+            --bg: #0f1419;
+            --panel: #1a222d;
+            --line: #2c3848;
+            --text: #e8eef6;
+            --muted: #8b9bb0;
+            --accent: #3d8bfd;
+            --ok: #3ecf8e;
+            --warn: #f0b429;
+            --bad: #f07178;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font: 15px/1.45 "Segoe UI", system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+        header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid var(--line);
+            background: var(--panel);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        header h1 { font-size: 1.05rem; margin: 0; font-weight: 600; }
+        .stats { color: var(--muted); font-size: 0.9rem; }
+        .stats b { color: var(--ok); font-weight: 600; }
+        .layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: calc(100vh - 52px);
+        }
+        @media (max-width: 860px) {
+            .layout { grid-template-columns: 1fr; }
+        }
+        .queue-wrap {
+            border-right: 1px solid var(--line);
+            background: #121820;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        .queue {
+            overflow: auto;
+            flex: 1;
+            min-height: 0;
+        }
+        @media (max-width: 860px) {
+            .queue-wrap { max-height: 280px; border-right: 0; border-bottom: 1px solid var(--line); }
+        }
+        .q-item {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 0.65rem 0.85rem;
+            border: 0;
+            border-bottom: 1px solid var(--line);
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            font: inherit;
+        }
+        .q-item:hover { background: #1c2530; }
+        .q-item.is-on { background: #243044; outline: 1px solid var(--accent); }
+        .q-item .id { color: var(--muted); font-size: 0.75rem; }
+        .q-item .badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            margin-left: 0.35rem;
+            vertical-align: middle;
+        }
+        .badge-need { background: #5a2d2d; color: #ffb4b4; }
+        .badge-ok { background: #1e3d2f; color: #9be7c0; }
+        .badge-syn { background: #4a3a12; color: #f5d67b; }
+        .badge-theme { background: #243552; color: #9ec1ff; margin-left: 0; margin-right: 0.25rem; }
+        .badge-seed { background: #3a2a4a; color: #d4b8ff; }
+        .badge-gap-high { background: #5a2d2d; color: #ffb4b4; }
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            padding: 0.55rem 0.75rem;
+            border-bottom: 1px solid var(--line);
+            background: #151c26;
+        }
+        .filters button {
+            border: 1px solid var(--line);
+            background: transparent;
+            color: var(--muted);
+            border-radius: 999px;
+            padding: 0.2rem 0.55rem;
+            font: inherit;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+        .filters button.is-on {
+            border-color: var(--accent);
+            color: var(--text);
+            background: #243044;
+        }
+        .main { padding: 1rem 1.25rem 2rem; max-width: 920px; }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .card h2 {
+            margin: 0 0 0.65rem;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .question { font-size: 1.15rem; font-weight: 600; margin: 0; }
+        .meta-row { color: var(--muted); font-size: 0.85rem; margin-top: 0.4rem; }
+        .answer-box {
+            white-space: pre-wrap;
+            background: #121820;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 0.75rem;
+            max-height: 220px;
+            overflow: auto;
+            font-size: 0.92rem;
+        }
+        .hits { font-size: 0.85rem; color: var(--muted); }
+        .hits li { margin-bottom: 0.35rem; }
+        textarea {
+            width: 100%;
+            min-height: 160px;
+            resize: vertical;
+            background: #121820;
+            color: var(--text);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 0.75rem;
+            font: inherit;
+        }
+        textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+        .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+        button.btn {
+            border: 0;
+            border-radius: 6px;
+            padding: 0.55rem 0.95rem;
+            font: inherit;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:disabled { opacity: 0.5; cursor: wait; }
+        .btn-ghost { background: #2a3544; color: var(--text); }
+        .btn-ok { background: #1f6b45; color: #fff; }
+        .status {
+            margin-top: 0.65rem;
+            font-size: 0.9rem;
+            color: var(--muted);
+            min-height: 1.3em;
+        }
+        .status.ok { color: var(--ok); }
+        .status.err { color: var(--bad); }
+        .custom {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .custom input {
+            flex: 1;
+            background: #121820;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 0.55rem 0.75rem;
+            font: inherit;
+        }
+        .hint { color: var(--muted); font-size: 0.85rem; margin: 0 0 1rem; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Тренажёр RAG ГЛ ЗС</h1>
+    <div class="stats" id="stats">загрузка…</div>
+</header>
+<div class="layout">
+    <aside class="queue-wrap">
+        <div class="filters" id="filters"></div>
+        <div class="queue" id="queue"></div>
+    </aside>
+    <main class="main">
+        <p class="hint">Блок MDO. «Дыра» — тема без FAQ: напишите правильный ответ и сохраните. «Нужно» — вопрос из эталона без вашей правки.</p>
+        <div class="custom">
+            <input id="customQ" type="text" placeholder="Свой вопрос (не из эталона)…">
+            <button type="button" class="btn btn-ghost" id="btnCustom">Открыть</button>
+        </div>
+        <div class="card">
+            <h2>Вопрос</h2>
+            <p class="question" id="qText">Выберите вопрос слева</p>
+            <div class="meta-row" id="qMeta"></div>
+        </div>
+        <div class="card">
+            <h2>Сейчас база отвечает</h2>
+            <div class="answer-box" id="curAnswer">—</div>
+            <ul class="hits" id="hits"></ul>
+        </div>
+        <div class="card">
+            <h2>Правильный ответ (эталон)</h2>
+            <textarea id="fix" placeholder="Напишите playbook-ответ своими словами…"></textarea>
+            <div class="actions">
+                <button type="button" class="btn btn-primary" id="btnSave">Сохранить в FAQ</button>
+                <button type="button" class="btn btn-ok" id="btnAccept">Принять текущий</button>
+                <button type="button" class="btn btn-ghost" id="btnSkip">Следующий</button>
+                <button type="button" class="btn btn-ghost" id="btnReload">Обновить поиск</button>
+            </div>
+            <div class="status" id="status"></div>
+        </div>
+    </main>
+</div>
+<script>
+(() => {
+    let allQueue = [];
+    let queue = [];
+    let themes = [];
+    let filterGroup = new URLSearchParams(location.search).get("group") || "";
+    let filterTheme = "";
+    let idx = 0;
+    let current = null; // { id?, q, seed? }
+
+    const el = {
+        stats: document.getElementById("stats"),
+        filters: document.getElementById("filters"),
+        queue: document.getElementById("queue"),
+        qText: document.getElementById("qText"),
+        qMeta: document.getElementById("qMeta"),
+        curAnswer: document.getElementById("curAnswer"),
+        hits: document.getElementById("hits"),
+        fix: document.getElementById("fix"),
+        status: document.getElementById("status"),
+        customQ: document.getElementById("customQ"),
+        btnSave: document.getElementById("btnSave"),
+        btnAccept: document.getElementById("btnAccept"),
+        btnSkip: document.getElementById("btnSkip"),
+        btnReload: document.getElementById("btnReload"),
+        btnCustom: document.getElementById("btnCustom")
+    };
+
+    function setStatus(msg, kind) {
+        el.status.textContent = msg || "";
+        el.status.className = "status" + (kind ? " " + kind : "");
+    }
+
+    async function api(path, opts) {
+        const res = await fetch(path, {
+            headers: { "Content-Type": "application/json" },
+            ...opts
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+        return data;
+    }
+
+    function esc(s) {
+        return String(s || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    function scopedQueue() {
+        return allQueue.filter((x) => !filterGroup || x.theme_group === filterGroup);
+    }
+
+    function applyFilter() {
+        const base = scopedQueue();
+        queue = filterTheme ? base.filter((x) => x.theme_id === filterTheme) : base;
+        renderFilters();
+        renderQueue();
+    }
+
+    function renderFilters() {
+        const groups = [
+            { id: "", name: "Все блоки" },
+            { id: "mdo", name: "MDO" },
+            { id: "inspect", name: "Осмотры" },
+            { id: "asz", name: "АС Залоги" },
+            { id: "sbl", name: "СБЛ" }
+        ];
+        const groupChips = groups.map((g) => {
+            const n = allQueue.filter((x) => x.needs_work && (!g.id || x.theme_group === g.id)).length;
+            return `<button type="button" class="${g.id === filterGroup && !filterTheme ? "is-on" : ""}" data-gr="${esc(g.id)}">${esc(g.name)}${n ? ` · ${n}` : ""}</button>`;
+        }).join("");
+        const chips = [{ id: "", name: "все темы блока" }];
+        for (const t of themes) {
+            if (filterGroup && t.group !== filterGroup) continue;
+            if (!t.need && filterTheme !== t.id) continue;
+            chips.push({
+                id: t.id,
+                name: String(t.name || "").split(" / ")[0].slice(0, 28),
+                need: t.need
+            });
+        }
+        const themeChips = chips.map((c) =>
+            `<button type="button" class="${c.id === filterTheme ? "is-on" : ""}" data-th="${esc(c.id)}">${esc(c.name)}${c.need ? ` · ${c.need}` : ""}</button>`
+        ).join("");
+        el.filters.innerHTML = groupChips + themeChips;
+        el.filters.querySelectorAll("button[data-gr]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                filterGroup = btn.getAttribute("data-gr") || "";
+                filterTheme = "";
+                idx = 0;
+                const url = new URL(location.href);
+                if (filterGroup) url.searchParams.set("group", filterGroup);
+                else url.searchParams.delete("group");
+                history.replaceState(null, "", url);
+                applyFilter();
+                if (queue.length) openIndex(0);
+            });
+        });
+        el.filters.querySelectorAll("button[data-th]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                filterTheme = btn.getAttribute("data-th") || "";
+                idx = 0;
+                applyFilter();
+                if (queue.length) openIndex(0);
+            });
+        });
+    }
+
+    function renderQueue() {
+        el.queue.innerHTML = queue.map((item, i) => {
+            const badges = [];
+            if (item.theme_name) {
+                badges.push(`<span class="badge badge-theme">${esc((item.theme_name || "").split(" / ")[0])}</span>`);
+            }
+            if (item.seed) badges.push('<span class="badge badge-gap-high">дыра</span>');
+            else if (item.needs_work) badges.push('<span class="badge badge-need">нужно</span>');
+            else badges.push('<span class="badge badge-ok">ок</span>');
+            if (!item.seed && item.theme_gap === "high") badges.push('<span class="badge badge-gap-high">дыра</span>');
+            const label = item.id != null ? `#${item.id}` : "дыра";
+            return `<button type="button" class="q-item${i === idx ? " is-on" : ""}" data-i="${i}">
+                <span class="id">${label}</span>${badges.join("")}<br>${esc(item.q)}
+            </button>`;
+        }).join("") || '<div style="padding:1rem;color:var(--muted)">Нет вопросов в фильтре</div>';
+        el.queue.querySelectorAll(".q-item").forEach((btn) => {
+            btn.addEventListener("click", () => openIndex(Number(btn.dataset.i)));
+        });
+    }
+
+    async function refreshStats() {
+        const data = await api("/api/conclusion-qa/train/status");
+        allQueue = data.queue || [];
+        themes = data.themes || [];
+        const top = (data.priority_order || []).slice(0, 3).join(", ");
+        el.stats.innerHTML = `в очереди <b>${data.need_work}</b> · правок ${data.corrected} · приоритет: ${esc(top) || "—"}`;
+        applyFilter();
+    }
+
+    function showPreview(preview, item) {
+        el.qText.textContent = item.q;
+        const mode = preview?.mode || "—";
+        const reason = preview?.reason ? ` · ${preview.reason}` : "";
+        const theme = item.theme_name ? ` · тема: ${item.theme_name}` : "";
+        const gap = item.theme_gap ? ` · gap=${item.theme_gap}` : "";
+        el.qMeta.textContent = `режим: ${mode}${reason}${theme}${gap}`
+            + (item.has_correction ? " · уже есть правка" : "")
+            + (item.seed ? " · дыра из карты тем — напишите эталон" : "");
+        el.curAnswer.textContent = preview?.answer || "(пусто)";
+        const hits = preview?.hits || [];
+        el.hits.innerHTML = hits.length
+            ? hits.map((h) =>
+                `<li><code>${esc(h.id)}</code> [${esc(h.collection)}] ${Number(h.score).toFixed(2)} — ${esc(h.question)}</li>`
+            ).join("")
+            : "<li>хитов нет</li>";
+    }
+
+    async function openIndex(i) {
+        if (!queue.length) return;
+        idx = Math.max(0, Math.min(i, queue.length - 1));
+        const row = queue[idx];
+        current = { id: row.id, q: row.q, seed: !!row.seed, theme_name: row.theme_name, theme_gap: row.theme_gap };
+        renderQueue();
+        setStatus("загрузка…");
+        try {
+            if (row.id == null || row.seed) {
+                const data = await api("/api/conclusion-qa/train/preview", {
+                    method: "POST",
+                    body: JSON.stringify({ question: row.q })
+                });
+                showPreview(data.preview, {
+                    q: row.q,
+                    has_correction: false,
+                    seed: true,
+                    theme_name: data.theme?.theme_name || row.theme_name,
+                    theme_gap: data.theme?.theme_gap || row.theme_gap
+                });
+                el.fix.value = data.preview?.answer || "";
+                setStatus("дыра темы — сохранение добавит эталон в FAQ", "ok");
+            } else {
+                const data = await api(`/api/conclusion-qa/train/item?id=${row.id}`);
+                showPreview(data.preview, { ...data.item, theme_name: data.item.theme_name || row.theme_name });
+                el.fix.value = data.item.reference || data.preview?.answer || "";
+                setStatus("");
+            }
+        } catch (e) {
+            setStatus(e.message, "err");
+        }
+    }
+
+    async function openCustom() {
+        const q = el.customQ.value.trim();
+        if (!q) return;
+        current = { q };
+        setStatus("поиск…");
+        try {
+            const data = await api("/api/conclusion-qa/train/preview", {
+                method: "POST",
+                body: JSON.stringify({ question: q })
+            });
+            showPreview(data.preview, {
+                q,
+                has_correction: false,
+                theme_name: data.theme?.theme_name,
+                theme_gap: data.theme?.theme_gap
+            });
+            el.fix.value = data.preview?.answer || "";
+            setStatus("свой вопрос — сохранение добавит в эталон", "ok");
+            el.queue.querySelectorAll(".q-item").forEach((b) => b.classList.remove("is-on"));
+        } catch (e) {
+            setStatus(e.message, "err");
+        }
+    }
+
+    async function save(useCurrent) {
+        if (!current?.q) {
+            setStatus("сначала выберите вопрос", "err");
+            return;
+        }
+        const answer = useCurrent
+            ? (el.curAnswer.textContent || "").trim()
+            : el.fix.value.trim();
+        if (!answer || answer === "—" || answer === "(пусто)") {
+            setStatus("нужен текст ответа", "err");
+            return;
+        }
+        el.btnSave.disabled = true;
+        el.btnAccept.disabled = true;
+        setStatus("сохраняю…");
+        try {
+            const body = {
+                question: current.q,
+                answer,
+                note: useCurrent ? "принято из текущего ответа тренажёра" : "корректировка из тренажёра"
+            };
+            if (current.id != null) body.id = current.id;
+            const data = await api("/api/conclusion-qa/train/save", {
+                method: "POST",
+                body: JSON.stringify(body)
+            });
+            setStatus(
+                `сохранено → ${data.faq_id} · тема ${data.theme_id || "—"} · режим ${data.preview?.mode || "—"}`,
+                "ok"
+            );
+            el.fix.value = answer;
+            current = { id: data.item_id, q: current.q };
+            await refreshStats();
+            const ni = queue.findIndex((x) => x.id === data.item_id);
+            if (ni >= 0) idx = ni;
+            const nextNeed = queue.findIndex((x, i) => i > idx && x.needs_work);
+            if (nextNeed >= 0) await openIndex(nextNeed);
+            else if (queue.length) await openIndex(Math.min(idx, queue.length - 1));
+        } catch (e) {
+            setStatus(e.message, "err");
+        } finally {
+            el.btnSave.disabled = false;
+            el.btnAccept.disabled = false;
+        }
+    }
+
+    function skip() {
+        const nextNeed = queue.findIndex((x, i) => i > idx && x.needs_work);
+        if (nextNeed >= 0) openIndex(nextNeed);
+        else if (idx + 1 < queue.length) openIndex(idx + 1);
+        else setStatus("очередь кончилась", "ok");
+    }
+
+    el.btnSave.addEventListener("click", () => save(false));
+    el.btnAccept.addEventListener("click", () => save(true));
+    el.btnSkip.addEventListener("click", skip);
+    el.btnReload.addEventListener("click", () => {
+        if (current?.q) {
+            if (current.id != null && !current.seed) openIndex(idx);
+            else {
+                el.customQ.value = current.q;
+                openCustom();
+            }
+        }
+    });
+    el.btnCustom.addEventListener("click", openCustom);
+    el.customQ.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            openCustom();
+        }
+    });
+
+    (async () => {
+        try {
+            await refreshStats();
+            const first = queue.findIndex((x) => x.needs_work);
+            await openIndex(first >= 0 ? first : 0);
+        } catch (e) {
+            el.stats.textContent = e.message;
+            setStatus(e.message, "err");
+        }
+    })();
+})();
+</script>
+</body>
+</html>
