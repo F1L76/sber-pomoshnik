@@ -2347,7 +2347,8 @@
         { id: "pmz", name: "ПМЗ", icon: "fas fa-building", modal: "#pmzModal", desc: "Подразделение мониторинга залогов", inDev: true },
         { id: "glDashboard", name: "Dashboard ГЛ ЦООП", icon: "fas fa-chart-pie", href: "/gl-dashboard", desc: "Нагрузка сотрудников по выгрузкам Excel" },
         { id: "sblRating", name: "Рейтинг экспертов СБЛ", icon: "fas fa-ranking-star", href: "/sbl-rating", desc: "Фабрика: KPI из Excel, риски и выгрузка" },
-        { id: "glZsLanding", name: "Лендинг ГЛ ЗС", icon: "fas fa-headset", href: "/gl-zs", desc: "Горячая линия Залоговой службы: инструкции и частые вопросы" }
+        { id: "glZsLanding", name: "Лендинг ГЛ ЗС", icon: "fas fa-headset", href: "/gl-zs", desc: "Горячая линия Залоговой службы: инструкции и частые вопросы" },
+        { id: "upgrade", name: "Платформа UPGrade", icon: "fas fa-rocket", href: "/upgrade", desc: "Инициативы залоговой службы: идеи, прототипы, пилот и внедрение" }
     ];
 
     function renderModules() {
@@ -2522,6 +2523,10 @@
         container.dataset.qaReady = "1";
         container.innerHTML = `
             <div class="conclusion-qa-chat">
+                <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+                    <span class="small text-muted mb-0">Диалог по залоговой экспертизе — контекст сохраняется в рамках сессии</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="conclusionQaResetBtn">Новый диалог</button>
+                </div>
                 <div id="conclusionQaMessages" class="conclusion-qa-messages" aria-live="polite"></div>
                 <div class="conclusion-qa-composer">
                     <label class="visually-hidden" for="conclusionQaInput">Вопрос</label>
@@ -2537,6 +2542,9 @@
         const messagesEl = document.getElementById("conclusionQaMessages");
         const inputEl = document.getElementById("conclusionQaInput");
         const sendBtn = document.getElementById("conclusionQaSendBtn");
+        const resetBtn = document.getElementById("conclusionQaResetBtn");
+        /** @type {{ role: string, content: string }[]} */
+        let qaHistory = [];
 
         fetch(`${GIGACHAT_API_BASE}/api/conclusion-qa/info`, { cache: "no-store" })
             .then((r) => r.json())
@@ -2568,7 +2576,7 @@
             const res = await fetch(`${GIGACHAT_API_BASE}/api/conclusion-qa/ask`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ question })
+                body: JSON.stringify({ question, history: qaHistory.slice(-8), nocache: true })
             });
             const data = await res.json();
             if (!res.ok || !data.ok) throw new Error(data.error || "Ошибка поиска");
@@ -2649,6 +2657,13 @@
             return wrap.querySelector(".conclusion-qa-bubble");
         }
 
+        function resetQaDialog() {
+            qaHistory = [];
+            messagesEl.innerHTML = "";
+            if (qaMeta && !qaMeta.title) qaMeta.textContent = "";
+            inputEl?.focus();
+        }
+
         async function sendQuestion() {
             const question = inputEl.value.trim();
             if (!question) return;
@@ -2668,23 +2683,26 @@
                     agentBody.innerHTML =
                         '<span class="text-primary"><i class="fas fa-spinner fa-spin me-1"></i>База + GigaChat…</span>';
                     const data = await askConclusionQaApi(question);
+                    const answer = data.answer || "";
                     agentBody.innerHTML =
-                        escapeHtml(data.answer || "").replace(/\n/g, "<br>")
+                        escapeHtml(answer).replace(/\n/g, "<br>")
                         + (data.gigaError
                             ? `<div class="text-warning small mt-2">GigaChat: ${escapeHtml(data.gigaError)}</div>`
                             : "");
-                    attachFeedback(agentBody, question, data.answer || "", data.hits || []);
+                    qaHistory.push({ role: "user", content: question });
+                    qaHistory.push({ role: "assistant", content: answer });
+                    if (qaHistory.length > 8) qaHistory = qaHistory.slice(-8);
+                    attachFeedback(agentBody, question, answer, data.hits || []);
                     return;
                 }
 
                 const data = await searchConclusionQaApi(question);
                 agentBody.innerHTML = renderQaHits(data.hits || []);
-                attachFeedback(
-                    agentBody,
-                    question,
-                    (data.hits || []).map((h) => h.answer).join("\n"),
-                    data.hits || []
-                );
+                const joined = (data.hits || []).map((h) => h.answer).join("\n");
+                qaHistory.push({ role: "user", content: question });
+                qaHistory.push({ role: "assistant", content: joined.slice(0, 1500) });
+                if (qaHistory.length > 8) qaHistory = qaHistory.slice(-8);
+                attachFeedback(agentBody, question, joined, data.hits || []);
             } catch (e) {
                 agentBody.innerHTML = `<span class="text-warning">${escapeHtml(e.message)}</span>`;
             } finally {
@@ -2694,6 +2712,7 @@
             }
         }
 
+        resetBtn?.addEventListener("click", resetQaDialog);
         sendBtn?.addEventListener("click", sendQuestion);
         inputEl?.addEventListener("keydown", (e) => {
             if (e.key === "Enter" && !e.shiftKey) {

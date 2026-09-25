@@ -31,10 +31,19 @@ import {
     maskConclusionRefs,
     buildGlossaryPromptBlock,
     chooseAskMode,
-    formatVerbatimAnswer,
-    isRoutingNoise
+    speakPlaybook,
+    listLandingFaq,
+    normalizeAskHistory,
+    buildDialogSearchQuery,
+    isLikelyFollowUp
 } from "./lib/conclusion-qa.mjs";
 import { appendConclusionQaFeedback } from "./lib/conclusion-qa-feedback.mjs";
+import {
+    getTrainStatus,
+    getTrainItem,
+    previewTrainQuestion,
+    saveTrainCorrection
+} from "./lib/conclusion-qa-train.mjs";
 import { getNspdBases } from "./lib/nspd-config.mjs";
 import { loadGeocodeMapPayload, loadGeocodeProgress, readStatus } from "./lib/nspd-geocode-store.mjs";
 import { loadVinParseProgress } from "./lib/vin-parse-store.mjs";
@@ -754,8 +763,21 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === "GET" && (url.pathname === "/gl-rag-train" || url.pathname === "/gl-rag-train/")) {
+        serveStatic(req, res, path.join(__dirname, "gl-rag-trainer.html"));
+        return;
+    }
+
     if (req.method === "GET" && (url.pathname === "/sbl-rating" || url.pathname === "/sbl-rating/")) {
         serveStatic(req, res, path.join(__dirname, "sbl-rating.html"));
+        return;
+    }
+
+    // Платформа UPGrade — отдельный Java-сервис на Render (или локально :8088)
+    if (req.method === "GET" && (url.pathname === "/upgrade" || url.pathname === "/upgrade/")) {
+        const dest = (process.env.UPGRADE_PUBLIC_URL || "http://127.0.0.1:8088").replace(/\/$/, "");
+        res.writeHead(302, { Location: dest + "/" });
+        res.end();
         return;
     }
 
@@ -887,11 +909,78 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/conclusion-qa/faq") {
+        try {
+            const result = listLandingFaq();
+            res.writeHead(result.ok ? 200 : 500, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(result));
+        } catch (e) {
+            res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, total: 0, items: [], error: e.message || String(e) }));
+        }
+        return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/conclusion-qa/feedback") {
         try {
             const raw = await readBody(req);
             const body = JSON.parse(raw || "{}");
             const result = appendConclusionQaFeedback(body);
+            res.writeHead(result.ok ? 200 : 400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(result));
+        } catch (e) {
+            res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, error: e.message || String(e) }));
+        }
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/conclusion-qa/train/status") {
+        try {
+            const result = getTrainStatus();
+            res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(result));
+        } catch (e) {
+            res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, error: e.message || String(e) }));
+        }
+        return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/conclusion-qa/train/item") {
+        try {
+            const result = getTrainItem(url.searchParams.get("id"));
+            res.writeHead(result.ok ? 200 : 404, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(result));
+        } catch (e) {
+            res.writeHead(500, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, error: e.message || String(e) }));
+        }
+        return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/conclusion-qa/train/preview") {
+        try {
+            const raw = await readBody(req);
+            const body = JSON.parse(raw || "{}");
+            const result = previewTrainQuestion(body.question || body.q);
+            res.writeHead(result.ok ? 200 : 400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify(result));
+        } catch (e) {
+            res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+            res.end(JSON.stringify({ ok: false, error: e.message || String(e) }));
+        }
+        return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/conclusion-qa/train/save") {
+        try {
+            const raw = await readBody(req);
+            const body = JSON.parse(raw || "{}");
+            const result = saveTrainCorrection(body);
+            if (result.ok && globalThis.__conclusionQaAskCache) {
+                globalThis.__conclusionQaAskCache.clear();
+            }
             res.writeHead(result.ok ? 200 : 400, { "Content-Type": "application/json; charset=utf-8" });
             res.end(JSON.stringify(result));
         } catch (e) {
@@ -919,7 +1008,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Единый ответ «база + GigaChat» для лендинга и «Вопросы по заключению»
-    // ponytail: кэш по нормализованному вопросу — повтор = тот же текст; temperature 0 снижает шум модели
+    // Диалог: клиент шлёт history; одиночный вопрос без истории — кэш как раньше
     if (!globalThis.__conclusionQaAskCache) {
         globalThis.__conclusionQaAskCache = new Map();
     }
@@ -945,15 +1034,22 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            const cacheKey = "v8:" + normalizeQaQuestion(question);
-            if (cacheKey && askCache.has(cacheKey) && body.nocache !== true) {
+            const history = normalizeAskHistory(body.history);
+            const hasDialog = history.length > 0;
+            const followUp = hasDialog && isLikelyFollowUp(question);
+            const searchQuery = buildDialogSearchQuery(question, history);
+
+            const cacheKey = !hasDialog && body.nocache !== true
+                ? "v10:" + normalizeQaQuestion(question)
+                : null;
+            if (cacheKey && askCache.has(cacheKey)) {
                 const cached = askCache.get(cacheKey);
                 res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
                 res.end(JSON.stringify({ ...cached, cached: true }));
                 return;
             }
 
-            const search = searchConclusionQa(question, { limit: 5 });
+            const search = searchConclusionQa(searchQuery, { limit: 5 });
             if (!search.ok) {
                 res.writeHead(search.error?.includes("обязателен") ? 400 : 503, {
                     "Content-Type": "application/json; charset=utf-8"
@@ -962,17 +1058,18 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            const emptyMsg =
-                "В базе ГЛ ЗС нет подходящего ответа на этот вопрос. Переформулируйте запрос в рамках работы горячей линии.";
-            const decided = chooseAskMode(search.hits || []);
-            const hits = decided.hits || search.hits || [];
-            if (!hits.length || decided.mode === "empty") {
+            const topicGuard =
+                "Я отвечаю только по залоговой экспертизе и горячей линии ЗС "
+                + "(заявки, осмотр, ЭКД/ЕГРН, СЗЗ, КК, арбитраж, ВТИ, приоритет, риски). "
+                + "Переформулируйте вопрос в этих рамках — помогу.";
+
+            if (search.offTopic && !hasDialog) {
                 const payload = {
                     ok: true,
-                    answer: emptyMsg,
+                    answer: topicGuard,
                     hits: [],
                     synthesized: false,
-                    mode: "empty",
+                    mode: "off-topic",
                     count: 0
                 };
                 if (cacheKey) askCache.set(cacheKey, payload);
@@ -981,11 +1078,31 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            // FAQ/шаблоны — дословно; сырые тикеты — через GigaChat
-            if (decided.mode === "verbatim") {
+            const decided = chooseAskMode(search.hits || [], { followUp, question });
+            const hits = decided.hits || search.hits || [];
+
+            if ((!hits.length || decided.mode === "empty") && !hasDialog) {
                 const payload = {
                     ok: true,
-                    answer: formatVerbatimAnswer(hits[0].answer),
+                    answer:
+                        "В базе ГЛ ЗС нет подходящего ответа. Уточните: сегмент (ММБ/КСБ), тип заявки "
+                        + "(новый залог / ВТИ / переоценка / арбитраж) и что уже пробовали.",
+                    hits: [],
+                    synthesized: false,
+                    mode: "clarify",
+                    reason: "empty",
+                    count: 0
+                };
+                if (cacheKey) askCache.set(cacheKey, payload);
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify(payload));
+                return;
+            }
+
+            if (decided.mode === "verbatim" && !followUp) {
+                const payload = {
+                    ok: true,
+                    answer: speakPlaybook(hits[0].answer),
                     hits,
                     synthesized: false,
                     mode: "verbatim",
@@ -998,34 +1115,56 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
+            const clarifyText =
+                "Уточните, пожалуйста, один момент: это ММБ или КСБ, и что уже сделали по заявке. "
+                + "Тогда отвечу по шагам, без догадок.";
+
+            // Нет карточки FAQ/шаблона — процедуру из тикета не собираем.
+            if (decided.mode === "clarify" && !hits.length) {
+                const payload = {
+                    ok: true,
+                    answer: clarifyText,
+                    hits: [],
+                    synthesized: false,
+                    mode: "clarify",
+                    reason: decided.reason || "case-only",
+                    count: 0
+                };
+                if (cacheKey) askCache.set(cacheKey, payload);
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify(payload));
+                return;
+            }
+
             const QA_SYSTEM =
-                "Ты AI-ассистент «СберБизнес Помощник» — платформы сопровождения залогов и экспертизы в банке. "
-                + "Отвечай профессионально, структурированно, по делу, на русском языке — в стиле хорошего ответа горячей линии. "
-                + "Структура: прямой вывод, затем что сделать / куда обратиться при необходимости. "
-                + "Не копируй сырые переписки и служебный шум («Добрый день» по кругу, внутренние статусы без пользы). "
-                + "Не выдумывай номера документов и суммы, если их нет во входных данных. "
-                + "Не указывай реальные даты, ASZ/SD, коды сделок и телефоны — нейтральные формулировки. "
+                "Ты сотрудник горячей линии залоговой службы. Отвечаешь коллеге в чате, коротко и по делу. "
+                + "Тема только залоговая экспертиза и процессы ГЛ ЗС. Вне темы — одна фраза вернуть к вопросам линии. "
+                + "Follow-up вроде «а для ММБ?» относится к теме диалога выше. "
+                + "Пиши 4–8 строк: сначала вывод, потом что сделать. "
+                + "Бери только факты из блока «Карточка». Не добавляй шаги, сроки и исключения, которых в карточке нет. "
+                + "Не цитируй пункты ВНД, не начинай с «Добрый день», не вставляй номера заявок, даты, телефоны и ASZ. "
+                + "Если в карточке развилка (ММБ/КСБ, осмотр уже был или нет), а в вопросе этого нет — задай один уточняющий вопрос и ветку не выбирай. "
                 + "Термины из глоссария: не расшифровывай помеченные «не расшифровывать».\n\n"
                 + buildGlossaryPromptBlock();
-            const ctxHits = hits.filter((h) => !isRoutingNoise(h.answer));
-            const ctxSrc = ctxHits.length ? ctxHits : hits;
-            const ctx = ctxSrc
-                .map((h, i) => `[${i + 1}] Лист: ${h.sheet}\nВопрос: ${h.question}\nОтвет: ${h.answer}`)
+
+            const ctx = hits
+                .map((h, i) => `[${i + 1}] ${h.collection === "faq" ? "FAQ" : "Шаблон"}: ${h.question}\n${h.answer}`)
                 .join("\n\n")
-                .slice(0, 12000);
+                .slice(0, 6000);
+
+            const clarifyHint = decided.mode === "clarify"
+                ? "Карточка слабая для точного ответа. Задай один уточняющий вопрос (ММБ или КСБ, что уже сделали). Процедуру не выдумывай.\n\n"
+                : "";
+
             const userPrompt =
-                "Ниже фрагменты из внутренней базы типовых вопросов по заключениям. "
-                + "Сформулируй ясный рабочий ответ на вопрос пользователя, опираясь на них. "
-                + "Если есть фрагмент с листом FAQ — опирайся на него в первую очередь. "
-                + "Не подменяй инструкцию «как сделать» статусом «уже сделано» из чужих тикетов. "
-                + "Игнорируй маршрутные отписки вроде «обратитесь к исполнителю / только для ЦООП», если рядом есть содержательный ответ. "
-                + "Если базы недостаточно — скажи об этом. "
-                + "Не воспроизводи даты, коды сделок и номера ASZ/SD/телефоны.\n\n"
-                + "Вопрос пользователя:\n" + question + "\n\nКонтекст из базы:\n" + ctx;
+                clarifyHint
+                + "Произнеси карточку ответом оператора на текущую реплику. Факты не дополняй.\n\n"
+                + "Текущая реплика:\n" + question + "\n\nКарточка:\n"
+                + (ctx || "(пусто)");
 
             const fallbackAnswer = () => {
-                const pick = hits.find((h) => !isRoutingNoise(h.answer)) || hits[0];
-                return formatVerbatimAnswer(pick.answer);
+                if (!hits.length) return clarifyText;
+                return speakPlaybook(hits[0].answer);
             };
 
             if (!isGigaChatEnabledOnServer()) {
@@ -1034,7 +1173,8 @@ const server = http.createServer(async (req, res) => {
                     answer: fallbackAnswer(),
                     hits,
                     synthesized: false,
-                    mode: "verbatim-fallback",
+                    mode: decided.mode === "clarify" ? "clarify" : "verbatim-fallback",
+                    reason: decided.reason || null,
                     count: hits.length,
                     gigaError: "GigaChat отключён на сервере"
                 };
@@ -1045,19 +1185,22 @@ const server = http.createServer(async (req, res) => {
             }
 
             try {
-                const content = await chatCompletion(
-                    [
-                        { role: "system", content: QA_SYSTEM },
-                        { role: "user", content: userPrompt }
-                    ],
-                    { temperature: 0, max_tokens: 2048 }
-                );
+                const messages = [
+                    { role: "system", content: QA_SYSTEM },
+                    ...history.map((m) => ({ role: m.role, content: m.content })),
+                    { role: "user", content: userPrompt }
+                ];
+                const content = await chatCompletion(messages, {
+                    temperature: decided.mode === "clarify" ? 0.2 : 0,
+                    max_tokens: 2048
+                });
                 const payload = {
                     ok: true,
                     answer: maskConclusionRefs(content),
                     hits,
                     synthesized: true,
-                    mode: "synthesize",
+                    mode: decided.mode === "clarify" ? "clarify" : "synthesize",
+                    reason: decided.reason || null,
                     count: hits.length
                 };
                 if (cacheKey) {

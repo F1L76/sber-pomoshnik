@@ -27,3 +27,20 @@ services:
         sync: false
       - key: NSPD_PROXY_KEY
         sync: false
+      # URL отдельного сервиса UpGrade (плашка /upgrade)
+      - key: UPGRADE_PUBLIC_URL
+        value: https://sber-upgrade.onrender.com
+
+  - type: web
+    name: sber-upgrade
+    runtime: java
+    plan: free
+    rootDir: upgrade
+    buildCommand: ./mvnw -DskipTests package
+    startCommand: java -jar target/upgrade-0.1.0-SNAPSHOT.jar
+    healthCheckPath: /login
+    envVars:
+      - key: JAVA_VERSION
+        value: "17"
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:h2:file:./data/upgrade;MODE=PostgreSQL;DB_CLOSE_DELAY=-1

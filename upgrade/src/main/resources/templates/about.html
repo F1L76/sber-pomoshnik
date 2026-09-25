@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('О платформе')}"></head>
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<header th:replace="~{layout :: top('about')}"></header>
+<main class="main about-page">
+  <section class="about-hero">
+    <img class="about-hero__img" th:src="@{/img/about-hero.png}" alt=""
+         onerror="this.remove()">
+    <div class="about-hero__shade"></div>
+    <div class="about-hero__copy">
+      <p class="eyebrow">UpGrade · улучши свой бизнес-процесс</p>
+      <h1>Идеи не умирают в чатах. Они доходят до внедрения.</h1>
+      <p>UpGrade — операционная система улучшений для залоговой службы: вы фиксируете инициативу, находите разработчика, собираете прототип, гоняете пилот и передаёте решение в профильный бэклог.</p>
+      <div class="hero__actions">
+        <a class="btn btn--primary" th:href="@{/ideas/new}">Подать инициативу</a>
+        <a class="btn btn--ghost" th:href="@{/ideas}">Смотреть каталог</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="about-proof">
+    <article>
+      <strong>7 этапов</strong>
+      <span>полный путь от подачи до «Внедрено»</span>
+    </article>
+    <article>
+      <strong>Живой каталог</strong>
+      <span>оценки, избранное, рейтинг авторов и разработчиков</span>
+    </article>
+    <article>
+      <strong>Прототип в браузере</strong>
+      <span>HTML в платформе или ссылка на развёрнутый сайт</span>
+    </article>
+    <article>
+      <strong>Роли под задачу</strong>
+      <span>автор, разработчик, администратор целевой платформы</span>
+    </article>
+  </section>
+
+  <section class="about-block">
+    <div class="about-block__intro">
+      <p class="eyebrow">Почему это работает</p>
+      <h2>Платформа, которая продаёт улучшение внутри компании</h2>
+      <p>Не ещё одна доска «предложений». UpGrade закрывает разрыв между «есть идея» и «это уже в промышленном контуре»: прозрачный статус, ответственные и следующий шаг на каждом этапе.</p>
+    </div>
+    <div class="about-features">
+      <article class="about-feature">
+        <h3>Витрина инициатив, а не свалка файлов</h3>
+        <p>Каталог в плитке и списке, фильтры по этапам и направлениям, рейтинг сообщества. Сильные идеи видно сразу — слабые не занимают эфир совещаний.</p>
+      </article>
+      <article class="about-feature">
+        <h3>Поиск разработчика за один клик</h3>
+        <p>После оценки автор открывает поиск. Коллега нажимает «Помочь» — и инициатива получает ответственного. Больше никаких «кто-нибудь возьмёт?»</p>
+      </article>
+      <article class="about-feature">
+        <h3>Прототип, который можно потрогать</h3>
+        <p>Загрузите HTML или укажите ссылку на развёрнутый сайт — идея переходит в пилот. HTML открывается в платформе, сайт — по адресу.</p>
+      </article>
+      <article class="about-feature">
+        <h3>Пилот с обратной связью</h3>
+        <p>Тестировщики фиксируют замечания, автор закрывает их до передачи в бэклог. Внедрение начинается с доказанной ценности, а не с презентации.</p>
+      </article>
+      <article class="about-feature">
+        <h3>Администратор целевой платформы</h3>
+        <p>Отдельная роль принимает решение: забрать в профильный бэклог и отметить внедрение. Владелец АС Залогов, Сберлизинга и других контуров видит очередь и управляет ей.</p>
+      </article>
+      <article class="about-feature">
+        <h3>Рейтинг, который мотивирует делать</h3>
+        <p>Топ идей, авторов и разработчиков. Вклад в улучшения становится видимым: не только «написал в чат», а довёл до результата.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="about-path-block">
+    <p class="eyebrow">Как идея проходит путь</p>
+    <h2>Семь шагов. Ни один не теряется.</h2>
+    <ol class="about-path">
+      <li><span>1</span><strong>Подача</strong><em>Инициатива попадает в каталог</em></li>
+      <li><span>2</span><strong>Оценка</strong><em>Сообщество и финэффект автора</em></li>
+      <li><span>3</span><strong>Поиск</strong><em>Ищем, кто сделает прототип</em></li>
+      <li><span>4</span><strong>Прототип</strong><em>HTML или ссылка на сайт</em></li>
+      <li><span>5</span><strong>Пилот</strong><em>Проверка на реальных кейсах</em></li>
+      <li><span>6</span><strong>Бэклог</strong><em>Передача владельцу платформы</em></li>
+      <li><span>7</span><strong>Внедрено</strong><em>Потребность закрыта</em></li>
+    </ol>
+  </section>
+
+  <section class="about-cta">
+    <div>
+      <h2>Есть улучшение процесса? Не держите его в голове.</h2>
+      <p>Оформите инициативу за минуту — платформа проведёт её до владельца целевой системы.</p>
+    </div>
+    <div class="hero__actions">
+      <a class="btn btn--primary" th:href="@{/ideas/new}">Запустить инициативу</a>
+      <a class="btn btn--ghost" th:href="@{/rating}">Посмотреть лидеров</a>
+    </div>
+  </section>
+</main>
+<footer th:replace="~{layout :: foot}"></footer>
+</body>
+</html>

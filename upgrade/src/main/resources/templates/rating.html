@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Рейтинг')}"></head>
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<header th:replace="~{layout :: top('rating')}"></header>
+<main class="main">
+  <div class="page-head">
+    <div>
+      <h1>Рейтинг</h1>
+      <p class="muted">Топ-3 по популярности идей, активности авторов и вкладу в прототипы.</p>
+    </div>
+  </div>
+
+  <section class="grid-3 section-gap rating-board">
+    <article class="panel rating-card">
+      <p class="eyebrow">Идеи</p>
+      <h2>Топ‑3 по рейтингу</h2>
+      <p class="muted" th:if="${#lists.isEmpty(topIdeas)}">Пока нет оценок.</p>
+      <ol class="rating-list" th:if="${!#lists.isEmpty(topIdeas)}">
+        <li th:each="row, st : ${topIdeas}">
+          <span class="rating-list__place" th:text="${st.count}">1</span>
+          <div class="rating-list__body">
+            <a th:href="@{/ideas/{id}(id=${row.idea.id})}" th:text="${row.idea.title}">Идея</a>
+            <p class="muted" th:text="|${row.idea.author} · ★ ${row.rating} · ${row.votes} оценок|">meta</p>
+          </div>
+        </li>
+      </ol>
+    </article>
+
+    <article class="panel rating-card">
+      <p class="eyebrow">Авторы</p>
+      <h2>Топ‑3 инициативных</h2>
+      <p class="muted" th:if="${#lists.isEmpty(topAuthors)}">Пока нет данных.</p>
+      <ol class="rating-list" th:if="${!#lists.isEmpty(topAuthors)}">
+        <li th:each="row, st : ${topAuthors}">
+          <span class="rating-list__place" th:text="${st.count}">1</span>
+          <div class="rating-list__body">
+            <strong th:text="${row.name}">Автор</strong>
+            <p class="muted" th:text="|${row.count} идей|">0 идей</p>
+          </div>
+        </li>
+      </ol>
+    </article>
+
+    <article class="panel rating-card">
+      <p class="eyebrow">Разработка</p>
+      <h2>Топ‑3 разработчиков</h2>
+      <p class="muted" th:if="${#lists.isEmpty(topDevelopers)}">Пока нет прототипов.</p>
+      <ol class="rating-list" th:if="${!#lists.isEmpty(topDevelopers)}">
+        <li th:each="row, st : ${topDevelopers}">
+          <span class="rating-list__place" th:text="${st.count}">1</span>
+          <div class="rating-list__body">
+            <strong th:text="${row.name}">Разработчик</strong>
+            <p class="muted" th:text="|${row.count} прототипов|">0 прототипов</p>
+          </div>
+        </li>
+      </ol>
+    </article>
+  </section>
+</main>
+<footer th:replace="~{layout :: foot}"></footer>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Аналитика')}"></head>
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<header th:replace="~{layout :: top('admin')}"></header>
+<main class="main dash">
+  <div class="dash__head">
+    <div>
+      <p class="eyebrow">Админка</p>
+      <h1>Аналитика платформы</h1>
+      <p class="muted">Воронка инициатив, запуски прототипов и журнал действий пользователей.</p>
+    </div>
+    <form class="dash__period" method="get" th:action="@{/admin}">
+      <input type="hidden" name="action" th:value="${logAction}">
+      <a class="chip" th:classappend="${days == 7} ? ' chip--on'" th:href="@{/admin(days=7, action=${logAction})}">7 дней</a>
+      <a class="chip" th:classappend="${days == 30} ? ' chip--on'" th:href="@{/admin(days=30, action=${logAction})}">30 дней</a>
+      <a class="chip" th:classappend="${days == 90} ? ' chip--on'" th:href="@{/admin(days=90, action=${logAction})}">90 дней</a>
+    </form>
+  </div>
+
+  <section class="dash-kpis">
+    <article class="dash-kpi" th:each="k : ${dash.kpis}">
+      <span th:text="${k.label}">метрика</span>
+      <strong th:text="${k.value}">0</strong>
+      <em th:text="${k.hint}">подсказка</em>
+    </article>
+  </section>
+
+  <section class="dash-grid">
+    <article class="panel dash-panel">
+      <h2>Воронка</h2>
+      <p class="muted">Конверсия каталога: покрытие прототипами <span th:text="${dash.protoCoverage}">0%</span>.</p>
+      <ul class="dash-funnel">
+        <li th:each="s : ${dash.funnel}">
+          <div class="dash-funnel__meta">
+            <strong th:text="${s.label}">этап</strong>
+            <span th:text="|${s.count} · ${s.share}|">0</span>
+          </div>
+          <div class="dash-bar"><i th:style="|width:${s.bar}%|"></i></div>
+        </li>
+      </ul>
+    </article>
+
+    <article class="panel dash-panel">
+      <h2>Этапы сейчас</h2>
+      <p class="muted">Где стоят инициативы в этом момент.</p>
+      <ul class="dash-bars">
+        <li th:each="s : ${dash.stages}">
+          <div class="dash-funnel__meta">
+            <strong th:text="${s.name}">этап</strong>
+            <span th:text="${s.count}">0</span>
+          </div>
+          <div class="dash-bar"><i th:style="|width:${s.bar}%|"></i></div>
+        </li>
+      </ul>
+    </article>
+  </section>
+
+  <section class="panel dash-panel">
+    <h2>Активность 14 дней</h2>
+    <p class="muted">События · запуски прототипов · входы</p>
+    <div class="dash-trend">
+      <div class="dash-trend__col" th:each="d : ${dash.trend}">
+        <div class="dash-trend__stack">
+          <b class="is-events" th:style="|height:${d.eventsBar}%|" th:title="|События: ${d.events}|"></b>
+          <b class="is-proto" th:style="|height:${d.protoBar}%|" th:title="|Запуски: ${d.protoOpens}|"></b>
+          <b class="is-login" th:style="|height:${d.loginBar}%|" th:title="|Входы: ${d.logins}|"></b>
+        </div>
+        <span th:text="${d.day}">01.01</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="dash-grid dash-grid--3">
+    <article class="panel dash-panel">
+      <h2>Прототипы</h2>
+      <p class="muted">HTML в платформе или ссылка на развёрнутый сайт.</p>
+      <ul class="dash-bars">
+        <li th:each="s : ${dash.protoMix}">
+          <div class="dash-funnel__meta">
+            <strong th:text="${s.name}">тип</strong>
+            <span th:text="|${s.count} · ${s.bar}%|">0</span>
+          </div>
+          <div class="dash-bar"><i th:style="|width:${s.bar}%|"></i></div>
+        </li>
+      </ul>
+    </article>
+    <article class="panel dash-panel">
+      <h2>Частота запусков</h2>
+      <p class="muted">Сколько раз открывали прототип за период.</p>
+      <ul class="dash-rank">
+        <li th:each="s, stat : ${dash.topProtos}">
+          <span class="dash-rank__n" th:text="${stat.count}">1</span>
+          <div>
+            <strong th:text="${s.name}">идея</strong>
+            <div class="dash-bar"><i th:style="|width:${s.bar}%|"></i></div>
+          </div>
+          <em th:text="${s.count}">0</em>
+        </li>
+        <li class="muted" th:if="${#lists.isEmpty(dash.topProtos)}">За период запусков ещё не было.</li>
+      </ul>
+    </article>
+    <article class="panel dash-panel">
+      <h2>Кто пользуется</h2>
+      <p class="muted">События по пользователям за период.</p>
+      <ul class="dash-rank">
+        <li th:each="s, stat : ${dash.topUsers}">
+          <span class="dash-rank__n" th:text="${stat.count}">1</span>
+          <div>
+            <strong th:text="${s.name}">пользователь</strong>
+            <div class="dash-bar"><i th:style="|width:${s.bar}%|"></i></div>
+          </div>
+          <em th:text="${s.count}">0</em>
+        </li>
+      </ul>
+    </article>
+  </section>
+
+  <section class="panel dash-panel">
+    <div class="dash-log__head">
+      <div>
+        <h2>Журнал действий</h2>
+        <p class="muted" th:text="|${dash.eventsInPeriod} событий за ${dash.days} дн.|">0</p>
+      </div>
+      <form method="get" th:action="@{/admin}" class="dash-log__filter">
+        <input type="hidden" name="days" th:value="${days}">
+        <select name="action" onchange="this.form.submit()">
+          <option value="">Все действия</option>
+          <option th:each="a : ${activityActions}"
+                  th:value="${a}"
+                  th:text="${a.label}"
+                  th:selected="${logAction == a}"></option>
+        </select>
+      </form>
+    </div>
+    <div class="dash-table-wrap">
+      <table class="dash-table">
+        <thead>
+          <tr>
+            <th>Время</th>
+            <th>Кто</th>
+            <th>Роль</th>
+            <th>Действие</th>
+            <th>Объект</th>
+            <th>Деталь</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="row : ${dash.logs}">
+            <td th:text="${row.when}">—</td>
+            <td th:text="${row.who}">—</td>
+            <td th:text="${row.role}">—</td>
+            <td><span class="dash-act" th:text="${row.action}">—</span></td>
+            <td>
+              <a th:if="${row.ideaId != null}" class="text-link" th:href="@{/ideas/{id}(id=${row.ideaId})}" th:text="${row.target}">идея</a>
+              <span th:unless="${row.ideaId != null}" th:text="${row.target}">—</span>
+            </td>
+            <td class="muted" th:text="${row.detail}">—</td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(dash.logs)}">
+            <td colspan="6" class="muted">Пока нет событий за выбранный период.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<footer th:replace="~{layout :: foot}"></footer>
+</body>
+</html>

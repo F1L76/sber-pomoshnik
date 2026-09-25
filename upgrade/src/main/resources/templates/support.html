@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Поддержка')}"></head>
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<header th:replace="~{layout :: top('support')}"></header>
+<main class="main">
+  <div th:if="${ok}" class="flash" th:text="${ok}"></div>
+  <div th:if="${error}" class="flash flash--error" th:text="${error}"></div>
+  <h1>Поддержка</h1>
+  <p class="muted">Напишите сообщение — его получат администраторы платформы.</p>
+
+  <form class="panel form" method="post" th:action="@{/support}">
+    <h2>Новое сообщение</h2>
+    <label class="field"><span>Тема *</span><input name="title" required maxlength="240"></label>
+    <label class="field"><span>От кого *</span>
+      <input name="applicant" required maxlength="120"
+             th:value="${currentUser != null ? currentUser.name : ''}"
+             th:readonly="${currentUser != null}">
+    </label>
+    <label class="field"><span>Сообщение *</span><textarea name="description" rows="4" required placeholder="Опишите вопрос или проблему"></textarea></label>
+    <label class="field"><span>Связанная идея</span>
+      <select name="ideaId">
+        <option value="">—</option>
+        <option th:each="i : ${ideas}" th:value="${i.id}" th:text="${i.title}"></option>
+      </select>
+    </label>
+    <button class="btn btn--primary" type="submit">Отправить админам</button>
+  </form>
+
+  <section th:if="${isAdmin}" style="margin-top:20px">
+    <h2>Входящие для администраторов</h2>
+    <p class="muted" th:if="${#lists.isEmpty(items)}">Пока нет сообщений.</p>
+    <div class="cards">
+      <article class="card" th:each="a : ${items}">
+        <div class="card__top">
+          <h2 th:text="${a.title}">title</h2>
+          <span class="badge" th:text="${a.status.label}">status</span>
+        </div>
+        <p class="muted" th:text="|От: ${a.applicant}|">from</p>
+        <p th:text="${a.description}">desc</p>
+        <p class="muted" th:if="${a.relatedIdea != null}" th:text="|Идея: ${a.relatedIdea.title}|">idea</p>
+        <p th:if="${a.feedback}" th:text="|Ответ: ${a.feedback}|">fb</p>
+        <form class="form" method="post" th:action="@{/support/{id}/feedback(id=${a.id})}" style="margin-top:10px">
+          <label class="field"><span>Статус</span>
+            <select name="status">
+              <option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}" th:selected="${a.status == s}"></option>
+            </select>
+          </label>
+          <label class="field"><span>Ответ администратора</span><input name="feedback" th:value="${a.feedback}"></label>
+          <button class="btn btn--ghost" type="submit">Сохранить ответ</button>
+        </form>
+      </article>
+    </div>
+  </section>
+
+  <section th:if="${!isAdmin and currentUser != null and !#lists.isEmpty(myItems)}" style="margin-top:20px">
+    <h2>Мои обращения</h2>
+    <div class="cards">
+      <article class="card" th:each="a : ${myItems}">
+        <div class="card__top">
+          <h2 th:text="${a.title}">title</h2>
+          <span class="badge" th:text="${a.status.label}">status</span>
+        </div>
+        <p th:text="${a.description}">desc</p>
+        <p th:if="${a.feedback}" th:text="|Ответ админа: ${a.feedback}|">fb</p>
+      </article>
+    </div>
+  </section>
+</main>
+<footer th:replace="~{layout :: foot}"></footer>
+</body>
+</html>

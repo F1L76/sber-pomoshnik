@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="takeBtn(idea, redirect)">
+  <!-- Помочь: статус «Поиск разработчика» и нет ответственного -->
+  <form th:if="${currentUser != null
+                 and idea.protoStatus != null
+                 and idea.protoStatus.name() == 'SEARCHING_DEVELOPER'
+                 and (idea.protoResponsible == null or #strings.isEmpty(idea.protoResponsible))}"
+        class="take-form"
+        method="post"
+        th:action="@{/ideas/{id}/take(id=${idea.id})}">
+    <input type="hidden" name="redirect" th:value="${redirect}">
+    <button type="submit" class="btn btn--primary btn--sm idea-tile__help" title="Взять в работу">Помочь</button>
+  </form>
+  <a th:if="${currentUser == null
+              and idea.protoStatus != null
+              and idea.protoStatus.name() == 'SEARCHING_DEVELOPER'
+              and (idea.protoResponsible == null or #strings.isEmpty(idea.protoResponsible))}"
+     class="btn btn--primary btn--sm idea-tile__help"
+     title="Взять в работу"
+     th:href="@{/login(redirect=${'/ideas/' + idea.id})}">Помочь</a>
+</th:block>
+</body>
+</html>

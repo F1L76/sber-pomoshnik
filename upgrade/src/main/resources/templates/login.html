@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Вход')}"></head>
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<header th:replace="~{layout :: top('login')}"></header>
+<main class="main">
+  <h1>Вход</h1>
+  <div th:if="${error}" class="flash flash--error" th:text="${error}"></div>
+  <div th:if="${ok}" class="flash" th:text="${ok}"></div>
+
+  <form class="panel form" method="post" th:action="@{/login}" style="max-width:420px">
+    <input type="hidden" name="redirect" th:value="${redirect}">
+    <label class="field"><span>Логин</span><input name="login" required autocomplete="username" placeholder="admin, platform или user"></label>
+    <label class="field"><span>Пароль</span><input type="password" name="password" required autocomplete="current-password"></label>
+    <button class="btn btn--primary" type="submit">Войти</button>
+  </form>
+
+  <section class="panel" style="max-width:420px;margin-top:14px">
+    <h2 style="margin-top:0;font-size:1.1rem">Демо-аккаунты</h2>
+    <ul class="muted" style="margin:0;padding-left:1.1rem;line-height:1.6">
+      <li th:each="a : ${accounts}">
+        <strong th:text="${a.login}">login</strong>
+        / <span th:text="${a.password}">pass</span>
+        — <span th:text="${a.name}">name</span>
+        (<span th:text="${a.role.label}">role</span>)
+      </li>
+    </ul>
+  </section>
+</main>
+<footer th:replace="~{layout :: foot}"></footer>
+</body>
+</html>

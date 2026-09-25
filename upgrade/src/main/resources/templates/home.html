@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Главная')}"></head>
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<header th:replace="~{layout :: top('home')}"></header>
+<main class="main">
+  <div th:if="${ok}" class="flash" th:text="${ok}"></div>
+
+  <section class="hero">
+    <p class="eyebrow">Платформа инициатив</p>
+    <h1 class="hero__title">Up<span>Grade</span></h1>
+    <p class="hero__lead">Собирайте инициативы, оценивайте предложения коллег и доводите улучшения до внедрения.</p>
+    <div class="hero__actions">
+      <a class="btn btn--primary" th:href="@{/ideas/new}">Подать идею</a>
+      <a class="btn btn--ghost" th:href="@{/about}">Почему UpGrade</a>
+    </div>
+  </section>
+
+  <section class="grid-2 section-gap">
+    <article class="panel">
+      <h2>Идеи</h2>
+      <p class="muted" th:text="|${ideasCount} в каталоге|">0</p>
+      <a class="text-link" th:href="@{/ideas}">Открыть →</a>
+    </article>
+    <article class="panel">
+      <h2>Избранное</h2>
+      <p class="muted">Сохраняйте важное</p>
+      <a class="text-link" th:href="@{/favorites}">Открыть →</a>
+    </article>
+  </section>
+
+  <section class="panel section-gap" th:if="${news != null}">
+    <p class="eyebrow">Новость дня</p>
+    <h2 th:text="${news.title}">Заголовок</h2>
+    <p class="muted" th:text="${news.newsDate}">дата</p>
+    <p class="card__text" th:text="${news.body}">текст</p>
+    <a class="text-link" th:href="@{/news}">Все новости →</a>
+  </section>
+</main>
+<footer th:replace="~{layout :: foot}"></footer>
+</body>
+</html>

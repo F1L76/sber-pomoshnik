@@ -1,0 +1,14 @@
+/target/
+/data/*
+!/data/.gitkeep
+/.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+hs_err_pid*

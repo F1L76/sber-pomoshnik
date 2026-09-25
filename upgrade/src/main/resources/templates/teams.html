@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Команды')}"></head>
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<header th:replace="~{layout :: top('teams')}"></header>
+<main class="main">
+  <div th:if="${ok}" class="flash" th:text="${ok}"></div>
+  <div th:if="${error}" class="flash flash--error" th:text="${error}"></div>
+  <h1>Команды</h1>
+  <p class="muted">Формирование команд вокруг идей. Состав могут менять участники команды и администраторы.</p>
+
+  <form class="panel form" method="post" th:action="@{/teams}" th:if="${loggedIn}">
+    <h2>Создать команду</h2>
+    <label class="field"><span>Название *</span><input name="name" required></label>
+    <label class="field"><span>Цель</span><textarea name="goal" rows="2"></textarea></label>
+    <label class="field"><span>Участники</span><input name="members" placeholder="ФИО через запятую"></label>
+    <label class="field"><span>Идея</span>
+      <select name="ideaId">
+        <option value="">—</option>
+        <option th:each="i : ${ideas}" th:value="${i.id}" th:text="${i.title}"></option>
+      </select>
+    </label>
+    <button class="btn btn--primary" type="submit">Создать</button>
+  </form>
+  <p class="muted" th:if="${!loggedIn}">
+    <a th:href="@{/login(redirect='/teams')}">Войдите</a>, чтобы создать команду или изменить состав.
+  </p>
+
+  <div class="cards" style="margin-top:16px">
+    <article class="card" th:each="t : ${items}">
+      <h2 th:text="${t.name}">name</h2>
+      <p th:text="${t.goal}">goal</p>
+      <p class="muted" th:text="|Участники: ${t.members != null and !#strings.isEmpty(t.members) ? t.members : '—'}|">members</p>
+      <p class="muted" th:if="${t.relatedIdea != null}" th:text="|Идея: ${t.relatedIdea.title}|">idea</p>
+
+      <form class="form team-members-form" method="post" th:action="@{/teams/{id}/members(id=${t.id})}"
+            th:if="${canEditMembers[t.id]}">
+        <label class="field">
+          <span>Состав команды</span>
+          <textarea name="members" rows="2" th:text="${t.members}" placeholder="ФИО через запятую"></textarea>
+        </label>
+        <button class="btn btn--primary btn--sm" type="submit">Сохранить состав</button>
+      </form>
+    </article>
+  </div>
+</main>
+<footer th:replace="~{layout :: foot}"></footer>
+</body>
+</html>

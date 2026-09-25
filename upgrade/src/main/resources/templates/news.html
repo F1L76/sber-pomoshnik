@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Новости')}"></head>
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<header th:replace="~{layout :: top('news')}"></header>
+<main class="main">
+  <div th:if="${ok}" class="flash" th:text="${ok}"></div>
+  <div class="page-head">
+    <h1>Новости</h1>
+  </div>
+  <form class="panel form" method="post" th:action="@{/news}">
+    <h2>Добавить новость</h2>
+    <label class="field"><span>Заголовок</span><input name="title" required></label>
+    <label class="field"><span>Текст</span><textarea name="body" rows="3" required></textarea></label>
+    <button class="btn btn--primary" type="submit">Опубликовать</button>
+  </form>
+  <div class="cards" style="margin-top:16px">
+    <article class="card" th:each="n : ${items}">
+      <p class="eyebrow" th:text="${n.newsDate}">дата</p>
+      <h2 th:text="${n.title}">title</h2>
+      <p th:text="${n.body}">body</p>
+    </article>
+  </div>
+</main>
+<footer th:replace="~{layout :: foot}"></footer>
+</body>
+</html>

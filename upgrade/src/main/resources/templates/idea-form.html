@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head(${editMode} ? 'Редактирование идеи' : 'Новая идея')}"></head>
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<header th:replace="~{layout :: top('ideas')}"></header>
+<main class="main">
+  <h1 th:text="${editMode} ? 'Редактировать идею' : 'Подать идею'">Подать идею</h1>
+  <p class="muted" th:if="${editMode and !canEditAll}">
+    Как автор вы можете менять название, описание, теги и финансовый эффект.
+  </p>
+  <p class="muted" th:if="${editMode and canEditAll}">
+    Режим администратора: доступны все поля.
+  </p>
+
+  <form class="panel form" method="post"
+        th:action="${editMode} ? @{/ideas/{id}(id=${idea.id})} : @{/ideas}"
+        th:object="${idea}" id="ideaForm">
+
+    <label class="field"><span>Название *</span>
+      <input th:field="*{title}" required maxlength="240" th:readonly="${editMode and !canEditAuthorFields}">
+    </label>
+
+    <label class="field"><span>Автор *</span>
+      <input th:field="*{author}" required maxlength="240"
+             th:readonly="${!canEditAll}"
+             th:title="${canEditAll} ? 'Админ может менять автора' : 'Автор задаётся из вашего профиля'">
+    </label>
+
+    <label class="field"><span>Описание</span>
+      <textarea th:field="*{description}" rows="4" th:readonly="${editMode and !canEditAuthorFields}"></textarea>
+    </label>
+
+    <label class="field"><span>Авторская оценка · финансовый эффект</span>
+      <textarea th:field="*{expectedEffect}" rows="2"
+                placeholder="Какой финансовый эффект ожидаете?"
+                th:readonly="${editMode and !canEditAuthorFields}"></textarea>
+    </label>
+
+    <label class="field">
+      <span>Целевая платформа *</span>
+      <select name="targetPlatform" th:field="*{targetPlatform}" required
+              th:disabled="${editMode and !canEditAuthorFields}">
+        <option value="">Выберите платформу</option>
+        <option th:each="p : ${targetPlatforms}" th:value="${p}" th:text="${p}"></option>
+      </select>
+    </label>
+    <input th:if="${editMode and !canEditAuthorFields}" type="hidden" th:field="*{targetPlatform}">
+
+    <label class="field" th:classappend="${!canEditAll} ? ' is-locked'">
+      <span>Для кого</span>
+      <textarea th:field="*{forWhom}" rows="2" th:readonly="${!canEditAll}"></textarea>
+    </label>
+    <label class="field" th:classappend="${!canEditAll} ? ' is-locked'">
+      <span>Как использовать</span>
+      <textarea th:field="*{howToUse}" rows="2" th:readonly="${!canEditAll}"></textarea>
+    </label>
+
+    <fieldset class="tag-picker" th:classappend="${editMode and !canEditAuthorFields} ? ' is-locked'">
+      <legend>Направления</legend>
+      <p class="muted">Выберите подходящие теги или добавьте свой — список не исчерпывающий.</p>
+      <div class="tag-suggest" role="group" aria-label="Каталог направлений">
+        <label class="tag-suggest__item" th:each="t : ${catalogTags}">
+          <input type="checkbox" name="tagNames" th:value="${t.name}"
+                 th:checked="${selectedTags != null and selectedTags.contains(t.name)}"
+                 th:disabled="${editMode and !canEditAuthorFields}">
+          <span th:text="${t.name}">тег</span>
+        </label>
+      </div>
+      <div class="tag-custom" th:if="${!editMode or canEditAuthorFields}">
+        <label class="field"><span>Свой тег</span>
+          <div class="tag-custom__row">
+            <input type="text" id="customTagInput" maxlength="120" placeholder="например: Мониторинг">
+            <button type="button" class="btn btn--ghost" id="addCustomTag">Добавить</button>
+          </div>
+        </label>
+        <div class="tag-custom__selected" id="customTagList"></div>
+      </div>
+    </fieldset>
+
+    <label class="field" th:classappend="${!canEditAll} ? ' is-locked'">
+      <span>Статус прототипа</span>
+      <select th:field="*{protoStatus}" th:disabled="${!canEditAll}">
+        <option th:each="p : ${protoStatuses}" th:value="${p}" th:text="${p.label}"></option>
+      </select>
+    </label>
+    <label class="field" th:classappend="${!canEditAll} ? ' is-locked'">
+      <span>Ответственный за прототип</span>
+      <input th:field="*{protoResponsible}" maxlength="240" th:readonly="${!canEditAll}">
+    </label>
+    <label class="field" th:classappend="${!canEditAll} ? ' is-locked'">
+      <span>Ссылка на прототип (HTML в платформе или адрес сайта)</span>
+      <input th:field="*{protoLink}" maxlength="1000" placeholder="https://… или загрузите HTML на этапе разработки"
+             th:readonly="${!canEditAll}">
+    </label>
+    <label class="check" th:classappend="${!canEditAll} ? ' is-locked'">
+      <input type="checkbox" th:field="*{backlogTaken}" th:disabled="${!canEditAll}"> Взято в бэклог
+    </label>
+    <label class="field" th:classappend="${!canEditAll} ? ' is-locked'">
+      <span>Команда бэклога</span>
+      <input th:field="*{backlogTeam}" th:readonly="${!canEditAll}">
+    </label>
+    <label class="check" th:classappend="${!canEditAll} ? ' is-locked'">
+      <input type="checkbox" th:field="*{implemented}" th:disabled="${!canEditAll}"> Внедрено
+    </label>
+
+    <!-- disabled fields are not submitted — keep values for non-admin edit -->
+    <th:block th:if="${editMode and !canEditAll}">
+      <input type="hidden" th:field="*{author}">
+      <input type="hidden" th:field="*{forWhom}">
+      <input type="hidden" th:field="*{howToUse}">
+      <input type="hidden" th:field="*{protoStatus}">
+      <input type="hidden" th:field="*{protoResponsible}">
+      <input type="hidden" th:field="*{backlogTeam}">
+      <input type="hidden" name="backlogTaken" th:value="*{backlogTaken}">
+      <input type="hidden" name="implemented" th:value="*{implemented}">
+    </th:block>
+
+    <div class="form__actions" style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn--primary" type="submit" th:text="${editMode} ? 'Сохранить изменения' : 'Сохранить'">Сохранить</button>
+      <a class="btn btn--ghost" th:if="${editMode}" th:href="@{/ideas/{id}(id=${idea.id})}">Отмена</a>
+    </div>
+  </form>
+</main>
+<footer th:replace="~{layout :: foot}"></footer>
+<script>
+(() => {
+  const list = document.getElementById("customTagList");
+  const input = document.getElementById("customTagInput");
+  const addBtn = document.getElementById("addCustomTag");
+  if (!list || !input || !addBtn) return;
+
+  const existing = new Set(
+    [...document.querySelectorAll('.tag-suggest input[type="checkbox"]')].map((el) => el.value.toLowerCase())
+  );
+
+  function addTag(raw) {
+    const name = (raw || "").trim().replace(/\s+/g, " ");
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (existing.has(key)) {
+      const box = [...document.querySelectorAll('.tag-suggest input[type="checkbox"]')]
+        .find((el) => el.value.toLowerCase() === key);
+      if (box) box.checked = true;
+      input.value = "";
+      return;
+    }
+    existing.add(key);
+    const wrap = document.createElement("label");
+    wrap.className = "tag-suggest__item is-custom";
+    wrap.innerHTML = `<input type="checkbox" name="tagNames" value="${name.replaceAll('"','&quot;')}" checked><span>${name}</span>`;
+    list.appendChild(wrap);
+    input.value = "";
+  }
+
+  addBtn.addEventListener("click", () => addTag(input.value));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTag(input.value);
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="protoActions(idea, redirect)">
+  <div class="proto-upload"
+       th:classappend="${idea.currentStage() == null or (idea.currentStage().name != 'Разработка прототипа' and idea.currentStage().name != 'Пилот')} ? ' is-hidden'"
+       data-proto-upload>
+    <form th:if="${currentUser != null}"
+          class="proto-upload__form"
+          method="post"
+          enctype="multipart/form-data"
+          th:action="@{/ideas/{id}/proto-html(id=${idea.id})}">
+      <input type="hidden" name="redirect" th:value="${redirect}">
+      <label class="btn btn--primary btn--sm proto-upload__btn">
+        Подгрузить HTML
+        <input type="file" name="file" accept=".html,.htm,text/html" required hidden
+               onchange="this.form.requestSubmit()">
+      </label>
+    </form>
+    <details th:if="${currentUser != null}" class="proto-url">
+      <summary class="btn btn--ghost btn--sm">Ссылка на сайт</summary>
+      <form class="proto-url__form"
+            method="post"
+            th:action="@{/ideas/{id}/proto-url(id=${idea.id})}">
+        <input type="hidden" name="redirect" th:value="${redirect}">
+        <input class="proto-url__input"
+               type="text"
+               name="url"
+               required
+               maxlength="1000"
+               inputmode="url"
+               autocomplete="url"
+               placeholder="https://…"
+               th:value="${idea.hasExternalPrototype() ? idea.protoLink : ''}">
+        <button class="btn btn--primary btn--sm" type="submit">Сохранить</button>
+      </form>
+    </details>
+    <a th:if="${currentUser == null}"
+       class="btn btn--primary btn--sm"
+       th:href="@{/login(redirect=${'/ideas/' + idea.id})}">Прикрепить прототип</a>
+  </div>
+  <a th:if="${idea.hasDownloadablePrototypeHtml()}"
+     class="btn btn--ghost btn--sm"
+     th:href="@{/ideas/{id}/proto(id=${idea.id})}">Открыть HTML</a>
+  <a th:if="${idea.hasExternalPrototype()}"
+     class="btn btn--ghost btn--sm"
+     th:href="@{/ideas/{id}/proto(id=${idea.id})}">Открыть сайт</a>
+</th:block>
+</body>
+</html>

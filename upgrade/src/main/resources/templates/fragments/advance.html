@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="advanceBtns(idea, redirect)">
+  <!-- Оценка → Поиск разработчика -->
+  <form th:if="${currentUser != null and idea.canOpenDeveloperSearch()
+                 and (currentUser.admin or (idea.author != null and #strings.equalsIgnoreCase(idea.author, currentUser.name)))}"
+        class="take-form"
+        method="post"
+        th:action="@{/ideas/{id}/open-search(id=${idea.id})}">
+    <input type="hidden" name="redirect" th:value="${redirect}">
+    <button type="submit" class="btn btn--primary btn--sm idea-tile__help"
+            title="Открыть поиск разработчика">К поиску</button>
+  </form>
+  <a th:if="${currentUser == null and idea.canOpenDeveloperSearch()}"
+     class="btn btn--primary btn--sm idea-tile__help"
+     title="Открыть поиск разработчика"
+     th:href="@{/login(redirect=${redirect})}">К поиску</a>
+
+  <!-- Пилот → профильный бэклог: администратор целевой платформы -->
+  <form th:if="${currentUser != null and idea.canSendToBacklog() and currentUser.staff}"
+        class="take-form"
+        method="post"
+        th:action="@{/ideas/{id}/to-backlog(id=${idea.id})}">
+    <input type="hidden" name="redirect" th:value="${redirect}">
+    <button type="submit" class="btn btn--primary btn--sm idea-tile__help"
+            title="Передать в профильный бэклог">В бэклог</button>
+  </form>
+  <a th:if="${currentUser == null and idea.canSendToBacklog()}"
+     class="btn btn--primary btn--sm idea-tile__help"
+     title="Передать в профильный бэклог"
+     th:href="@{/login(redirect=${redirect})}">В бэклог</a>
+
+  <!-- Бэклог → Внедрено: администратор целевой платформы -->
+  <form th:if="${currentUser != null and idea.canMarkImplemented() and currentUser.staff}"
+        class="take-form"
+        method="post"
+        th:action="@{/ideas/{id}/implement(id=${idea.id})}">
+    <input type="hidden" name="redirect" th:value="${redirect}">
+    <button type="submit" class="btn btn--primary btn--sm idea-tile__help"
+            title="Отметить внедрённым">Внедрено</button>
+  </form>
+  <a th:if="${currentUser == null and idea.canMarkImplemented()}"
+     class="btn btn--primary btn--sm idea-tile__help"
+     title="Отметить внедрённым"
+     th:href="@{/login(redirect=${redirect})}">Внедрено</a>
+</th:block>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title th:text="${title} + ' · UpGrade'">UpGrade</title>
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('upgrade-theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700;800&family=Figtree:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" th:href="@{/css/app.css(v=20260821d)}">
+  <script defer th:src="@{/js/theme.js(v=20260821a)}"></script>
+</head>
+<body>
+<header class="top" th:fragment="top(active)">
+  <a class="brand" th:href="@{/}">
+    <span class="brand__mark">Up</span><span class="brand__rest">Grade</span>
+  </a>
+  <nav class="nav">
+    <a th:href="@{/}" th:classappend="${active=='home'} ? ' nav__link--on'">Главная</a>
+    <a th:href="@{/ideas}" th:classappend="${active=='ideas'} ? ' nav__link--on'">Идеи</a>
+    <a th:href="@{/rating}" th:classappend="${active=='rating'} ? ' nav__link--on'">Рейтинг</a>
+    <a th:href="@{/favorites}" th:classappend="${active=='favorites'} ? ' nav__link--on'">Избранное</a>
+    <a th:href="@{/news}" th:classappend="${active=='news'} ? ' nav__link--on'">Новости</a>
+    <a th:href="@{/teams}" th:classappend="${active=='teams'} ? ' nav__link--on'">Команды</a>
+    <a th:href="@{/support}" th:classappend="${active=='support'} ? ' nav__link--on'">Поддержка</a>
+    <a th:href="@{/about}" th:classappend="${active=='about'} ? ' nav__link--on'">О платформе</a>
+    <a th:if="${currentUser != null and currentUser.staff}"
+       th:href="@{/admin}"
+       th:classappend="${active=='admin'} ? ' nav__link--on'">Аналитика</a>
+  </nav>
+  <div class="auth-bar">
+    <button type="button" class="theme-toggle" data-theme-toggle aria-label="Переключить тему" title="Переключить тему">
+      <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+      </svg>
+      <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3a7 7 0 0 0 11.5 11.5z"/>
+      </svg>
+    </button>
+    <th:block th:if="${currentUser != null}">
+      <span class="auth-bar__who">
+        <strong th:text="${currentUser.name}">user</strong>
+        <span class="auth-bar__role" th:text="${currentUser.role.label}">role</span>
+      </span>
+      <form method="post" th:action="@{/logout}" class="auth-bar__form">
+        <button type="submit" class="btn btn--ghost btn--sm">Выйти</button>
+      </form>
+    </th:block>
+    <a th:if="${currentUser == null}" class="btn btn--ghost btn--sm"
+       th:href="@{/login}" th:classappend="${active=='login'} ? ' nav__link--on'">Войти</a>
+  </div>
+</header>
+
+<footer class="foot" th:fragment="foot">
+  <span>UpGrade - Улучши свой бизнес процесс</span>
+</footer>
+</body>
+</html>

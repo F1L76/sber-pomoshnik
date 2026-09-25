@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: UpGrade
+  thymeleaf:
+    cache: false
+  web:
+    resources:
+      cache:
+        period: 0
+  datasource:
+    url: jdbc:h2:file:./data/upgrade;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  servlet:
+    multipart:
+      max-file-size: 80MB
+      max-request-size: 90MB
+
+server:
+  # Render/Heroku задают PORT; локально — 8088
+  port: ${PORT:8088}
+
+upgrade:
+  demo-user: Аноним
+  upload-dir: ./data/uploads
+  users:
+    admin:
+      login: admin
+      password: admin
+      name: Админ
+    user:
+      login: user
+      password: user
+      name: Аноним
+    platform:
+      login: platform
+      password: platform
+      name: Админ платформы

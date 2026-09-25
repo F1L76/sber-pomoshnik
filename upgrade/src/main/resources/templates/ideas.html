@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Идеи')}"></head>
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<header th:replace="~{layout :: top('ideas')}"></header>
+<main class="main ideas-page ideas-page--dense ideas-view--tiles" data-user th:attr="data-user=${user}">
+  <div th:if="${ok}" class="flash" th:text="${ok}"></div>
+  <div th:if="${error}" class="flash flash--error" th:text="${error}"></div>
+
+  <div class="page-head page-head--compact">
+    <div>
+      <h1>Идеи</h1>
+    </div>
+    <div class="page-head__actions">
+      <div class="view-switch" role="group" aria-label="Вид списка" data-view-switch>
+        <button type="button" class="view-switch__btn is-on" data-view="tiles" aria-pressed="true">Плитка</button>
+        <button type="button" class="view-switch__btn" data-view="list" aria-pressed="false">Список</button>
+      </div>
+      <a class="btn btn--primary" th:href="@{/ideas/new}">Подать идею</a>
+    </div>
+  </div>
+
+  <details class="filters-drawer panel">
+    <summary>Поиск и фильтры</summary>
+    <form class="filters filters--dense" method="get" th:action="@{/ideas}" id="ideasFilters">
+      <input type="hidden" name="user" th:value="${user}">
+      <input type="hidden" name="tag" th:value="${tag}" id="tagFilter">
+      <label class="field"><span>Поиск</span><input name="q" th:value="${q}" placeholder="название, автор…" id="ideasSearch"></label>
+      <label class="field"><span>Сортировка</span>
+        <select name="sort">
+          <option th:each="s : ${sortOptions}"
+                  th:value="${s.name()}"
+                  th:text="${s.label}"
+                  th:selected="${sort == s.name()}"></option>
+        </select>
+      </label>
+      <label class="field"><span>Прототип</span>
+        <select name="proto">
+          <option value="">Все</option>
+          <option th:each="p : ${protoStatuses}" th:value="${p}" th:text="${p.label}"
+                  th:selected="${proto == p}"></option>
+        </select>
+      </label>
+      <label class="field"><span>Внедрено</span>
+        <select name="implemented">
+          <option value="">Все</option>
+          <option value="true" th:selected="${implemented == true}">Да</option>
+          <option value="false" th:selected="${implemented == false}">Нет</option>
+        </select>
+      </label>
+      <button class="btn btn--primary" type="submit">Применить</button>
+    </form>
+  </details>
+
+  <div class="dense-toolbar">
+    <div class="tag-filter tag-filter--dense" aria-label="Направления">
+      <a class="chip"
+         th:href="@{/ideas(user=${user}, q=${q}, proto=${proto}, implemented=${implemented}, sort=${sort})}"
+         th:classappend="${tag == null or tag.isEmpty()} ? ' chip--on'">Все</a>
+      <a class="chip"
+         th:each="p : ${popularTags}"
+         th:href="@{/ideas(user=${user}, q=${q}, proto=${proto}, implemented=${implemented}, sort=${sort}, tag=${p.name})}"
+         th:classappend="${tag == p.name} ? ' chip--on'"
+         th:text="|${p.name} · ${p.count}|">тег</a>
+    </div>
+    <div class="stage-chips stage-chips--dense" role="toolbar" aria-label="Фильтр по этапам, можно выбрать несколько">
+      <button type="button" class="chip chip--on" data-stage-filter="all" aria-pressed="true">Этапы: все</button>
+      <button type="button" class="chip" data-stage-filter="Подача" aria-pressed="false">Подача</button>
+      <button type="button" class="chip" data-stage-filter="Оценка" aria-pressed="false">Оценка</button>
+      <button type="button" class="chip" data-stage-filter="Поиск разработчика" aria-pressed="false">Поиск разработчика</button>
+      <button type="button" class="chip" data-stage-filter="Разработка прототипа" aria-pressed="false">Разработка прототипа</button>
+      <button type="button" class="chip" data-stage-filter="Пилот" aria-pressed="false">Пилот</button>
+      <button type="button" class="chip" data-stage-filter="Передача в профильный бэклог" aria-pressed="false">Передача в профильный бэклог</button>
+      <button type="button" class="chip" data-stage-filter="Внедрено" aria-pressed="false">Внедрено</button>
+    </div>
+  </div>
+
+  <div class="ideas-list-wrap">
+    <div class="ideas-list-head" aria-hidden="true">
+      <span>Этап</span>
+      <span>Инициатива</span>
+      <span>Направления</span>
+      <span>Рейтинг</span>
+      <span>Действия</span>
+    </div>
+
+    <div class="ideas-board ideas-board--grid" id="ideasBoard">
+    <article class="idea-card idea-card--compact idea-tile"
+             th:each="idea, stat : ${ideas}"
+             th:style="|--i: ${stat.index}|"
+             th:attr="data-idea-id=${idea.id}, data-current-stage=${idea.currentStage() != null ? idea.currentStage().name : (idea.implemented ? 'Внедрено' : '')}">
+
+      <div class="idea-tile__row">
+        <div class="idea-tile__col idea-tile__col--stage">
+          <span class="idea-tile__stage"
+                th:if="${idea.currentStage() != null}"
+                th:attr="data-stage=${idea.currentStage().name}"
+                th:text="${idea.currentStage().name}">этап</span>
+          <span class="idea-tile__stage"
+                th:if="${idea.currentStage() == null && idea.implemented}"
+                data-stage="Внедрено">Внедрено</span>
+          <span class="idea-tile__stage idea-tile__stage--empty"
+                th:if="${idea.currentStage() == null && !idea.implemented}">—</span>
+        </div>
+
+        <div class="idea-tile__col idea-tile__col--main">
+          <h2 class="idea-tile__title">
+            <a th:href="@{/ideas/{id}(id=${idea.id}, user=${user})}" th:text="${idea.title}">title</a>
+          </h2>
+          <div class="idea-tile__desc-wrap"
+               th:if="${idea.description != null and !#strings.isEmpty(idea.description)}"
+               th:attr="data-full-desc=${idea.description}"
+               tabindex="0">
+            <p class="idea-tile__desc" th:text="${idea.description}">описание</p>
+          </div>
+        </div>
+
+        <div class="idea-tile__col idea-tile__col--tags">
+          <th:block th:if="${!#sets.isEmpty(idea.tags)}">
+            <span class="idea-tag" th:each="t, tStat : ${idea.tags}" th:if="${tStat.index &lt; 2}" th:text="${t.name}">тег</span>
+            <span class="idea-tag idea-tag--more" th:if="${#sets.size(idea.tags) &gt; 2}"
+                  th:text="'+' + (${#sets.size(idea.tags) - 2})">+1</span>
+          </th:block>
+          <span class="idea-tile__muted" th:if="${#sets.isEmpty(idea.tags)}">—</span>
+        </div>
+
+        <div class="idea-tile__col idea-tile__col--rating">
+          <span class="idea-tile__rating"
+                th:text="|★ ${ratings.get(idea.id)} · ${voteCounts.get(idea.id)}|"
+                th:title="|Рейтинг ${ratings.get(idea.id)}, оценок: ${voteCounts.get(idea.id)}|">★ 0 · 0</span>
+        </div>
+
+        <div class="idea-tile__col idea-tile__col--actions idea-tile__foot">
+        <th:block th:replace="~{fragments/advance :: advanceBtns(idea=${idea}, redirect='/ideas')}"></th:block>
+        <th:block th:replace="~{fragments/take-work :: takeBtn(idea=${idea}, redirect='/ideas')}"></th:block>
+          <a class="btn btn--ghost btn--sm idea-tile__download idea-tile__download--icon"
+             th:href="@{/ideas/{id}/export(id=${idea.id})}"
+             download
+             th:title="${idea.hasDownloadablePrototypeHtml()} ? 'Скачать JSON и HTML-прототип' : 'Скачать JSON инициативы'"
+             th:aria-label="${idea.hasDownloadablePrototypeHtml()} ? 'Скачать JSON и HTML' : 'Скачать JSON'">
+            <svg class="idea-tile__download-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+              <path d="M12 3v12"/>
+              <path d="M7 11l5 5 5-5"/>
+              <path d="M5 19h14"/>
+            </svg>
+          </a>
+          <button type="button" class="idea-tile__tool idea-tile__tool--icon fav-btn"
+                  th:classappend="${favorites.get(idea.id)} ? ' is-on'"
+                  th:attr="data-idea-id=${idea.id}, aria-pressed=${favorites.get(idea.id)} ? 'true' : 'false'"
+                  th:text="${favorites.get(idea.id)} ? '★' : '☆'"
+                  th:title="${favorites.get(idea.id)} ? 'В избранном' : 'В избранное'">☆</button>
+          <button type="button" class="idea-tile__tool" data-toggle-card aria-expanded="false">Подробнее</button>
+        </div>
+      </div>
+
+      <div class="idea-card__details" hidden>
+        <div class="idea-expand">
+          <header class="idea-expand__top">
+            <div class="idea-expand__who">
+              <div class="idea-expand__avatar" aria-hidden="true"
+                   th:text="${idea.author != null and !#strings.isEmpty(idea.author) ? #strings.substring(idea.author,0,1) : '—'}">А</div>
+              <div class="idea-expand__who-text">
+                <strong th:text="${idea.author != null and !#strings.isEmpty(idea.author) ? idea.author : 'Автор не указан'}">Автор</strong>
+                <span th:if="${idea.targetPlatform != null and !#strings.isEmpty(idea.targetPlatform)}"
+                      th:text="${idea.targetPlatform}">платформа</span>
+                <span th:unless="${idea.targetPlatform != null and !#strings.isEmpty(idea.targetPlatform)}">Платформа не указана</span>
+              </div>
+            </div>
+            <div class="idea-expand__badges">
+              <span class="idea-expand__rating"
+                    th:text="|★ ${ratings.get(idea.id)} · ${voteCounts.get(idea.id)}|"
+                    th:title="|Рейтинг ${ratings.get(idea.id)}, оценок: ${voteCounts.get(idea.id)}|">★ 0 · 0</span>
+              <span class="tag" th:text="${idea.protoStatus.label}">прототип</span>
+              <span th:if="${idea.backlogTaken}" class="tag"
+                    th:text="${idea.backlogTeam != null and !#strings.isEmpty(idea.backlogTeam) ? idea.backlogTeam : 'в бэклоге'}">бэклог</span>
+              <span th:if="${idea.implemented}" class="tag tag--ok">Внедрено</span>
+            </div>
+            <div class="idea-expand__quick">
+              <th:block th:replace="~{fragments/take-work :: takeBtn(idea=${idea}, redirect='/ideas')}"></th:block>
+            </div>
+          </header>
+
+          <section class="idea-expand__block" th:if="${idea.description != null and !#strings.isEmpty(idea.description)}">
+            <h3 class="idea-expand__label">Суть инициативы</h3>
+            <p class="idea-expand__desc idea-card__text" th:text="${idea.description}">описание</p>
+          </section>
+
+          <section class="idea-expand__facts" aria-label="Ключевые параметры">
+            <article class="idea-expand__fact">
+              <h3 class="idea-expand__label">Финэффект</h3>
+              <p th:text="${idea.expectedEffect != null and !#strings.isEmpty(idea.expectedEffect) ? idea.expectedEffect : 'Не указан'}">—</p>
+            </article>
+            <article class="idea-expand__fact">
+              <h3 class="idea-expand__label">Для кого</h3>
+              <p th:text="${idea.forWhom != null and !#strings.isEmpty(idea.forWhom) ? idea.forWhom : 'Не указано'}">—</p>
+            </article>
+            <article class="idea-expand__fact">
+              <h3 class="idea-expand__label">Как использовать</h3>
+              <p th:text="${idea.howToUse != null and !#strings.isEmpty(idea.howToUse) ? idea.howToUse : 'Не указано'}">—</p>
+            </article>
+          </section>
+
+          <section class="idea-expand__block" th:if="${!#sets.isEmpty(idea.tags)}">
+            <h3 class="idea-expand__label">Направления</h3>
+            <div class="idea-tags idea-tags--expand">
+              <span class="idea-tag" th:each="t : ${idea.tags}" th:text="${t.name}">тег</span>
+            </div>
+          </section>
+
+          <section class="idea-expand__journey">
+            <div class="idea-expand__journey-head">
+              <h3 class="idea-expand__label">Путь инициативы</h3>
+              <span class="idea-expand__progress"
+                    th:text="|${idea.stageProgressPercent()}%|"
+                    title="Прогресс по этапам">0%</span>
+            </div>
+
+            <ol class="pipeline pipeline--expand" role="tablist" aria-label="Этапы инициативы">
+              <li th:each="stage, sStat : ${idea.stages}"
+                  class="pipeline__step"
+                  th:classappend="' pipeline__step--' + ${#strings.toLowerCase(stage.status.name())} + (${stage.status.name() == 'CURRENT'} ? ' is-active' : '')"
+                  role="tab"
+                  tabindex="0"
+                  th:attr="
+                    data-stage-name=${stage.name},
+                    data-stage-status=${stage.status.label},
+                    data-stage-owner=${stage.responsible},
+                    data-stage-desc=${stage.description},
+                    data-stage-code=${stage.status.name()},
+                    aria-selected=${stage.status.name() == 'CURRENT' ? 'true' : 'false'}">
+                <div class="pipeline__hit">
+                  <span class="pipeline__marker" aria-hidden="true">
+                    <span class="pipeline__check" th:if="${stage.status.name() == 'DONE'}">✓</span>
+                    <span class="pipeline__num" th:unless="${stage.status.name() == 'DONE'}" th:text="${stage.sortOrder}">1</span>
+                  </span>
+                  <span class="pipeline__body">
+                    <span class="pipeline__name" th:text="${stage.name}">Этап</span>
+                    <span class="pipeline__status" th:text="${stage.status.label}">статус</span>
+                  </span>
+                </div>
+              </li>
+            </ol>
+
+            <div class="stage-panel stage-panel--expand"
+                 th:id="|stage-panel-${idea.id}|"
+                 role="tabpanel"
+                 data-rate-box
+                 th:attr="data-idea-id=${idea.id}">
+              <div class="stage-panel__main">
+                <div class="stage-panel__copy">
+                  <h3 class="stage-panel__name"
+                      th:text="${idea.currentStage() != null ? idea.currentStage().name : (idea.implemented ? 'Внедрено' : 'Подача')}">Оценка</h3>
+                  <p class="stage-panel__desc"
+                     th:text="${idea.currentStage() != null ? idea.currentStage().description : 'Выберите этап на шкале выше.'}">описание</p>
+                </div>
+                <div class="stage-panel__meta">
+                  <div class="meta-pill">
+                    <span class="meta-pill__label">Статус</span>
+                    <strong class="stage-panel__status"
+                            th:text="${idea.currentStage() != null ? idea.currentStage().status.label : (idea.implemented ? 'пройден' : '—')}">текущий</strong>
+                  </div>
+                  <div class="meta-pill stage-panel__owner-pill"
+                       th:classappend="${idea.currentStage() == null or idea.currentStage().responsible == null or #strings.isEmpty(idea.currentStage().responsible)} ? ' is-hidden'">
+                    <span class="meta-pill__label">Ответственный</span>
+                    <strong class="stage-panel__owner"
+                            th:text="${idea.currentStage() != null and idea.currentStage().responsible != null ? idea.currentStage().responsible : '—'}">—</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="eval-bundle"
+                   th:classappend="${idea.currentStage() == null or idea.currentStage().name != 'Оценка'} ? ' is-hidden'"
+                   data-eval-bundle>
+                <div class="eval-grid eval-grid--expand">
+                  <div class="eval-card">
+                    <span class="eval-card__label">Оценка сообществом</span>
+                    <p class="eval-card__text">Поставьте ★ от 1 до 5 — это влияет на рейтинг инициативы.</p>
+                    <div class="star-rate" aria-label="Оценить идею">
+                      <span class="star-rate__label">Ваша оценка</span>
+                      <div class="star-rate__row">
+                        <button type="button" class="star-btn" data-score="1" aria-label="1">★</button>
+                        <button type="button" class="star-btn" data-score="2" aria-label="2">★</button>
+                        <button type="button" class="star-btn" data-score="3" aria-label="3">★</button>
+                        <button type="button" class="star-btn" data-score="4" aria-label="4">★</button>
+                        <button type="button" class="star-btn" data-score="5" aria-label="5">★</button>
+                      </div>
+                      <span class="star-rate__value" th:text="|★ ${ratings.get(idea.id)}|">★ 0</span>
+                    </div>
+                  </div>
+                  <div class="eval-card">
+                    <span class="eval-card__label">Авторская оценка</span>
+                    <p class="eval-card__text">Ожидаемый финансовый эффект от автора.</p>
+                    <p class="eval-card__value" data-author-effect
+                       th:text="${idea.expectedEffect != null and !#strings.isEmpty(idea.expectedEffect) ? idea.expectedEffect : 'Автор пока не указал финансовый эффект.'}">—</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="test-wrap"
+                   th:classappend="${idea.currentStage() == null or idea.currentStage().name != 'Пилот'} ? ' is-hidden'"
+                   data-test-wrap>
+                <div th:replace="~{fragments/test-qa :: testBundle(ideaId=${idea.id}, issues=${testIssues.get(idea.id)}, user=${user})}"></div>
+              </div>
+
+              <div class="stage-panel__actions">
+                <div class="star-rate actions-rate"
+                     th:classappend="${idea.currentStage() != null and (idea.currentStage().name == 'Оценка' or idea.currentStage().name == 'Пилот')} ? ' is-hidden'"
+                     data-actions-rate
+                     aria-label="Оценить идею">
+                  <span class="star-rate__label">Оценить</span>
+                  <div class="star-rate__row">
+                    <button type="button" class="star-btn" data-score="1" aria-label="1">★</button>
+                    <button type="button" class="star-btn" data-score="2" aria-label="2">★</button>
+                    <button type="button" class="star-btn" data-score="3" aria-label="3">★</button>
+                    <button type="button" class="star-btn" data-score="4" aria-label="4">★</button>
+                    <button type="button" class="star-btn" data-score="5" aria-label="5">★</button>
+                  </div>
+                  <span class="star-rate__value" th:text="|★ ${ratings.get(idea.id)}|">★ 0</span>
+                </div>
+                <th:block th:replace="~{fragments/advance :: advanceBtns(idea=${idea}, redirect='/ideas')}"></th:block>
+                <th:block th:replace="~{fragments/proto-upload :: protoActions(idea=${idea}, redirect='/ideas')}"></th:block>
+                <a class="btn btn--ghost btn--sm" th:href="@{/ideas/{id}(id=${idea.id}, user=${user})}">Открыть карточку</a>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </article>
+
+    <p class="muted empty-hint" th:if="${#lists.isEmpty(ideas)}">Пока нет идей по фильтру.</p>
+    <p class="muted empty-hint" id="chipEmpty" hidden>Нет инициатив на этом этапе.</p>
+  </div>
+  </div>
+</main>
+<footer th:replace="~{layout :: foot}"></footer>
+<script th:src="@{/js/ideas.js(v=20260821b)}"></script>
+</body>
+</html>

@@ -5,6 +5,11 @@ python-deps/
 .cache/
 .DS_Store
 
+# UpGrade (Java): артефакты сборки и локальная БД
+upgrade/target/
+upgrade/data/*
+!upgrade/data/.gitkeep
+
 # SQLite-кэш сделок (собирается при деплое: npm run deals:import)
 data/drom-rate.json
 data/drom-rate.tmp
@@ -45,3 +50,9 @@ data/gl_rag/glossary.xlsx
 Сопровождение*.pptx
 Сопровождение*.ppt
 Сопровождение_one*
+
+# Локальные SQLite сделок (не в git — слишком большие)
+data/deals/*.sqlite
+data/deals/*.sqlite-shm
+data/deals/*.sqlite-wal
+data/proxy.log

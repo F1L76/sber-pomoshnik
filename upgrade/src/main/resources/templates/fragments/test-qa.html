@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="testBundle(ideaId, issues, user)"
+     class="test-bundle"
+     data-test-bundle
+     th:attr="data-idea-id=${ideaId}">
+  <div class="test-bundle__head">
+    <div>
+      <span class="eval-card__label">Ошибки и замечания</span>
+      <p class="eval-card__text">Общий канал тестировщиков и разработчиков прототипа. Можно приложить скриншот или видео.</p>
+    </div>
+  </div>
+
+  <form class="test-form" data-test-form>
+    <div class="test-form__row">
+      <label class="field">
+        <span>Кто пишет</span>
+        <input type="text" name="author" th:value="${user}" required maxlength="240">
+      </label>
+      <label class="field">
+        <span>Роль</span>
+        <select name="role">
+          <option value="Тестировщик" selected>Тестировщик</option>
+          <option value="Разработчик прототипа">Разработчик прототипа</option>
+        </select>
+      </label>
+    </div>
+    <label class="field">
+      <span>Описание ошибки / замечания</span>
+      <textarea name="message" rows="3" required placeholder="Что сломалось, как воспроизвести…"></textarea>
+    </label>
+    <label class="field">
+      <span>Скриншот или видео</span>
+      <input type="file" name="attachment" accept="image/*,video/mp4,video/webm,video/quicktime">
+    </label>
+    <div class="test-form__actions">
+      <button class="btn btn--primary" type="submit">Отправить в тестирование</button>
+      <span class="muted test-form__hint" data-test-hint></span>
+    </div>
+  </form>
+
+  <div class="test-feed" data-test-feed>
+    <article class="test-item"
+             th:each="issue : ${issues}"
+             th:attr="data-issue-id=${issue.id}"
+             th:classappend="${issue.status.name() == 'FIXED'} ? ' test-item--fixed'">
+      <header class="test-item__head">
+        <div>
+          <strong th:text="${issue.author}">Автор</strong>
+          <span class="tag" th:text="${issue.role}">роль</span>
+        </div>
+        <div class="test-item__meta">
+          <span class="badge" th:text="${issue.status.label}">статус</span>
+          <button type="button"
+                  class="text-toggle"
+                  data-toggle-issue-status
+                  th:attr="data-issue-id=${issue.id}, data-next-status=${issue.status.name() == 'OPEN' ? 'FIXED' : 'OPEN'}"
+                  th:text="${issue.status.name() == 'OPEN' ? 'Отметить исправленным' : 'Вернуть в открытые'}">статус</button>
+        </div>
+      </header>
+      <p class="test-item__message" th:text="${issue.message}">текст</p>
+      <div class="test-item__attach" th:if="${issue.hasAttachment()}">
+        <img th:if="${issue.imageAttachment}"
+             th:src="@{/uploads/{name}(name=${issue.attachmentStoredName})}"
+             th:alt="${issue.attachmentOriginalName}">
+        <video th:if="${issue.videoAttachment}" controls
+               th:src="@{/uploads/{name}(name=${issue.attachmentStoredName})}"></video>
+        <a th:unless="${issue.imageAttachment or issue.videoAttachment}"
+           class="text-link"
+           th:href="@{/uploads/{name}(name=${issue.attachmentStoredName})}"
+           th:text="${issue.attachmentOriginalName}"
+           target="_blank" rel="noopener">файл</a>
+      </div>
+    </article>
+    <p class="muted" data-test-empty th:if="${issues == null or #lists.isEmpty(issues)}">Пока нет замечаний — добавьте первое.</p>
+  </div>
+</div>
+</body>
+</html>

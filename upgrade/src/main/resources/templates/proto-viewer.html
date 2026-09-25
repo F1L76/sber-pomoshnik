@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head(${idea.title})}"></head>
+<body class="proto-viewer-page">
+<header th:replace="~{layout :: top('ideas')}"></header>
+<main class="proto-viewer">
+  <div class="proto-viewer__bar">
+    <div class="proto-viewer__title">
+      <p class="eyebrow" th:text="${protoExternal} ? 'Развёрнутый сайт' : 'HTML-прототип на платформе'">Прототип</p>
+      <h1 th:text="${idea.title}">Идея</h1>
+    </div>
+    <div class="proto-viewer__actions">
+      <a class="btn btn--ghost btn--sm" th:href="@{/ideas/{id}(id=${idea.id})}">К карточке</a>
+      <a class="btn btn--ghost btn--sm" th:href="@{/ideas}">К списку</a>
+      <a th:if="${protoExternal}"
+         class="btn btn--primary btn--sm"
+         th:href="${protoSrc}"
+         target="_blank"
+         rel="noopener noreferrer">Открыть в новой вкладке</a>
+    </div>
+  </div>
+  <div th:if="${ok}" class="flash" th:text="${ok}"></div>
+  <p th:if="${protoExternal}" class="proto-viewer__note muted">
+    Сайт открыт во встроенном окне. Если страница пустая — хост запрещает встраивание, откройте его в новой вкладке.
+  </p>
+  <iframe class="proto-viewer__frame"
+          th:src="${protoSrc}"
+          th:title="|Прототип: ${idea.title}|"
+          referrerpolicy="no-referrer-when-downgrade"
+          sandbox="allow-scripts allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-downloads allow-same-origin"></iframe>
+</main>
+</body>
+</html>

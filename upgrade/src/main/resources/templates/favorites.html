@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Избранное')}"></head>
+<body>
+<div class="atmosphere" aria-hidden="true"></div>
+<header th:replace="~{layout :: top('favorites')}"></header>
+<main class="main">
+  <h1>Избранное</h1>
+  <p class="muted" th:text="|Пользователь: ${user}|">user</p>
+  <div class="cards">
+    <article class="card" th:each="idea : ${ideas}">
+      <h2><a th:href="@{/ideas/{id}(id=${idea.id}, user=${user})}" th:text="${idea.title}">title</a></h2>
+      <p class="muted" th:text="|★ ${ratings.get(idea.id)} · ${idea.author}|">meta</p>
+      <p th:text="${idea.description}">desc</p>
+    </article>
+    <p class="muted" th:if="${#lists.isEmpty(ideas)}">Пока пусто — добавьте идеи со страницы идеи.</p>
+  </div>
+</main>
+<footer th:replace="~{layout :: foot}"></footer>
+</body>
+</html>
