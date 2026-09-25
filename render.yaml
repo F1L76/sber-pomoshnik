@@ -33,14 +33,11 @@ services:
 
   - type: web
     name: sber-upgrade
-    runtime: java
+    runtime: docker
     plan: free
     rootDir: upgrade
-    buildCommand: ./mvnw -DskipTests package
-    startCommand: java -jar target/upgrade-0.1.0-SNAPSHOT.jar
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /login
     envVars:
-      - key: JAVA_VERSION
-        value: "17"
       - key: SPRING_DATASOURCE_URL
         value: jdbc:h2:file:./data/upgrade;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
