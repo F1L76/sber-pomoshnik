@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+<rect width="1280" height="800" fill="#070b0a"/>
+<rect x="0" y="0" width="1280" height="56" fill="#080e0d"/>
+<text x="28" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#109963">Up</text>
+<text x="54" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="600" fill="#f4f7fb">Grade</text>
+<text x="180" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Главная</text>
+<text x="275" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Идеи</text>
+<text x="370" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Рейтинг</text>
+<text x="465" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Избранное</text>
+<text x="560" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Новости</text>
+<text x="655" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Команды</text>
+<text x="750" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Поддержка</text>
+<text x="845" y="35" font-family="Arial,sans-serif" font-size="12" fill="#6ee7a7">О платформе</text>
+<text x="40" y="120" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#f4f7fb">О платформе UpGrade</text>
+<text x="40" y="160" font-family="Arial,sans-serif" font-size="15" fill="#a8b6c7">Путь: подача - оценка - прототип - пилот - бэклог - внедрение</text>
+<rect x="40" y="220" width="180" height="60" rx="14" fill="#101c1a" stroke="#109963"/><text x="130" y="255" font-family="Arial,sans-serif" font-size="13" fill="#6ee7a7" text-anchor="middle">Подача</text>
+<rect x="240" y="220" width="180" height="60" rx="14" fill="#101c1a" stroke="#109963"/><text x="330" y="255" font-family="Arial,sans-serif" font-size="13" fill="#6ee7a7" text-anchor="middle">Оценка</text>
+<rect x="440" y="220" width="180" height="60" rx="14" fill="#101c1a" stroke="#109963"/><text x="530" y="255" font-family="Arial,sans-serif" font-size="13" fill="#6ee7a7" text-anchor="middle">Прототип</text>
+<rect x="640" y="220" width="180" height="60" rx="14" fill="#101c1a" stroke="#109963"/><text x="730" y="255" font-family="Arial,sans-serif" font-size="13" fill="#6ee7a7" text-anchor="middle">Пилот</text>
+<rect x="840" y="220" width="180" height="60" rx="14" fill="#101c1a" stroke="#109963"/><text x="930" y="255" font-family="Arial,sans-serif" font-size="13" fill="#6ee7a7" text-anchor="middle">Бэклог</text>
+<rect x="1040" y="220" width="180" height="60" rx="14" fill="#101c1a" stroke="#109963"/><text x="1130" y="255" font-family="Arial,sans-serif" font-size="13" fill="#6ee7a7" text-anchor="middle">Внедрено</text>
+</svg>

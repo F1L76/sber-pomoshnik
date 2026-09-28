@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+<rect width="1280" height="800" fill="#070b0a"/>
+<rect x="0" y="0" width="1280" height="56" fill="#080e0d"/>
+<text x="28" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#109963">Up</text>
+<text x="54" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="600" fill="#f4f7fb">Grade</text>
+<text x="180" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Главная</text>
+<text x="275" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Идеи</text>
+<text x="370" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Рейтинг</text>
+<text x="465" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Избранное</text>
+<text x="560" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Новости</text>
+<text x="655" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Команды</text>
+<text x="750" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Поддержка</text>
+<text x="845" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">О платформе</text>
+<text x="40" y="100" font-family="Arial,sans-serif" font-size="26" font-weight="700" fill="#f4f7fb">Аналитика</text>
+<rect x="40" y="140" width="280" height="140" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="60" y="176" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Визиты</text>
+<text x="60" y="200" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">12480</text>
+<rect x="60" y="218" width="58" height="22" rx="8" fill="#1a3d32"/>
+<text x="68" y="233" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">7 дней</text>
+<rect x="350" y="140" width="280" height="140" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="370" y="176" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Входы</text>
+<text x="370" y="200" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">3120</text>
+<rect x="370" y="218" width="58" height="22" rx="8" fill="#1a3d32"/>
+<text x="378" y="233" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">7 дней</text>
+<rect x="660" y="140" width="280" height="140" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="680" y="176" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Прототипы</text>
+<text x="680" y="200" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">864 запуска</text>
+<rect x="680" y="218" width="58" height="22" rx="8" fill="#1a3d32"/>
+<text x="688" y="233" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">7 дней</text>
+<rect x="970" y="140" width="270" height="140" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="990" y="176" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Идеи</text>
+<text x="990" y="200" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">+18 новых</text>
+<rect x="990" y="218" width="58" height="22" rx="8" fill="#1a3d32"/>
+<text x="998" y="233" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">7 дней</text>
+<rect x="40" y="320" width="1200" height="360" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="64" y="360" font-family="Arial,sans-serif" font-size="14" font-weight="600" fill="#f4f7fb">Воронка</text>
+<rect x="80" y="540" width="48" height="80" rx="8" fill="#2d6b54"/>
+<rect x="170" y="500" width="48" height="120" rx="8" fill="#2d6b54"/>
+<rect x="260" y="460" width="48" height="160" rx="8" fill="#2d6b54"/>
+<rect x="350" y="480" width="48" height="140" rx="8" fill="#2d6b54"/>
+<rect x="440" y="420" width="48" height="200" rx="8" fill="#2d6b54"/>
+<rect x="530" y="440" width="48" height="180" rx="8" fill="#2d6b54"/>
+<rect x="620" y="400" width="48" height="220" rx="8" fill="#2d6b54"/>
+<rect x="710" y="430" width="48" height="190" rx="8" fill="#2d6b54"/>
+<rect x="800" y="380" width="48" height="240" rx="8" fill="#2d6b54"/>
+<rect x="890" y="410" width="48" height="210" rx="8" fill="#2d6b54"/>
+<rect x="980" y="360" width="48" height="260" rx="8" fill="#2d6b54"/>
+<rect x="1070" y="390" width="48" height="230" rx="8" fill="#2d6b54"/>
+</svg>

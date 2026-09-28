@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+<rect width="1280" height="800" fill="#070b0a"/>
+
+<rect x="0" y="0" width="1280" height="56" fill="#080e0d"/>
+<text x="28" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#109963">Up</text>
+<text x="54" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="600" fill="#f4f7fb">Grade</text>
+<text x="180" y="35" font-family="Arial,sans-serif" font-size="12" fill="#6ee7a7">Главная</text>
+<text x="275" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Идеи</text>
+<text x="370" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Рейтинг</text>
+<text x="465" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Избранное</text>
+<text x="560" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Новости</text>
+<text x="655" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Команды</text>
+<text x="750" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Поддержка</text>
+<text x="845" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">О платформе</text>
+<rect x="40" y="90" width="1200" height="140" rx="18" fill="#101c1a" stroke="#2a3a55"/>
+<text x="64" y="145" font-family="Arial,sans-serif" font-size="32" font-weight="700" fill="#f4f7fb">Платформа инициатив</text>
+<text x="64" y="180" font-family="Arial,sans-serif" font-size="15" fill="#a8b6c7">От идеи до внедрения в залоговой службе</text>
+<rect x="64" y="200" width="140" height="40" rx="12" fill="#1a4d3a" stroke="#109963"/>
+<text x="134" y="225" font-family="Arial,sans-serif" font-size="14" font-weight="600" fill="#6ee7a7" text-anchor="middle">К идеям</text>
+<rect x="40" y="260" width="380" height="160" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="60" y="296" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Новость дня</text>
+<text x="60" y="320" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Пилот единых статусов заявок</text>
+<rect x="60" y="338" width="65" height="22" rx="8" fill="#1a3d32"/>
+<text x="68" y="353" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">новости</text>
+<rect x="450" y="260" width="380" height="160" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="470" y="296" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Идей в каталоге</text>
+<text x="470" y="320" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">128 активных инициатив</text>
+<rect x="470" y="338" width="65" height="22" rx="8" fill="#1a3d32"/>
+<text x="478" y="353" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">каталог</text>
+<rect x="860" y="260" width="380" height="160" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="880" y="296" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Внедрено за квартал</text>
+<text x="880" y="320" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">14 решений в проде</text>
+<rect x="880" y="338" width="79" height="22" rx="8" fill="#1a3d32"/>
+<text x="888" y="353" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">результат</text>
+<rect x="40" y="450" width="580" height="200" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="60" y="486" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Топ идей</text>
+<text x="60" y="510" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">ПМЗ 4.8 · Осмотр AI 4.6 · Статусы 4.2</text>
+<rect x="60" y="528" width="65" height="22" rx="8" fill="#1a3d32"/>
+<text x="68" y="543" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">рейтинг</text>
+<rect x="650" y="450" width="590" height="200" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="670" y="486" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Топ авторов</text>
+<text x="670" y="510" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Иванова · Петров · Сидорова</text>
+<rect x="670" y="528" width="58" height="22" rx="8" fill="#1a3d32"/>
+<text x="678" y="543" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">авторы</text>
+
+</svg>

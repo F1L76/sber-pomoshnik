@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+<rect width="1280" height="800" fill="#070b0a"/>
+<rect x="0" y="0" width="1280" height="56" fill="#080e0d"/>
+<text x="28" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#109963">Up</text>
+<text x="54" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="600" fill="#f4f7fb">Grade</text>
+<text x="180" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Главная</text>
+<text x="275" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Идеи</text>
+<text x="370" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Рейтинг</text>
+<text x="465" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Избранное</text>
+<text x="560" y="35" font-family="Arial,sans-serif" font-size="12" fill="#6ee7a7">Новости</text>
+<text x="655" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Команды</text>
+<text x="750" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Поддержка</text>
+<text x="845" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">О платформе</text>
+<text x="40" y="100" font-family="Arial,sans-serif" font-size="26" font-weight="700" fill="#f4f7fb">Новости</text>
+<rect x="40" y="140" width="1200" height="140" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="60" y="176" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Пилот единых статусов</text>
+<text x="60" y="200" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">25 сен 2026</text>
+<rect x="60" y="218" width="65" height="22" rx="8" fill="#1a3d32"/>
+<text x="68" y="233" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">новость</text>
+<rect x="40" y="300" width="1200" height="140" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="60" y="336" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Обновление пути инициативы</text>
+<text x="60" y="360" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">18 сен 2026</text>
+<rect x="60" y="378" width="65" height="22" rx="8" fill="#1a3d32"/>
+<text x="68" y="393" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">новость</text>
+<rect x="40" y="460" width="1200" height="140" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="60" y="496" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Шаблон прототипа HTML</text>
+<text x="60" y="520" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">10 сен 2026</text>
+<rect x="60" y="538" width="65" height="22" rx="8" fill="#1a3d32"/>
+<text x="68" y="553" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">новость</text>
+</svg>

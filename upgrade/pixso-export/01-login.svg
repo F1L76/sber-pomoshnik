@@ -1,26 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0b1220"/>
-      <stop offset="100%" stop-color="#121a2b"/>
-    </linearGradient>
-  </defs>
-  <rect width="1280" height="800" fill="url(#bg)"/>
-  <!-- top nav -->
-  <rect x="0" y="0" width="1280" height="56" fill="#0f1728" opacity="0.9"/>
-  <text x="32" y="36" font-family="Space Grotesk, system-ui, sans-serif" font-size="20" font-weight="700" fill="#109963">Up</text>
-  <text x="58" y="36" font-family="Space Grotesk, system-ui, sans-serif" font-size="20" font-weight="600" fill="#e8eef7">Grade</text>
-  <text x="1180" y="36" font-family="Figtree, system-ui, sans-serif" font-size="14" fill="#8b9bb4" text-anchor="end">>9B8</text>
-  <!-- centered login card -->
-  <rect x="430" y="220" width="420" height="340" rx="16" fill="#151e30" stroke="#2a3a55" stroke-width="1"/>
-  <text x="640" y="280" font-family="Bricolage Grotesque, system-ui, sans-serif" font-size="28" font-weight="700" fill="#e8eef7" text-anchor="middle">E>4</text>
-  <text x="460" y="330" font-family="Figtree, system-ui, sans-serif" font-size="13" fill="#8b9bb4">>38=</text>
-  <rect x="460" y="340" width="360" height="44" rx="10" fill="#0b1220" stroke="#2a3a55"/>
-  <text x="476" y="367" font-family="Figtree, system-ui, sans-serif" font-size="14" fill="#5a6b84">admin</text>
-  <text x="460" y="420" font-family="Figtree, system-ui, sans-serif" font-size="13" fill="#8b9bb4">0@>;L</text>
-  <rect x="460" y="430" width="360" height="44" rx="10" fill="#0b1220" stroke="#2a3a55"/>
-  <text x="476" y="457" font-family="Figtree, system-ui, sans-serif" font-size="14" fill="#5a6b84">""""""""""</text>
-  <rect x="460" y="500" width="360" height="44" rx="10" fill="#109963"/>
-  <text x="640" y="528" font-family="Figtree, system-ui, sans-serif" font-size="15" font-weight="600" fill="#ffffff" text-anchor="middle">>9B8</text>
-  <text x="40" y="780" font-family="Figtree, system-ui, sans-serif" font-size="12" fill="#5a6b84">UpGrade � Login � 1280�800</text>
+<rect width="1280" height="800" fill="#070b0a"/>
+
+<rect x="0" y="0" width="1280" height="56" fill="#080e0d"/>
+<text x="28" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#109963">Up</text>
+<text x="54" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="600" fill="#f4f7fb">Grade</text>
+<text x="180" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Главная</text>
+<text x="275" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Идеи</text>
+<text x="370" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Рейтинг</text>
+<text x="465" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Избранное</text>
+<text x="560" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Новости</text>
+<text x="655" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Команды</text>
+<text x="750" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Поддержка</text>
+<text x="845" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">О платформе</text>
+<rect x="430" y="230" width="420" height="340" rx="18" fill="#101c1a" stroke="#2a3a55"/>
+<text x="640" y="290" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#f4f7fb" text-anchor="middle">Вход</text>
+<text x="460" y="340" font-family="Arial,sans-serif" font-size="13" fill="#a8b6c7">Логин</text>
+<rect x="460" y="350" width="360" height="44" rx="12" fill="#0b1220" stroke="#2a3a55"/>
+<text x="460" y="430" font-family="Arial,sans-serif" font-size="13" fill="#a8b6c7">Пароль</text>
+<rect x="460" y="440" width="360" height="44" rx="12" fill="#0b1220" stroke="#2a3a55"/>
+<rect x="460" y="510" width="360" height="44" rx="12" fill="#1a4d3a" stroke="#109963"/>
+<text x="640" y="538" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#6ee7a7" text-anchor="middle">Войти</text>
+
 </svg>

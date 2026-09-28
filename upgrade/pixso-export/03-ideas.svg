@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+<rect width="1280" height="800" fill="#070b0a"/>
+<rect x="0" y="0" width="1280" height="56" fill="#080e0d"/>
+<text x="28" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#109963">Up</text>
+<text x="54" y="36" font-family="Arial,sans-serif" font-size="20" font-weight="600" fill="#f4f7fb">Grade</text>
+<text x="180" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Главная</text>
+<text x="275" y="35" font-family="Arial,sans-serif" font-size="12" fill="#6ee7a7">Идеи</text>
+<text x="370" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Рейтинг</text>
+<text x="465" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Избранное</text>
+<text x="560" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Новости</text>
+<text x="655" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Команды</text>
+<text x="750" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Поддержка</text>
+<text x="845" y="35" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">О платформе</text>
+<text x="40" y="100" font-family="Arial,sans-serif" font-size="26" font-weight="700" fill="#f4f7fb">Каталог идей</text>
+<rect x="40" y="120" width="320" height="40" rx="12" fill="#0b1220" stroke="#2a3a55"/>
+<text x="56" y="145" font-family="Arial,sans-serif" font-size="13" fill="#a8b6c7">Поиск по идеям...</text>
+<rect x="40" y="180" width="380" height="200" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="60" y="216" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Автоматизация осмотра залога</text>
+<text x="60" y="240" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Прототип · 4.6</text>
+<rect x="60" y="258" width="58" height="22" rx="8" fill="#1a3d32"/>
+<text x="68" y="273" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">осмотр</text>
+<rect x="130" y="258" width="30" height="22" rx="8" fill="#1a3d32"/>
+<text x="138" y="273" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">AI</text>
+<rect x="450" y="180" width="380" height="200" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="470" y="216" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Единый статус заявки</text>
+<text x="470" y="240" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Пилот · 4.2</text>
+<rect x="470" y="258" width="65" height="22" rx="8" fill="#1a3d32"/>
+<text x="478" y="273" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">статусы</text>
+<rect x="860" y="180" width="380" height="200" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="880" y="216" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Кабинет инициатора</text>
+<text x="880" y="240" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Подача · 3.9</text>
+<rect x="880" y="258" width="58" height="22" rx="8" fill="#1a3d32"/>
+<text x="888" y="273" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">портал</text>
+<rect x="40" y="420" width="380" height="200" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="60" y="456" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Шаблоны служебных записок</text>
+<text x="60" y="480" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Бэклог · 4.1</text>
+<rect x="60" y="498" width="79" height="22" rx="8" fill="#1a3d32"/>
+<text x="68" y="513" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">документы</text>
+<rect x="450" y="420" width="380" height="200" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="470" y="456" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Мониторинг ПМЗ</text>
+<text x="470" y="480" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Внедрено · 4.8</text>
+<rect x="470" y="498" width="37" height="22" rx="8" fill="#1a3d32"/>
+<text x="478" y="513" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">ПМЗ</text>
+<rect x="860" y="420" width="380" height="200" rx="16" fill="#101c1a" stroke="#2a3a55"/>
+<text x="880" y="456" font-family="Arial,sans-serif" font-size="15" font-weight="600" fill="#f4f7fb">Экспресс-оценка AI</text>
+<text x="880" y="480" font-family="Arial,sans-serif" font-size="12" fill="#a8b6c7">Поиск разработчика · 4.4</text>
+<rect x="880" y="498" width="58" height="22" rx="8" fill="#1a3d32"/>
+<text x="888" y="513" font-family="Arial,sans-serif" font-size="11" fill="#6ee7a7">оценка</text>
+</svg>
