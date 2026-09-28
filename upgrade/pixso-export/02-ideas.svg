@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" fill="#0b1220"/>
+  <rect x="0" y="0" width="1280" height="56" fill="#0f1728"/>
+  <text x="32" y="36" font-family="Space Grotesk, system-ui, sans-serif" font-size="20" font-weight="700" fill="#109963">Up</text>
+  <text x="58" y="36" font-family="Space Grotesk, system-ui, sans-serif" font-size="20" font-weight="600" fill="#e8eef7">Grade</text>
+  <g font-family="Figtree, system-ui, sans-serif" font-size="13" fill="#8b9bb4">
+    <text x="200" y="35">;02=0O</text>
+    <text x="280" y="35" fill="#109963" font-weight="600">458</text>
+    <text x="340" y="35"> 59B8=3</text>
+    <text x="420" y="35">71@0==>5</text>
+    <text x="520" y="35">>2>AB8</text>
+    <text x="600" y="35">><0=4K</text>
+    <text x="690" y="35">>445@6:0</text>
+  </g>
+  <text x="40" y="100" font-family="Bricolage Grotesque, system-ui, sans-serif" font-size="26" font-weight="700" fill="#e8eef7">0B0;>3 8459</text>
+  <text x="40" y="128" font-family="Figtree, system-ui, sans-serif" font-size="14" fill="#8b9bb4">=8F80B82K 70;>3>2>9 A;C61K</text>
+  <!-- cards -->
+  <g>
+    <rect x="40" y="160" width="380" height="200" rx="14" fill="#151e30" stroke="#2a3a55"/>
+    <text x="60" y="198" font-family="Figtree, system-ui, sans-serif" font-size="16" font-weight="600" fill="#e8eef7">2B><0B870F8O >A<>B@0 70;>30</text>
+    <text x="60" y="228" font-family="Figtree, system-ui, sans-serif" font-size="13" fill="#8b9bb4">@>B>B8? · @59B8=3 4.6</text>
+    <rect x="60" y="250" width="72" height="24" rx="8" fill="#1a3d32"/><text x="72" y="267" font-size="11" fill="#109963" font-family="Figtree, system-ui, sans-serif">>A<>B@</text>
+    <rect x="142" y="250" width="64" height="24" rx="8" fill="#1a3d32"/><text x="154" y="267" font-size="11" fill="#109963" font-family="Figtree, system-ui, sans-serif">AI</text>
+  </g>
+  <g>
+    <rect x="450" y="160" width="380" height="200" rx="14" fill="#151e30" stroke="#2a3a55"/>
+    <text x="470" y="198" font-family="Figtree, system-ui, sans-serif" font-size="16" font-weight="600" fill="#e8eef7">48=K9 AB0BCA 70O2:8</text>
+    <text x="470" y="228" font-family="Figtree, system-ui, sans-serif" font-size="13" fill="#8b9bb4">8;>B · @59B8=3 4.2</text>
+    <rect x="470" y="250" width="90" height="24" rx="8" fill="#1a3d32"/><text x="482" y="267" font-size="11" fill="#109963" font-family="Figtree, system-ui, sans-serif">AB0BCAK</text>
+  </g>
+  <g>
+    <rect x="860" y="160" width="380" height="200" rx="14" fill="#151e30" stroke="#2a3a55"/>
+    <text x="880" y="198" font-family="Figtree, system-ui, sans-serif" font-size="16" font-weight="600" fill="#e8eef7">018=5B 8=8F80B>@0</text>
+    <text x="880" y="228" font-family="Figtree, system-ui, sans-serif" font-size="13" fill="#8b9bb4">>40G0 · @59B8=3 3.9</text>
+    <rect x="880" y="250" width="80" height="24" rx="8" fill="#1a3d32"/><text x="892" y="267" font-size="11" fill="#109963" font-family="Figtree, system-ui, sans-serif">?>@B0;</text>
+  </g>
+  <g>
+    <rect x="40" y="390" width="380" height="200" rx="14" fill="#151e30" stroke="#2a3a55"/>
+    <text x="60" y="428" font-family="Figtree, system-ui, sans-serif" font-size="16" font-weight="600" fill="#e8eef7">(01;>=K A;C651=KE 70?8A>:</text>
+    <text x="60" y="458" font-family="Figtree, system-ui, sans-serif" font-size="13" fill="#8b9bb4">M:;>3 · @59B8=3 4.1</text>
+  </g>
+  <g>
+    <rect x="450" y="390" width="380" height="200" rx="14" fill="#151e30" stroke="#2a3a55"/>
+    <text x="470" y="428" font-family="Figtree, system-ui, sans-serif" font-size="16" font-weight="600" fill="#e8eef7">>=8B>@8=3 </text>
+    <text x="470" y="458" font-family="Figtree, system-ui, sans-serif" font-size="13" fill="#8b9bb4">=54@5=> · @59B8=3 4.8</text>
+  </g>
+  <g>
+    <rect x="860" y="390" width="380" height="200" rx="14" fill="#151e30" stroke="#2a3a55"/>
+    <text x="880" y="428" font-family="Figtree, system-ui, sans-serif" font-size="16" font-weight="600" fill="#e8eef7">-:A?@5AA->F5=:0 AI</text>
+    <text x="880" y="458" font-family="Figtree, system-ui, sans-serif" font-size="13" fill="#8b9bb4">>8A: @07@01>BG8:0 · 4.4</text>
+  </g>
+  <text x="40" y="780" font-family="Figtree, system-ui, sans-serif" font-size="12" fill="#5a6b84">UpGrade · Ideas · 1280×800</text>
+</svg>
