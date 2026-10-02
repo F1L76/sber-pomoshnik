@@ -275,16 +275,46 @@
 
     <main class="container py-4">
         <section class="card-panel p-4 mb-4">
-            <form id="searchForm">
-                <label for="quarterInput" class="form-label fw-semibold">Кадастровый квартал</label>
-                <div class="search-input-group">
-                    <input type="text" class="form-control form-control-lg" id="quarterInput"
-                           placeholder="XX:XX:XXXXXXX" required>
-                    <button type="submit" class="btn btn-sber btn-lg btn-search" id="searchBtn">
-                        <i class="fa-solid fa-magnifying-glass me-2"></i>Найти
-                    </button>
+            <form id="searchForm" novalidate>
+                <div class="btn-group mb-3" role="group" aria-label="Режим поиска">
+                    <input type="radio" class="btn-check" name="searchMode" id="modeQuarter" value="quarter" checked autocomplete="off">
+                    <label class="btn btn-outline-success" for="modeQuarter">Кадастровый квартал</label>
+                    <input type="radio" class="btn-check" name="searchMode" id="modeReport" value="report" autocomplete="off">
+                    <label class="btn btn-outline-success" for="modeReport">Отчёт</label>
                 </div>
-                <div class="form-text mt-2">Формат: XX:XX:XXXXXXX. Можно вставить полный кадастровый номер — возьмём квартал автоматически.</div>
+                <div id="quarterFields">
+                    <label for="quarterInput" class="form-label fw-semibold">Кадастровый квартал</label>
+                    <input type="text" class="form-control form-control-lg mb-2" id="quarterInput"
+                           placeholder="XX:XX:XXXXXXX">
+                    <div class="form-text">Формат: XX:XX:XXXXXXX. Можно вставить полный кадастровый номер — возьмём квартал автоматически.</div>
+                </div>
+                <div id="reportFields" class="d-none">
+                    <div class="mb-3">
+                        <div class="form-label fw-semibold">Где искать</div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="locMode" id="locRegion" value="region" checked>
+                            <label class="form-check-label" for="locRegion">Регион</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="locMode" id="locCity" value="city">
+                            <label class="form-check-label" for="locCity">Город</label>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="regionField">
+                        <label for="regionSelect" class="form-label">Субъект РФ</label>
+                        <select id="regionSelect" class="form-select"></select>
+                    </div>
+                    <div class="mb-3 d-none" id="cityField">
+                        <label for="cityInput" class="form-label">Город</label>
+                        <input type="text" class="form-control" id="cityInput" placeholder="Владикавказ" autocomplete="off">
+                        <div class="form-text">Как в датасете, с большой буквы: Владикавказ.</div>
+                    </div>
+                    <fieldset class="mb-1">
+                        <legend class="form-label fw-semibold mb-2 fs-6">Период</legend>
+                        <div id="periodChecks" class="d-flex flex-wrap gap-3"></div>
+                        <div class="form-text">Нужен хотя бы один квартал. По целому региону в таблицу попадут первые 10 000 записей.</div>
+                    </fieldset>
+                </div>
                 <fieldset class="object-type-filters">
                     <legend class="form-label fw-semibold mb-2 fs-6">Что искать</legend>
                     <div class="form-check">
@@ -311,6 +341,11 @@
                         <label class="form-check-label" for="objectTypePremises">Помещение</label>
                     </div>
                 </fieldset>
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-sber btn-lg" id="searchBtn">
+                        <i class="fa-solid fa-magnifying-glass me-2"></i>Найти
+                    </button>
+                </div>
             </form>
         </section>
 
@@ -325,7 +360,7 @@
                 onerror="this.onerror=null;this.src='https://gifs.obs.ru-moscow-1.hc.sbercloud.ru/f61fbd71aa1b7d2456a24782a6af8553657c341a6d7e02d28f23205097d4b44b.gif'"
             >
             <div class="search-loading-body">
-                <p class="search-loading-title">Ищем продажи по кварталу</p>
+                <p class="search-loading-title" id="searchLoadingTitle">Ищем сделки</p>
                 <p class="search-loading-text mb-0" id="searchLoadingText">Сканируем датасеты Росреестра…</p>
                 <div class="loader-progress" aria-hidden="true">
                     <div class="loader-progress-bar"></div>
@@ -652,13 +687,15 @@
                     const street = String(d.street || "").toLowerCase();
                     if (!street.includes(f.street.toLowerCase())) return false;
                 }
-                if (isYearBuildFilterReady(f.yearBuildMin) && String(f.yearBuildMin).trim() !== "") {
+                const yearMin = String(f.yearBuildMin ?? "").trim();
+                const yearMax = String(f.yearBuildMax ?? "").trim();
+                if (yearMin !== "" && isYearBuildFilterReady(yearMin)) {
                     const year = d.year_build != null ? Number(d.year_build) : NaN;
-                    if (!Number.isFinite(year) || year < Number(f.yearBuildMin)) return false;
+                    if (!Number.isFinite(year) || year < Number(yearMin)) return false;
                 }
-                if (isYearBuildFilterReady(f.yearBuildMax) && String(f.yearBuildMax).trim() !== "") {
+                if (yearMax !== "" && isYearBuildFilterReady(yearMax)) {
                     const year = d.year_build != null ? Number(d.year_build) : NaN;
-                    if (!Number.isFinite(year) || year > Number(f.yearBuildMax)) return false;
+                    if (!Number.isFinite(year) || year > Number(yearMax)) return false;
                 }
                 if (f.areaMin !== "" && f.areaMin != null) {
                     const min = parseFilterNumber(f.areaMin);
@@ -750,8 +787,9 @@
                     ? `<p class="small text-muted mb-0 mt-2">В сводке: ${filteredCount} из ${totalCount} записей (с учётом фильтров).</p>`
                     : "";
 
+            const statsTitle = searchState.mode === "report" ? "Сводка по отчёту" : "Сводка по кварталу";
             return `<section class="card-panel p-4 mb-4" id="statsBlock">
-                <h2 class="h5 mb-3">Сводка по кварталу</h2>
+                <h2 class="h5 mb-3">${statsTitle}</h2>
                 <div class="row g-3 mb-4">
                     <div class="col-6 col-md-3">
                         <div class="info-label">Записей</div>
@@ -1012,6 +1050,7 @@
         }
 
         function renderYearActions() {
+            if (searchState.mode === "report") return "";
             const nextYear = getNextYearToLoad();
             if (!nextYear) return "";
             return `<div class="year-actions mb-3" id="yearActionsBlock">
@@ -1023,6 +1062,28 @@
         }
 
         function renderResultsNote() {
+            if (searchState.mode === "report") {
+                const report = searchState.report || {};
+                const where = report.city
+                    ? `Город: <strong>${escapeHtml(report.city)}</strong>`
+                    : `Регион: <strong>${escapeHtml(report.regionName || report.regionCode || "")}</strong>`;
+                const periods = (report.periods || []).map((p) => p.label || p).join(", ");
+                let html = `<p class="text-muted mb-2">${where}</p>`;
+                if (periods) {
+                    html += `<p class="small text-muted mb-2">Периоды: <strong>${escapeHtml(periods)}</strong></p>`;
+                }
+                const rentN = searchState.allDeals.filter((d) => d.operationKind === "Аренда").length;
+                const dealN = searchState.allDeals.length - rentN;
+                if (searchState.allDeals.length) {
+                    html += `<p class="small text-muted mb-2">В таблице: <strong>${dealN}</strong> продаж, <strong>${rentN}</strong> договоров аренды</p>`;
+                } else {
+                    html += `<p class="small text-muted mb-2">Записей по выбранным фильтрам не найдено</p>`;
+                }
+                if (searchState.meta?.truncated) {
+                    html += `<div class="alert alert-warning py-2 small">Показаны первые ${searchState.meta.shown} записей. Сузьте тип объекта или периоды.</div>`;
+                }
+                return html;
+            }
             const loaded = [...searchState.loadedYears].sort((a, b) => b - a);
             let html = `<p class="text-muted mb-2">Кадастровый квартал: <strong>${escapeHtml(searchState.quarterCadNumber)}</strong></p>`;
             if (loaded.length) {
@@ -1161,16 +1222,22 @@
             const ws = XLSX.utils.json_to_sheet(rows);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Продажа");
-            const safeQuarter = searchState.quarterCadNumber.replace(/:/g, "-");
-            XLSX.writeFile(wb, `sdelki_${safeQuarter}.xlsx`);
+            const slugSource = searchState.mode === "report"
+                ? (searchState.report?.city || searchState.report?.regionName || "otchet")
+                : searchState.quarterCadNumber.replace(/:/g, "-");
+            const slug = String(slugSource).replace(/[^\p{L}\p{N}_-]+/gu, "_").slice(0, 80);
+            XLSX.writeFile(wb, `sdelki_${slug}.xlsx`);
         }
 
         function initSearchResults(data, firstYear, objectTypes, operationKinds) {
+            const reportMode = data.meta?.mode === "report";
             searchState = {
-                quarterCadNumber: data.quarterCadNumber,
+                mode: reportMode ? "report" : "quarter",
+                quarterCadNumber: data.quarterCadNumber || "",
+                report: data.report || null,
                 allDeals: data.deals || [],
                 availableYears: data.meta?.availableYears || [...YEAR_LOAD_ORDER],
-                loadedYears: new Set([firstYear]),
+                loadedYears: reportMode ? new Set() : new Set([firstYear]),
                 yearNotes: data.message && !data.found ? [data.message] : [],
                 objectTypes: objectTypes || [],
                 operationKinds: operationKinds || ["deal", "rent"],
@@ -1179,6 +1246,91 @@
                 sort: { key: null, dir: "asc" }
             };
             renderResultsView();
+        }
+
+        function isReportMode() {
+            return document.getElementById("modeReport")?.checked;
+        }
+
+        function syncSearchMode() {
+            const report = isReportMode();
+            document.getElementById("quarterFields")?.classList.toggle("d-none", report);
+            document.getElementById("reportFields")?.classList.toggle("d-none", !report);
+            const btn = document.getElementById("searchBtn");
+            if (btn) {
+                btn.innerHTML = report
+                    ? '<i class="fa-solid fa-table me-2"></i>Сформировать'
+                    : '<i class="fa-solid fa-magnifying-glass me-2"></i>Найти';
+            }
+        }
+
+        function syncLocMode() {
+            const city = document.getElementById("locCity")?.checked;
+            document.getElementById("regionField")?.classList.toggle("d-none", Boolean(city));
+            document.getElementById("cityField")?.classList.toggle("d-none", !city);
+        }
+
+        function fillReportCatalog(info) {
+            const regions = info?.regions || [];
+            const periods = info?.periods || [];
+            const regionSelect = document.getElementById("regionSelect");
+            if (regionSelect) {
+                regionSelect.innerHTML = regions
+                    .map((r) => `<option value="${escapeHtml(r.code)}">${escapeHtml(r.name)}</option>`)
+                    .join("");
+            }
+            const box = document.getElementById("periodChecks");
+            if (box) {
+                box.innerHTML = periods
+                    .map((p) => {
+                        const value = `${p.year}-${p.quarter}`;
+                        return `<div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="period-${value}" value="${escapeHtml(value)}">
+                            <label class="form-check-label" for="period-${value}">${escapeHtml(p.label)}</label>
+                        </div>`;
+                    })
+                    .join("");
+            }
+        }
+
+        async function loadReportCatalog() {
+            try {
+                const res = await fetch(`${API_BASE}/api/deals/info`);
+                const info = await res.json();
+                fillReportCatalog(info);
+            } catch {
+                /* каталог подтянется при следующем открытии */
+            }
+        }
+
+        function getSelectedPeriods() {
+            return [...document.querySelectorAll("#periodChecks input:checked")].map((el) => el.value);
+        }
+
+        async function requestDealsReport(objectTypes, operationKinds) {
+            const cityMode = document.getElementById("locCity")?.checked;
+            const body = {
+                limit: 10000,
+                periods: getSelectedPeriods(),
+                objectTypes,
+                operationKinds
+            };
+            if (cityMode) body.city = document.getElementById("cityInput").value.trim();
+            else body.regionCode = document.getElementById("regionSelect").value;
+            const res = await fetchWithRetry(`${API_BASE}/api/deals/search`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+            const raw = await res.text();
+            let data;
+            try {
+                data = raw ? JSON.parse(raw) : {};
+            } catch {
+                throw new Error("Сервер вернул неверный ответ");
+            }
+            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            return data;
         }
 
         document.getElementById("searchForm").addEventListener("submit", async (e) => {
@@ -1192,6 +1344,7 @@
             results.classList.add("d-none");
             const objectTypes = getSelectedObjectTypes();
             const operationKinds = getSelectedOperationKinds();
+            const report = isReportMode();
             if (!operationKinds.length) {
                 alertBox.innerHTML =
                     '<div class="alert alert-warning">Отметьте хотя бы один вид: Продажа или Аренда.</div>';
@@ -1202,13 +1355,31 @@
                     '<div class="alert alert-warning">Отметьте хотя бы один тип объекта: ЗУ, Здание или Помещение.</div>';
                 return;
             }
+            if (report) {
+                if (!getSelectedPeriods().length) {
+                    alertBox.innerHTML =
+                        '<div class="alert alert-warning">Отметьте хотя бы один период.</div>';
+                    return;
+                }
+                if (document.getElementById("locCity")?.checked && !document.getElementById("cityInput").value.trim()) {
+                    alertBox.innerHTML = '<div class="alert alert-warning">Укажите город.</div>';
+                    return;
+                }
+            } else if (!quarter) {
+                alertBox.innerHTML = '<div class="alert alert-warning">Укажите кадастровый квартал.</div>';
+                return;
+            }
             btn.disabled = true;
             showSearchLoading();
 
             try {
-                document.getElementById("searchLoadingText").textContent =
-                    `Сканируем данные за ${DEFAULT_FIRST_YEAR} год…`;
-                const data = await requestDealsSearch(quarter, DEFAULT_FIRST_YEAR, objectTypes, operationKinds);
+                document.getElementById("searchLoadingTitle").textContent = report ? "Формируем отчёт" : "Ищем сделки";
+                document.getElementById("searchLoadingText").textContent = report
+                    ? "Отбираем сделки по региону или городу…"
+                    : `Сканируем данные за ${DEFAULT_FIRST_YEAR} год…`;
+                const data = report
+                    ? await requestDealsReport(objectTypes, operationKinds)
+                    : await requestDealsSearch(quarter, DEFAULT_FIRST_YEAR, objectTypes, operationKinds);
                 initSearchResults(data, DEFAULT_FIRST_YEAR, objectTypes, operationKinds);
             } catch (err) {
                 const isNetwork =
@@ -1226,6 +1397,16 @@
                 btn.disabled = false;
             }
         });
+
+        document.querySelectorAll('input[name="searchMode"]').forEach((el) => {
+            el.addEventListener("change", syncSearchMode);
+        });
+        document.querySelectorAll('input[name="locMode"]').forEach((el) => {
+            el.addEventListener("change", syncLocMode);
+        });
+        syncSearchMode();
+        syncLocMode();
+        loadReportCatalog();
 
         const params = new URLSearchParams(location.search);
         if (params.get("quarter")) {

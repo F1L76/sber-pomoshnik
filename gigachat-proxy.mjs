@@ -19,7 +19,7 @@ import { searchByCadastralNumber, streamCadastralSearch } from "./lib/cadastral-
 import { checkVinHealth, lookupVins, lookupVinsNdjson } from "./lib/vin-lookup.mjs";
 import { getPanoramaCachePath } from "./lib/yandex-panorama-screenshot.mjs";
 import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
-import { searchDealsByQuarter, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
+import { searchDealsByQuarter, searchDealsReport, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
 import { isSqliteReady } from "./lib/deals-sqlite.mjs";
 import { createDealsJob, getDealsJob } from "./lib/deals-jobs.mjs";
 import { getZalogConverterHealth, probeZalogPythonDeps, probeZalogPythonDepsCached, ensureZalogPythonDeps, readZalogUpload } from "./lib/zalog-convert.mjs";
@@ -854,11 +854,9 @@ const server = http.createServer(async (req, res) => {
             const body = JSON.parse(raw || "{}");
             const quarter =
                 body.quarterCadNumber || body.quarter_cad_number || body.quarter || body.cadastralNumber || body.kn;
-            if (!quarter) {
-                res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-                res.end(JSON.stringify({ error: "quarterCadNumber обязателен" }));
-                return;
-            }
+            const city = String(body.city || "").trim();
+            const regionCode = body.regionCode ?? body.region_code;
+            const isReport = Boolean(city) || (regionCode != null && String(regionCode).trim() !== "");
             const limit = body.limit != null ? Number(body.limit) : 10000;
             const year = body.year != null ? Number(body.year) : null;
             const objectTypes = Array.isArray(body.objectTypes)
@@ -875,6 +873,24 @@ const server = http.createServer(async (req, res) => {
                 ...(objectTypes?.length ? { objectTypes } : {}),
                 ...(operationKinds?.length ? { operationKinds } : {})
             };
+
+            if (isReport) {
+                const result = await searchDealsReport({
+                    city,
+                    regionCode,
+                    periods: body.periods,
+                    ...searchOpts
+                });
+                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+                res.end(JSON.stringify(result));
+                return;
+            }
+
+            if (!quarter) {
+                res.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
+                res.end(JSON.stringify({ error: "Укажите кадастровый квартал или параметры отчёта" }));
+                return;
+            }
 
             // SQLite — мгновенно; без него на Render лимит ~30 с, поэтому всегда фоновая задача
             if (isSqliteReady()) {
@@ -896,7 +912,7 @@ const server = http.createServer(async (req, res) => {
             }));
         } catch (e) {
             const msg = e.message || String(e);
-            const status = /памят|memory|heap|timeout/i.test(msg) ? 503 : 400;
+            const status = e.status || (/памят|memory|heap|timeout/i.test(msg) ? 503 : 400);
             res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
             res.end(JSON.stringify({ error: msg }));
         }
