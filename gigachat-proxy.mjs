@@ -21,7 +21,7 @@ import { getPanoramaCachePath } from "./lib/yandex-panorama-screenshot.mjs";
 import { getPlacePhotoCachePath } from "./lib/dgis-photos.mjs";
 import { searchDealsByQuarter, searchDealsReport, getDealsDatasetInfo, warmupDealsIndexes } from "./lib/deals-lookup.mjs";
 import { isSqliteReady } from "./lib/deals-sqlite.mjs";
-import { createDealsJob, getDealsJob } from "./lib/deals-jobs.mjs";
+import { createDealsJob, createDealsReportJob, getDealsJob } from "./lib/deals-jobs.mjs";
 import { getZalogConverterHealth, probeZalogPythonDeps, probeZalogPythonDepsCached, ensureZalogPythonDeps, readZalogUpload } from "./lib/zalog-convert.mjs";
 import { createZalogConvertJob, getZalogConvertJob } from "./lib/zalog-jobs.mjs";
 import { getGigaChatPublicConfig, isGigaChatEnabledOnServer } from "./lib/gigachat-config.mjs";
@@ -875,14 +875,27 @@ const server = http.createServer(async (req, res) => {
             };
 
             if (isReport) {
-                const result = await searchDealsReport({
+                const reportOpts = {
                     city,
                     regionCode,
                     periods: body.periods,
                     ...searchOpts
-                });
-                res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
-                res.end(JSON.stringify(result));
+                };
+                // Без SQLite отчёт сканирует CSV — на Render упирается в ~30 с, поэтому фон
+                if (isSqliteReady()) {
+                    const result = await searchDealsReport(reportOpts);
+                    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+                    res.end(JSON.stringify(result));
+                    return;
+                }
+                const jobId = createDealsReportJob(reportOpts);
+                res.writeHead(202, { "Content-Type": "application/json; charset=utf-8", "Access-Control-Allow-Origin": "*" });
+                res.end(JSON.stringify({
+                    async: true,
+                    jobId,
+                    mode: "report",
+                    message: "Отчёт по датасетам запущен. Обычно 1–3 минуты."
+                }));
                 return;
             }
 

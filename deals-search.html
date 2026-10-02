@@ -1329,7 +1329,12 @@
             } catch {
                 throw new Error("Сервер вернул неверный ответ");
             }
-            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            if (!res.ok && res.status !== 202) throw new Error(data.error || `HTTP ${res.status}`);
+            if ((data.async && data.jobId) || res.status === 202) {
+                document.getElementById("searchLoadingText").textContent =
+                    "Сканируем датасеты Росреестра по городу/региону…";
+                data = await pollDealsJob(data.jobId, null);
+            }
             return data;
         }
 
@@ -1375,7 +1380,7 @@
             try {
                 document.getElementById("searchLoadingTitle").textContent = report ? "Формируем отчёт" : "Ищем сделки";
                 document.getElementById("searchLoadingText").textContent = report
-                    ? "Отбираем сделки по региону или городу…"
+                    ? "Отбираем сделки по региону или городу (на сервере без SQLite это 1–3 минуты)…"
                     : `Сканируем данные за ${DEFAULT_FIRST_YEAR} год…`;
                 const data = report
                     ? await requestDealsReport(objectTypes, operationKinds)
