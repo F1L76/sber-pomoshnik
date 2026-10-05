@@ -15,55 +15,55 @@
     <link rel="stylesheet" href="/vendor/fonts/gl-zs-fonts.css">
     <style>
         :root, [data-theme="dark"] {
-            --bg: #0b0d12;
-            --bg-elev: #12151c;
-            --surface: #171b24;
-            --surface-2: #1c2230;
-            --ink: #f3f5f9;
-            --muted: #9aa3b5;
+            --bg: #0f0f0f;
+            --bg-elev: #141414;
+            --surface: #161616;
+            --surface-2: #1c1c1e;
+            --ink: #fcfdfe;
+            --muted: #a1a1aa;
             --line: rgba(255, 255, 255, 0.08);
             --line-strong: rgba(255, 255, 255, 0.14);
-            --accent: #3b82f6;
-            --accent-hot: #60a5fa;
-            --accent-ink: #dbeafe;
-            --accent-soft: rgba(59, 130, 246, 0.14);
-            --body-glow-1: rgba(59, 130, 246, 0.18);
-            --body-glow-2: rgba(14, 165, 233, 0.1);
-            --top-bg: rgba(11, 13, 18, 0.82);
-            --hover-wash: rgba(255, 255, 255, 0.02);
-            --ghost-hover: rgba(255, 255, 255, 0.03);
-            --placeholder: #6b7385;
-            --body-text: #c5cbd8;
-            --bot-text: #e8ecf4;
+            --accent: #7c64fb;
+            --accent-hot: #a78bfa;
+            --accent-ink: #ddd6fe;
+            --accent-soft: rgba(124, 100, 251, 0.16);
+            --body-glow-1: rgba(255, 255, 255, 0.08);
+            --body-glow-2: rgba(124, 100, 251, 0.22);
+            --top-bg: rgba(15, 15, 15, 0.8);
+            --hover-wash: rgba(255, 255, 255, 0.03);
+            --ghost-hover: rgba(255, 255, 255, 0.04);
+            --placeholder: #71717a;
+            --body-text: #d4d4d8;
+            --bot-text: #f4f4f5;
             --warn: #fbbf24;
-            --font: Onest, Manrope, "Segoe UI", sans-serif;
-            --radius: 16px;
-            --radius-sm: 12px;
-            --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+            --font: Onest, ui-sans-serif, system-ui, sans-serif;
+            --radius: 18px;
+            --radius-sm: 14px;
+            --shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
         }
         [data-theme="light"] {
-            --bg: #f4f6fa;
-            --bg-elev: #eef1f6;
+            --bg: #f6f5f8;
+            --bg-elev: #ffffff;
             --surface: #ffffff;
-            --surface-2: #f8fafc;
-            --ink: #111827;
-            --muted: #5b6472;
-            --line: #e5e7eb;
-            --line-strong: #d1d5db;
-            --accent: #2563eb;
-            --accent-hot: #1d4ed8;
-            --accent-ink: #1e3a8a;
-            --accent-soft: rgba(37, 99, 235, 0.1);
-            --body-glow-1: rgba(37, 99, 235, 0.1);
-            --body-glow-2: rgba(14, 165, 233, 0.08);
-            --top-bg: rgba(255, 255, 255, 0.88);
-            --hover-wash: rgba(15, 23, 42, 0.03);
-            --ghost-hover: rgba(37, 99, 235, 0.06);
-            --placeholder: #94a3b8;
-            --body-text: #374151;
-            --bot-text: #1f2937;
+            --surface-2: #f4f3f7;
+            --ink: #111113;
+            --muted: #5c5c66;
+            --line: rgba(17, 17, 19, 0.08);
+            --line-strong: rgba(17, 17, 19, 0.14);
+            --accent: #6d4aff;
+            --accent-hot: #5b3df0;
+            --accent-ink: #3b2a8a;
+            --accent-soft: rgba(109, 74, 255, 0.1);
+            --body-glow-1: rgba(109, 74, 255, 0.08);
+            --body-glow-2: rgba(255, 255, 255, 0.6);
+            --top-bg: rgba(246, 245, 248, 0.88);
+            --hover-wash: rgba(17, 17, 19, 0.03);
+            --ghost-hover: rgba(109, 74, 255, 0.06);
+            --placeholder: #8a8a96;
+            --body-text: #3f3f46;
+            --bot-text: #18181b;
             --warn: #b45309;
-            --shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 8px 24px rgba(17, 24, 39, 0.06);
+            --shadow: 0 1px 2px rgba(17, 17, 19, 0.04), 0 12px 32px rgba(17, 17, 19, 0.06);
         }
         * { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
@@ -71,10 +71,7 @@
             margin: 0;
             font-family: var(--font);
             color: var(--ink);
-            background:
-                radial-gradient(900px 420px at 12% -10%, var(--body-glow-1), transparent 55%),
-                radial-gradient(700px 380px at 88% 8%, var(--body-glow-2), transparent 50%),
-                var(--bg);
+            background: var(--bg);
             line-height: 1.55;
             min-height: 100vh;
             transition: background-color 0.2s ease, color 0.2s ease;
@@ -114,7 +111,7 @@
         }
         .theme-btn:hover {
             color: var(--ink);
-            border-color: rgba(96, 165, 250, 0.55);
+            border-color: rgba(167, 139, 250, 0.55);
             background: var(--ghost-hover);
         }
         .theme-btn__icon { font-size: 0.95rem; line-height: 1; }
@@ -137,9 +134,9 @@
         .logo__mark {
             width: 2rem;
             height: 2rem;
-            border-radius: 999px;
-            background: linear-gradient(145deg, #60a5fa, #2563eb);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+            border-radius: 10px;
+            background: linear-gradient(145deg, #c4b5fd, #7c64fb);
+            color: #0f0f0f;
             display: grid;
             place-items: center;
             font-size: 0.7rem;
@@ -182,29 +179,72 @@
             border: 1px solid var(--line-strong);
             color: var(--ink);
         }
-        .btn--ghost:hover { border-color: rgba(96, 165, 250, 0.55); background: var(--ghost-hover); }
+        .btn--ghost:hover { border-color: rgba(167, 139, 250, 0.55); background: var(--ghost-hover); }
         .btn--sm { min-height: 2.4rem; padding: 0.45rem 0.95rem; font-size: 0.9rem; }
 
         .hero {
-            padding: clamp(2.5rem, 7vw, 4.5rem) 0 1.5rem;
+            padding: 1.25rem 0 0.5rem;
         }
+        .stage {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--line-strong);
+            border-radius: 28px;
+            background: #121212;
+            padding: clamp(2rem, 5vw, 3.2rem) clamp(1rem, 3vw, 2.4rem) 2.4rem;
+        }
+        [data-theme="light"] .stage { background: #fff; }
+        .stage::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            height: 220px;
+            background:
+                radial-gradient(70% 120% at 50% -10%, rgba(255, 255, 255, 0.16), transparent 62%),
+                radial-gradient(40% 80% at 70% 0%, rgba(124, 100, 251, 0.35), transparent 70%);
+            pointer-events: none;
+        }
+        .stage > * { position: relative; }
         .hero__brand {
-            margin: 0 0 0.85rem;
-            font-size: clamp(2rem, 5vw, 3rem);
-            font-weight: 800;
+            margin: 0 0 1.6rem;
+            text-align: center;
+            font-size: clamp(2.4rem, 6vw, 3.4rem);
+            font-weight: 700;
             letter-spacing: -0.03em;
             line-height: 1.05;
+            background: linear-gradient(to right, #ffffff 42%, #7c64fb 68%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
         }
+        [data-theme="light"] .hero__brand {
+            background: linear-gradient(to right, #18181b 42%, #6d4aff 70%);
+            -webkit-background-clip: text;
+            background-clip: text;
+        }
+        .hero__headline {
+            margin: 0.4rem auto 0.75rem;
+            max-width: 46rem;
+            text-align: center;
+            font-size: clamp(1.45rem, 3.2vw, 2rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.25;
+        }
+        .hero__headline span { color: var(--accent); }
         .hero__lead {
-            margin: 0 0 1.5rem;
+            margin: 0 auto 1.4rem;
             max-width: 36rem;
+            text-align: center;
             color: var(--muted);
-            font-size: 1.05rem;
+            font-size: 0.98rem;
         }
         .search {
             position: relative;
             max-width: 42rem;
-            margin-bottom: 1.1rem;
+            margin: 0 auto 0.2rem;
         }
         .search svg {
             position: absolute;
@@ -229,8 +269,8 @@
         }
         .search input::placeholder { color: var(--placeholder); }
         .search input:focus {
-            border-color: rgba(96, 165, 250, 0.7);
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.18);
+            border-color: rgba(167, 139, 250, 0.75);
+            box-shadow: 0 0 0 4px rgba(124, 100, 251, 0.18);
         }
         .hero__actions {
             display: flex;
@@ -240,6 +280,7 @@
         }
         .hero__hint {
             margin: 0.7rem 0 0;
+            text-align: center;
             color: var(--muted);
             font-size: 0.84rem;
         }
@@ -270,51 +311,61 @@
 
         .cats {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: 1fr 1fr;
             gap: 0.75rem;
+            max-width: 760px;
+            margin: 0 auto 2.4rem;
         }
         @media (max-width: 860px) {
-            .cats { grid-template-columns: repeat(2, 1fr); }
             .top__nav { display: none; }
         }
-        @media (max-width: 520px) {
+        @media (max-width: 640px) {
             .cats { grid-template-columns: 1fr; }
         }
         .cat {
-            display: block;
-            padding: 1.05rem 1.1rem;
-            background: var(--surface);
-            border: 1px solid var(--line);
-            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+            padding: 0.85rem 1rem;
+            background: #141414;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
             color: inherit;
             text-decoration: none;
-            min-height: 7.4rem;
-            transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease;
+            min-height: 4.5rem;
+            transition: border-color 0.15s ease, background 0.15s ease;
         }
+        [data-theme="light"] .cat { background: #fafafa; border-color: rgba(17, 17, 19, 0.1); }
         .cat:hover {
-            border-color: rgba(96, 165, 250, 0.45);
-            background: var(--surface-2);
-            transform: translateY(-2px);
+            border-color: rgba(167, 139, 250, 0.55);
+            background: #1a1a1c;
             text-decoration: none;
         }
+        [data-theme="light"] .cat:hover { background: #f3f0ff; }
         .cat.is-on {
-            border-color: rgba(96, 165, 250, 0.7);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+            border-color: rgba(124, 100, 251, 0.85);
+            box-shadow: 0 0 0 3px rgba(124, 100, 251, 0.2);
         }
         .cat__icon {
-            width: 2rem;
-            height: 2rem;
-            border-radius: 999px;
-            background: var(--accent-soft);
-            color: var(--accent-hot);
+            width: 2.35rem;
+            height: 2.35rem;
+            flex: 0 0 auto;
+            border-radius: 10px;
+            background: #1c1c1e;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #e4e4e7;
             display: grid;
             place-items: center;
-            margin-bottom: 0.75rem;
-            font-size: 0.78rem;
-            font-weight: 700;
+            margin: 0;
         }
-        .cat__title { margin: 0 0 0.3rem; font-size: 1rem; font-weight: 700; }
-        .cat__desc { margin: 0; color: var(--muted); font-size: 0.88rem; }
+        [data-theme="light"] .cat__icon {
+            background: #fff;
+            border-color: rgba(17, 17, 19, 0.08);
+            color: #3f3f46;
+        }
+        .cat__icon svg { width: 1.1rem; height: 1.1rem; }
+        .cat__title { margin: 0 0 0.15rem; font-size: 0.98rem; font-weight: 600; }
+        .cat__desc { margin: 0; color: var(--muted); font-size: 0.8rem; }
 
         .faq {
             display: grid;
@@ -327,7 +378,7 @@
             overflow: hidden;
             transition: border-color 0.15s ease;
         }
-        .article[open] { border-color: rgba(96, 165, 250, 0.35); }
+        .article[open] { border-color: rgba(167, 139, 250, 0.4); }
         .article summary {
             list-style: none;
             cursor: pointer;
@@ -363,7 +414,7 @@
         .article[open] .article__plus {
             transform: rotate(45deg);
             color: var(--accent-hot);
-            border-color: rgba(96, 165, 250, 0.45);
+            border-color: rgba(167, 139, 250, 0.5);
         }
         .article__body {
             padding: 0 1.15rem 1.15rem;
@@ -406,6 +457,26 @@
             font-weight: 800;
             letter-spacing: -0.02em;
         }
+        .ask__head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .ask__head .ask__title { margin: 0; }
+        .btn--ghost-sm {
+            font: inherit;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--line-strong);
+            background: transparent;
+            color: var(--muted);
+            cursor: pointer;
+        }
+        .btn--ghost-sm:hover { color: var(--ink); border-color: var(--accent); }
         .chat {
             display: grid;
             grid-template-rows: minmax(220px, 36vh) auto;
@@ -488,8 +559,8 @@
             background: var(--bg-elev);
         }
         .chat-form textarea:focus {
-            border-color: rgba(96, 165, 250, 0.7);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+            border-color: rgba(167, 139, 250, 0.75);
+            box-shadow: 0 0 0 3px rgba(124, 100, 251, 0.18);
         }
         .chat-form .btn { border-radius: 12px; }
 
@@ -526,16 +597,61 @@
                     <span class="theme-btn__icon" data-theme-icon aria-hidden="true">☀</span>
                     <span data-theme-label>Светлая</span>
                 </button>
-                <a class="btn btn--sm" href="#ask">Спросить базу</a>
+                <a class="btn btn--ghost btn--sm" href="#ask">Спросить базу</a>
             </div>
         </div>
     </header>
 
     <main>
-        <section class="hero">
-            <div class="wrap">
+        <section class="hero" id="guides">
+            <div class="wrap stage">
                 <h1 class="hero__brand">Справка ГЛ ЗС</h1>
-                <p class="hero__lead">Инструкции и частые ответы горячей линии. Сначала найдите здесь — на ГЛ пишите, если кейс не покрыт.</p>
+                <div class="cats" id="cats">
+                    <a class="cat" href="#faq" data-cat="priority">
+                        <div class="cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 16l4-8 3 5 2-3 5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                        <div>
+                            <h3 class="cat__title">Приоритет</h3>
+                            <p class="cat__desc">Ускорение заявки, лимиты ТБ</p>
+                        </div>
+                    </a>
+                    <a class="cat" href="#faq" data-cat="cost">
+                        <div class="cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 4v16M8 8.5c0-1.4 1.8-2.5 4-2.5s4 1.1 4 2.5-1.8 2.5-4 2.5-4 1.1-4 2.5 1.8 2.5 4 2.5 4-1.1 4-2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+                        <div>
+                            <h3 class="cat__title">Стоимость</h3>
+                            <p class="cat__desc">Арбитраж и пересмотр оценки</p>
+                        </div>
+                    </a>
+                    <a class="cat" href="#faq" data-cat="auto">
+                        <div class="cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 12h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+                        <div>
+                            <h3 class="cat__title">Автооценка</h3>
+                            <p class="cat__desc">Когда арбитраж невозможен</p>
+                        </div>
+                    </a>
+                    <a class="cat" href="#faq" data-cat="inspect">
+                        <div class="cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="2" fill="currentColor"/></svg></div>
+                        <div>
+                            <h3 class="cat__title">Осмотр</h3>
+                            <p class="cat__desc">Аспект, СМС, самоосмотр</p>
+                        </div>
+                    </a>
+                    <a class="cat" href="#faq" data-cat="vti">
+                        <div class="cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 19V9l7-4 7 4v10" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 19v-5h4v5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></div>
+                        <div>
+                            <h3 class="cat__title">ВТИ</h3>
+                            <p class="cat__desc">Техизменения и снятие рисков</p>
+                        </div>
+                    </a>
+                    <a class="cat" href="#faq" data-cat="docs">
+                        <div class="cat__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M7 4h7l5 5v11a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.8"/><path d="M14 4v5h5M9 13h6M9 17h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+                        <div>
+                            <h3 class="cat__title">Сроки и ЭКД</h3>
+                            <p class="cat__desc">СЗЗ, отчёты, материалы</p>
+                        </div>
+                    </a>
+                </div>
+                <h2 class="hero__headline">Инструкции и частые ответы <span>горячей линии</span></h2>
+                <p class="hero__lead">Сначала найдите ответ здесь. На ГЛ пишите, если кейс не покрыт.</p>
                 <div class="search">
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
@@ -544,53 +660,7 @@
                     <label class="visually-hidden" for="q" style="position:absolute;left:-9999px">Поиск</label>
                     <input id="q" type="search" placeholder="Например: приоритет, автооценка, осмотр, СЗЗ" autocomplete="off" autofocus>
                 </div>
-                <div class="hero__actions">
-                    <a class="btn btn--sm" href="#guides">Инструкции по разделам</a>
-                    <a class="btn btn--ghost btn--sm" href="#faq">Частые вопросы</a>
-                    <a class="btn btn--ghost btn--sm" href="#ask">Спросить базу ГЛ</a>
-                </div>
                 <p class="hero__hint">Enter — искать в вопросах · <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+Enter — сразу в базу ГЛ</p>
-            </div>
-        </section>
-
-        <section class="section" id="guides">
-            <div class="wrap">
-                <div class="section__head">
-                    <h2 class="section__title">Инструкции по разделам</h2>
-                    <span class="section__meta">выберите сценарий</span>
-                </div>
-                <div class="cats" id="cats">
-                    <a class="cat" href="#faq" data-cat="priority">
-                        <div class="cat__icon">01</div>
-                        <h3 class="cat__title">Приоритет</h3>
-                        <p class="cat__desc">Ускорение заявки, лимиты ТБ, согласования</p>
-                    </a>
-                    <a class="cat" href="#faq" data-cat="cost">
-                        <div class="cat__icon">02</div>
-                        <h3 class="cat__title">Стоимость</h3>
-                        <p class="cat__desc">Арбитраж, аналоги, пересмотр оценки</p>
-                    </a>
-                    <a class="cat" href="#faq" data-cat="auto">
-                        <div class="cat__icon">03</div>
-                        <h3 class="cat__title">Автооценка</h3>
-                        <p class="cat__desc">Когда арбитраж невозможен</p>
-                    </a>
-                    <a class="cat" href="#faq" data-cat="inspect">
-                        <div class="cat__icon">04</div>
-                        <h3 class="cat__title">Осмотр</h3>
-                        <p class="cat__desc">Аспект, СМС, самоосмотр, контакты</p>
-                    </a>
-                    <a class="cat" href="#faq" data-cat="vti">
-                        <div class="cat__icon">05</div>
-                        <h3 class="cat__title">ВТИ</h3>
-                        <p class="cat__desc">Техизменения и снятие рисков</p>
-                    </a>
-                    <a class="cat" href="#faq" data-cat="docs">
-                        <div class="cat__icon">06</div>
-                        <h3 class="cat__title">Сроки и ЭКД</h3>
-                        <p class="cat__desc">СЗЗ, отчёты, размещение материалов</p>
-                    </a>
-                </div>
             </div>
         </section>
 
@@ -601,201 +671,7 @@
                     <span class="section__meta" id="articlesMeta">сначала самообслуживание</span>
                 </div>
                 <div class="faq" id="articles">
-                    <details class="article" data-cat="priority" data-keys="приоритет ускор заявк тм мцк цооп согласован друг тб лимит">
-                        <summary>
-                            <span class="article__q">Как установить приоритет по заявке?<span class="article__tag">Приоритет</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <p>Выставьте обращение в АС Друг. Количество приоритетов для каждого ТБ ограничено; приоритет заранее согласуйте с руководителем.</p>
-                            <ul>
-                                <li>От ТМ приоритет принимают только по согласованию директора МЦК и директора ЦООП.</li>
-                                <li>Укажите причину срочности и срок, к которому нужно заключение.</li>
-                            </ul>
-                            <div class="next">Не покрывает кейс? <a href="#ask" data-ask="как установить приоритет по заявке">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="priority" data-keys="приоритет не выставля отказ лимит тб ветка">
-                        <summary>
-                            <span class="article__q">Приоритет не выставляется — что ответить?<span class="article__tag">Приоритет</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <p>Ветка приоритета — только для установки приоритета по заявкам. Лимит приоритетов на ТБ ограничен.</p>
-                            <p>Если запрос не про приоритет (например, осмотр) — направьте в нужный канал, а не в эту ветку.</p>
-                            <div class="next"><a href="#ask" data-ask="приоритет не выставляется что ответить">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="cost" data-keys="стоимость арбитраж оценка заниж аналог пм пересмотр не согласен">
-                        <summary>
-                            <span class="article__q">Не согласен со стоимостью — что делать?<span class="article__tag">Стоимость</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <p>Нужно аргументированное мнение для пересмотра:</p>
-                            <ul>
-                                <li>почему оценка занижена или завышена;</li>
-                                <li>сопоставимые аналоги;</li>
-                                <li>подтверждения (ДКП, рыночные предложения).</li>
-                            </ul>
-                            <p>По предварительному мнению (ПМ) стоимость не пересматривают — нужна полноценная экспертиза.</p>
-                            <div class="next"><a href="#ask" data-ask="не согласен со стоимостью что делать">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="auto" data-keys="автооценк арбитраж ммб новый залог последующ">
-                        <summary>
-                            <span class="article__q">После автооценки можно ли арбитраж?<span class="article__tag">Автооценка</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <p>Нет. Автооценка — продукт ММБ, Залоговая служба в процессе не участвует. Арбитраж после автооценки не проводят.</p>
-                            <ul>
-                                <li>Отправьте заявку на ЗС заново как новый / последующий залог.</li>
-                                <li>Экспертиза пройдёт сотрудником ЗС в полном объёме.</li>
-                            </ul>
-                            <div class="next"><a href="#ask" data-ask="после автооценки можно ли арбитраж">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="cost" data-keys="кк комфорт бланк шильд идентификац категори">
-                        <summary>
-                            <span class="article__q">Почему КК «Комфорт»?<span class="article__tag">Категория качества</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <p>Типовые причины КК Комфорт:</p>
-                            <ul>
-                                <li>нет чётких идентификационных признаков (например, шильдов) — часто сначала бланк, после устранения возможен комфорт;</li>
-                                <li>специфика объекта (узкоспециализированное имущество);</li>
-                                <li>только балансовый учёт без рыночной оценки / полного пакета.</li>
-                            </ul>
-                            <p>Сверьте залоговое заключение с этими пунктами по вашему объекту.</p>
-                            <div class="next"><a href="#ask" data-ask="почему КК Комфорт">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="cost" data-keys="кк бланк комфорт документ осмотр счет 08 отлагательн">
-                        <summary>
-                            <span class="article__q">Почему КК бланковое, а не комфорт?<span class="article__tag">Категория качества</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <ul>
-                                <li>нет нужных документов / осмотра / идентификации;</li>
-                                <li>объекты на счёте 08 до перевода на 01;</li>
-                                <li>не исполнены отлагательные условия сделки.</li>
-                            </ul>
-                            <div class="next"><a href="#ask" data-ask="почему КК бланковое а не комфорт">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="inspect" data-keys="осмотр аспект фото самоосмотр смс пароль контакт со">
-                        <summary>
-                            <span class="article__q">Клиенту не пришло СМС для самоосмотра<span class="article__tag">Осмотр</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <ul>
-                                <li>Проверьте статус заявки и срок самоосмотра (обычно 2 рабочих дня).</li>
-                                <li>При автооценке осмотр не проводится.</li>
-                                <li>Если срок пропущен — часто нужна новая заявка на ЗС.</li>
-                            </ul>
-                            <div class="next"><a href="#ask" data-ask="клиенту не пришло смс для самоосмотра">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="inspect" data-keys="осмотр аспект фото самоосмотр пароль контакт со">
-                        <summary>
-                            <span class="article__q">Проблемы с осмотром и Аспектом<span class="article__tag">Осмотр</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <p>Частые сценарии: смена контакта, истёк пароль СО, фото не пришли, объекты не видны, смена типа осмотра, отмена осмотра.</p>
-                            <div class="next"><a href="#ask" data-ask="осмотр аспект фото не пришли">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="vti" data-keys="вти техизменен риск актуализац сзз комментар">
-                        <summary>
-                            <span class="article__q">Нужны ВТИ или снятие риска<span class="article__tag">ВТИ</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <p>Выставьте заявку на ВТИ и в комментарии явно перечислите изменения.</p>
-                            <ul>
-                                <li>Если материалы уже принимали, а риск остался — укажите это.</li>
-                                <li>Для актуализации СЗЗ отдельно пропишите, что заменить.</li>
-                            </ul>
-                            <div class="next"><a href="#ask" data-ask="вти снятие риска что написать в комментарии">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="docs" data-keys="срок сзз бессрочн последзалог мониторинг">
-                        <summary>
-                            <span class="article__q">Что такое бессрочное СЗЗ?<span class="article__tag">Сроки и ЭКД</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <p>Бессрочное СЗЗ — сводное залоговое заключение в специальном режиме выпуска (часто роботом). Срок действия и мониторинг зависят от условий выпуска и актуальности материалов.</p>
-                            <div class="next"><a href="#ask" data-ask="что такое бессрочное СЗЗ">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="docs" data-keys="срок сзз последзалог к7м экд отчет оценщик размещен">
-                        <summary>
-                            <span class="article__q">Срок действия СЗЗ, ЭКД, отчёты об оценке<span class="article__tag">Сроки и ЭКД</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <ul>
-                                <li><strong>Последзалог:</strong> обычно до 12 месяцев с выпуска, осмотр не старше 12 месяцев, без негатива в мониторинге.</li>
-                                <li><strong>ЭКД ММБ:</strong> клиент / досье сделок / ID CRM / Заключения / Заключения по залогу.</li>
-                                <li><strong>Отчёт оценщика:</strong> порядок — приложение 8 Регламента 2222.</li>
-                            </ul>
-                            <div class="next"><a href="#ask" data-ask="срок действия сзз последзалог">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="docs" data-keys="мониторинг актуализац кн задание">
-                        <summary>
-                            <span class="article__q">Нужен ли мониторинг при актуализации КН?<span class="article__tag">Мониторинг</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <p>При актуализации кадастрового номера задание на мониторинг, как правило, не нужно — смотрите типовой ответ базы по вашей формулировке.</p>
-                            <div class="next"><a href="#ask" data-ask="нужен ли мониторинг при актуализации КН">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="docs" data-keys="отозвать заявку ммб ксб сбоф">
-                        <summary>
-                            <span class="article__q">Как отозвать заявку?<span class="article__tag">Заявка</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <p>Для ММБ заявку обычно отзывают самостоятельно в контуре работы КМ. Для КСБ порядок может отличаться — уточните по сегменту в базе ГЛ.</p>
-                            <div class="next"><a href="#ask" data-ask="как отозвать заявку">Спросить базу ГЛ</a></div>
-                        </div>
-                    </details>
-
-                    <details class="article" data-cat="priority" data-keys="когда звонить писать гл эскалация id заявки">
-                        <summary>
-                            <span class="article__q">Когда всё же писать на ГЛ?<span class="article__tag">Эскалация</span></span>
-                            <span class="article__plus" aria-hidden="true">+</span>
-                        </summary>
-                        <div class="article__body">
-                            <ul>
-                                <li>инструкция не покрывает кейс;</li>
-                                <li>нужен приоритет или разбор ошибки в уже выпущенном заключении;</li>
-                                <li>процесс завис — и есть конкретный ID заявки/запроса.</li>
-                            </ul>
-                            <div class="next">Сначала сформулируйте вопрос ниже — часто ответ уже есть в базе.</div>
-                        </div>
-                    </details>
-
+                    <!-- статьи подгружаются из faq-seeds (тренажёр) -->
                     <div class="empty" id="articlesEmpty">По запросу ничего не найдено. Попробуйте другие слова или спросите базу ГЛ ниже.</div>
                 </div>
             </div>
@@ -804,7 +680,10 @@
         <section class="section ask" id="ask">
             <div class="wrap">
                 <div class="ask__box">
-                    <h2 class="ask__title">Не нашли свой вопрос?</h2>
+                    <div class="ask__head">
+                        <h2 class="ask__title">Не нашли свой вопрос?</h2>
+                        <button type="button" class="btn--ghost-sm" id="chatReset" title="Сбросить историю диалога">Новый диалог</button>
+                    </div>
                     <div class="chat" aria-label="Чат по базе ГЛ">
                         <div class="chat-log" id="chatLog"></div>
                         <form class="chat-form" id="chatForm">
@@ -853,7 +732,88 @@
         const emptyEl = document.getElementById("articlesEmpty");
         const titleEl = document.getElementById("articlesTitle");
         const metaEl = document.getElementById("articlesMeta");
-        const items = [...articlesEl.querySelectorAll(".article")];
+        let items = [];
+
+        function esc(s) {
+            return String(s || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;");
+        }
+
+        function answerHtml(text) {
+            const lines = String(text || "").replace(/\r/g, "").split("\n");
+            const chunks = [];
+            let list = [];
+            const flushList = () => {
+                if (!list.length) return;
+                chunks.push("<ul>" + list.map((li) => `<li>${esc(li)}</li>`).join("") + "</ul>");
+                list = [];
+            };
+            for (const raw of lines) {
+                const line = raw.trim();
+                if (!line) {
+                    flushList();
+                    continue;
+                }
+                const m = line.match(/^(?:[-•*]|\d+[.)])\s+(.+)$/);
+                if (m) {
+                    list.push(m[1]);
+                    continue;
+                }
+                flushList();
+                chunks.push(`<p>${esc(line)}</p>`);
+            }
+            flushList();
+            return chunks.join("") || `<p>${esc(text)}</p>`;
+        }
+
+        function renderArticles(list) {
+            const escalation = `
+                    <details class="article" data-cat="priority" data-keys="когда звонить писать гл эскалация id заявки">
+                        <summary>
+                            <span class="article__q">Когда всё же писать на ГЛ?<span class="article__tag">Эскалация</span></span>
+                            <span class="article__plus" aria-hidden="true">+</span>
+                        </summary>
+                        <div class="article__body">
+                            <ul>
+                                <li>инструкция не покрывает кейс;</li>
+                                <li>нужен приоритет или разбор ошибки в уже выпущенном заключении;</li>
+                                <li>процесс завис — и есть конкретный ID заявки/запроса.</li>
+                            </ul>
+                            <div class="next">Сначала сформулируйте вопрос ниже — часто ответ уже есть в базе.</div>
+                        </div>
+                    </details>`;
+            articlesEl.innerHTML = list.map((it) => {
+                const ask = esc(it.topic);
+                return `<details class="article" data-cat="${esc(it.cat)}" data-keys="${esc(it.keys)}">
+                        <summary>
+                            <span class="article__q">${esc(it.topic)}<span class="article__tag">${esc(it.tag)}</span></span>
+                            <span class="article__plus" aria-hidden="true">+</span>
+                        </summary>
+                        <div class="article__body">
+                            ${answerHtml(it.answer)}
+                            <div class="next"><a href="#ask" data-ask="${ask}">Спросить базу ГЛ</a></div>
+                        </div>
+                    </details>`;
+            }).join("") + escalation;
+            items = [...articlesEl.querySelectorAll(".article")];
+            metaEl.textContent = `${list.length} из базы тренажёра`;
+        }
+
+        async function loadFaqArticles() {
+            try {
+                const res = await fetch("/api/conclusion-qa/faq");
+                const data = await res.json();
+                if (!res.ok || !data.ok) throw new Error(data.error || "FAQ недоступен");
+                renderArticles(data.items || []);
+                filterArticles(qEl.value, activeCat);
+            } catch (e) {
+                articlesEl.innerHTML = `<p class="empty is-on" style="display:block">Не удалось загрузить FAQ: ${esc(e.message || e)}</p>`;
+                items = [];
+            }
+        }
 
         function norm(s) {
             return String(s || "")
@@ -870,7 +830,11 @@
             for (const el of items) {
                 const keys = norm(el.dataset.keys + " " + el.querySelector("summary")?.textContent);
                 const catOk = !cat || el.dataset.cat === cat;
-                const textOk = !tokens.length || tokens.every((t) => keys.includes(t) || keys.split(" ").some((w) => w.startsWith(t)));
+                const textOk = !tokens.length || tokens.every((t) =>
+                    keys.includes(t) || keys.split(" ").some((w) =>
+                        w.startsWith(t) || (t.length >= 5 && w.length >= 5 && t.startsWith(w))
+                    )
+                );
                 const on = catOk && textOk;
                 el.classList.toggle("is-hidden", !on);
                 if (on) shown += 1;
@@ -884,7 +848,7 @@
                 metaEl.textContent = `${shown} из ${items.length}`;
             } else {
                 titleEl.textContent = "Частые вопросы";
-                metaEl.textContent = "сначала самообслуживание";
+                metaEl.textContent = items.length ? `${items.length - 1} из базы тренажёра` : "загрузка…";
             }
         }
 
@@ -906,10 +870,14 @@
             if (first && activeCat) first.open = true;
         });
 
+        loadFaqArticles();
         const logEl = document.getElementById("chatLog");
         const formEl = document.getElementById("chatForm");
         const inputEl = document.getElementById("chatInput");
         const sendEl = document.getElementById("chatSend");
+        const resetEl = document.getElementById("chatReset");
+        /** @type {{ role: string, content: string }[]} */
+        let qaHistory = [];
 
         function esc(s) {
             return String(s ?? "")
@@ -942,12 +910,14 @@
         function renderAnswer(data) {
             const answer = esc(data.answer || NO_ANSWER).replace(/\n/g, "<br>");
             const hits = data.hits || [];
-            const mode = data.mode === "verbatim" ? "ГЛ · база" : (data.synthesized ? "ГЛ · GigaChat" : "ГЛ");
+            const modeLabel = data.mode === "clarify"
+                ? "ГЛ · уточнение"
+                : "ГЛ";
             const warn = data.gigaError
                 ? `<div class="hint" style="margin-bottom:0.6rem">GigaChat недоступен (${esc(data.gigaError)}). Показываю ответ из базы.</div>`
                 : "";
             const list = renderHitsFallback(hits);
-            return `<span class="meta">${mode}</span>${warn}<div class="hit">${answer}`
+            return `<span class="meta">${modeLabel}</span>${warn}<div class="hit">${answer}`
                 + (list
                     ? `<details class="hit-src"><summary>Фрагменты базы (${hits.length})</summary>${list}</details>`
                     : "")
@@ -991,6 +961,17 @@
             }
         }
 
+        function greetChat() {
+            addBubble("bot", '<span class="meta">ГЛ</span>Привет! Напишите вопрос своими словами — помогу по ответам горячей линии. Контекст диалога сохраняется до «Новый диалог».');
+        }
+
+        function resetDialog() {
+            qaHistory = [];
+            logEl.innerHTML = "";
+            greetChat();
+            inputEl.focus();
+        }
+
         async function askBase(question) {
             if (!question || sendEl.disabled) return;
             addBubble("user", `<span class="meta">Вы</span>${esc(question)}`);
@@ -1001,16 +982,20 @@
                 const res = await fetch("/api/conclusion-qa/ask", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ question })
+                    body: JSON.stringify({ question, history: qaHistory.slice(-8) })
                 });
                 const data = await res.json();
                 if (!res.ok || !data.ok) throw new Error(data.error || "Ошибка поиска");
                 pending.innerHTML = renderAnswer(data);
+                const answer = data.answer || "";
+                qaHistory.push({ role: "user", content: question });
+                qaHistory.push({ role: "assistant", content: answer });
+                if (qaHistory.length > 8) qaHistory = qaHistory.slice(-8);
                 const fb = pending.querySelector("[data-fb]");
                 fb?.addEventListener("click", (e) => {
                     const btn = e.target.closest("button[data-vote]");
                     if (!btn || btn.disabled) return;
-                    sendFeedback(fb, btn.getAttribute("data-vote"), question, data.answer || "", data.hits || []);
+                    sendFeedback(fb, btn.getAttribute("data-vote"), question, answer, data.hits || []);
                 });
             } catch (err) {
                 pending.innerHTML = `<span class="meta">ГЛ</span>${esc(err.message || String(err))}`;
@@ -1021,7 +1006,8 @@
             }
         }
 
-        addBubble("bot", '<span class="meta">ГЛ</span>Привет! Напишите вопрос своими словами — помогу по ответам горячей линии.');
+        greetChat();
+        resetEl?.addEventListener("click", resetDialog);
 
         formEl.addEventListener("submit", (e) => {
             e.preventDefault();
